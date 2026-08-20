@@ -153,9 +153,15 @@ error when `SERPER_API_KEY` is unavailable.
 | TeX | LaTeX visualization |
 | Chromium | Web-page screenshots and edu-agent rendering |
 | Blender / FreeCAD | Their respective live application integrations |
+| Cua Driver 0.20.0+ | Native desktop observation and interaction through the `cua` capability |
 
 Run `bash install.sh verify` or `<entry> --check-system` to see what the selected capability needs.
 Capability-specific prerequisites are documented in its Skill and cookbook.
+
+For `cua`, install Cua Driver with its official installer, grant the platform's desktop capture and
+accessibility permissions, then run `qwen-mm-plugins-cua --check-system`. The plugin exposes only
+nine action-specific tools; it neither installs the driver's optional Skill pack nor registers the
+driver's full MCP roster. See the [CUA cookbook](../../cookbooks/cua/usage.md).
 
 ### Complete configuration
 

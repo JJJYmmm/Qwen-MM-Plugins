@@ -146,9 +146,14 @@ key 的后端：Serper、Tavily、Exa。设为 `serper`、`tavily` 或 `exa` 会
 | TeX | LaTeX 可视化 |
 | Chromium | 网页截图和 edu-agent 渲染 |
 | Blender / FreeCAD | 对应的实时应用集成 |
+| Cua Driver 0.20.0+ | `cua` 能力使用的原生桌面观察与交互运行时 |
 
 运行 `bash install.sh verify` 或 `<entry> --check-system` 查看所选能力的具体要求。能力专属依赖
 记录在对应 Skill 和 cookbook 中。
+
+使用 `cua` 时，通过官方安装器安装 Cua Driver，授予系统的桌面捕获和辅助功能权限，然后运行
+`qwen-mm-plugins-cua --check-system`。插件只暴露 9 个窄工具，不会安装 Driver 的可选 Skill
+pack，也不会注册它的完整 MCP 工具列表。详见 [CUA cookbook](../../cookbooks/cua/usage.md)。
 
 ### 完整配置
 

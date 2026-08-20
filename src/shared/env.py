@@ -214,6 +214,13 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         "1 returns MCP images; 0 sends images to the VL endpoint and returns captions",
     ),
     ("QWEN_MM_MAX_TOTAL_FRAMES", False, "Runtime paths & limits", "600", "max frames sampled from a video"),
+    (
+        "QWEN_MM_CUA_DRIVER_PATH",
+        False,
+        "Runtime paths & limits",
+        "",
+        "path to the cua-driver executable",
+    ),
     # OSS storage (serve large media by URL)
     ("OSS_AK", True, "OSS storage (serve large media by URL)", "", "OSS access key id"),
     ("OSS_SK", True, "OSS storage (serve large media by URL)", "", "OSS access key secret"),

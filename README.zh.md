@@ -44,6 +44,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 | `blender` | 在 Blender 中完成建模、材质、灯光与渲染 | Blender；无界面 Linux 需要 Xvfb | [Cookbook](cookbooks/blender/usage.md) |
 | `freecad` | 参数化 CAD、STEP/STL 与 FEM 工作流 | FreeCAD；FEM 需要 CalculiX；无界面 Linux 需要 Xvfb | [Cookbook](cookbooks/freecad/usage.md) |
 | `edu-agent` | 生成中文数理讲解视频与交互页面 | 纯 Skill；Node/Chromium、ffmpeg；视频旁白需要 DashScope | [Cookbook](cookbooks/edu-agent/usage.md) |
+| `cua` | 观察并操作本地原生桌面应用 | Cua Driver 0.20.0+；桌面权限 | [Cookbook](cookbooks/cua/usage.md) |
 
 ## 快速体验
 
@@ -65,7 +66,7 @@ NIfTI 文件仅在本地以只读方式打开，不会上传；该可视化能�
 - [`uv`](https://docs.astral.sh/uv/) 提供 `uvx`，按需安装 Python 依赖。
 - 本地 `core` 工具在默认原生图片模式下无需 API key；纯文本图片描述 fallback、云端和搜索能力
   需要对应服务的凭证。
-- 视频、文档、浏览器、Blender 和 FreeCAD 工作流可能需要系统程序。
+- 视频、文档、浏览器、Blender、FreeCAD 和桌面控制工作流可能需要系统程序。
 
 通过安装器的 **Configure** 和 **Verify** 操作设置凭证并检查依赖。系统要求见
 [安装文档](docs/zh/installation.md#依赖)，全部设置见[配置参考（英文）](docs/en/configuration.md)。
@@ -79,5 +80,6 @@ NIfTI 文件仅在本地以只读方式打开，不会上传；该可视化能�
 
 ## 许可证
 
-Apache-2.0，见 [LICENSE](LICENSE)。Blender 与 FreeCAD 集成的第三方署名分别见
-[Blender NOTICE](src/capabilities/blender/NOTICE.md) 和 [FreeCAD NOTICE](src/capabilities/freecad/NOTICE.md)。
+Apache-2.0，见 [LICENSE](LICENSE)。Blender、FreeCAD 与 CUA 集成的第三方署名分别见
+[Blender NOTICE](src/capabilities/blender/NOTICE.md)、[FreeCAD NOTICE](src/capabilities/freecad/NOTICE.md)
+和 [CUA NOTICE](src/capabilities/cua/NOTICE.md)。

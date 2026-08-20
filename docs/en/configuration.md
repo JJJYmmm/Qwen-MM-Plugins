@@ -69,6 +69,7 @@ come from [`CONFIG_FIELDS`](../../src/shared/env.py); `—` means unset or disab
 | `QWEN_MM_CHAT_TIMEOUT` | tool-specific (600; Omni 1800) | OpenAI-compatible chat request timeout seconds |
 | `QWEN_MM_NATIVE_MODE` | 1 | 1 returns MCP images; 0 sends images to the VL endpoint and returns captions |
 | `QWEN_MM_MAX_TOTAL_FRAMES` | 600 | max frames sampled from a video |
+| `QWEN_MM_CUA_DRIVER_PATH` | — | path to the cua-driver executable |
 
 ### OSS storage (serve large media by URL)
 
