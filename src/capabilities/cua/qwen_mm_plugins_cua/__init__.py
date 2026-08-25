@@ -7,7 +7,7 @@ from pathlib import Path
 
 from mcp_framework import build_registry
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 SPECS, get_handler, list_tools = build_registry(__name__, ["tools"])
 

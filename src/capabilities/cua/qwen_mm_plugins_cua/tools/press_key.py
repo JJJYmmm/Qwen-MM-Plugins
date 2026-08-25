@@ -33,7 +33,8 @@ TOOL: dict[str, Any] = {
     "name": "press_key",
     "description": (
         "Press one key, optionally with modifiers or repetition, against the current snapshot and return fresh "
-        "state. Use modifiers for hotkeys instead of a separate hotkey tool."
+        "state. Modifiers route through Cua Driver's dedicated hotkey action. Establish field focus first; a "
+        "hotkey does not itself guarantee text-field focus."
     ),
     "args": PressKeyArgs,
 }

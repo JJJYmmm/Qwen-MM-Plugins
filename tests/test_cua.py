@@ -127,6 +127,15 @@ class TransientStateClient(FakeClient):
         return super().call(tool, arguments, timeout=timeout)
 
 
+class AxClickFailureClient(FakeClient):
+    def call(self, tool: str, arguments: dict | None = None, *, timeout=None) -> dict:
+        args = arguments or {}
+        if tool == "click" and args.get("element_token"):
+            self.calls.append((tool, dict(args)))
+            raise driver.CuaError("AX action failed")
+        return super().call(tool, arguments, timeout=timeout)
+
+
 @pytest.fixture(autouse=True)
 def _clean_runtime(monkeypatch):
     driver.reset_runtime_for_tests()
@@ -298,6 +307,56 @@ def test_explicit_global_pointer_fallback_maps_and_verifies_desktop_click(monkey
     assert fallback["attempted"] is True
     assert fallback["route_verified"] is True
     assert fallback["cursor_readback"] == {"x": 130.0, "y": 130.0}
+    assert result["interaction"]["verification"]["verified"] is True
+
+
+def test_safe_click_retry_continues_after_ax_driver_error(monkeypatch):
+    fake = AxClickFailureClient([_state(1), _state(2), _state(3, label="Opened", screenshot="changed")])
+    monkeypatch.setattr(driver, "_CLIENT", fake)
+    _payload(get_app_state.handle({"app": "Music"}))
+
+    result = _payload(
+        click.handle(
+            {
+                "app": "Music",
+                "snapshot_id": "s00000001",
+                "element_token": "s00000001:1",
+                "retry_if_unverified": True,
+                "expect": {"condition": "element_present", "query": "Opened"},
+            }
+        )
+    )
+
+    attempts = result["interaction"]["attempts"]
+    assert attempts[0]["driver_error"] == "AX action failed"
+    assert attempts[1]["address"] == "pixel_fallback"
+    assert result["interaction"]["verification"]["verified"] is True
+
+
+def test_coordinate_retry_does_not_repeat_the_same_background_pixel(monkeypatch):
+    fake = _install_fake(
+        monkeypatch,
+        _state(1),
+        _state(2),
+        _state(3, label="Opened", screenshot="changed"),
+    )
+    _payload(get_app_state.handle({"app": "Music"}))
+
+    result = _payload(
+        click.handle(
+            {
+                "app": "Music",
+                "snapshot_id": "s00000001",
+                "x": 60,
+                "y": 60,
+                "retry_if_unverified": True,
+                "expect": {"condition": "element_present", "query": "Opened"},
+            }
+        )
+    )
+
+    calls = [args for tool, args in fake.calls if tool == "click"]
+    assert [call["delivery_mode"] for call in calls] == ["background", "foreground"]
     assert result["interaction"]["verification"]["verified"] is True
 
 
@@ -473,9 +532,10 @@ def test_press_key_combines_hotkey_modifiers_and_repeat(monkeypatch):
         )
     )
 
-    calls = [args for tool, args in fake.calls if tool == "press_key"]
+    calls = [args for tool, args in fake.calls if tool == "hotkey"]
     assert len(calls) == 2
-    assert all(call["key"] == "down" and call["modifiers"] == ["shift"] for call in calls)
+    assert all(call["keys"] == ["shift", "down"] for call in calls)
+    assert not [args for tool, args in fake.calls if tool == "press_key"]
 
 
 def test_set_value_uses_only_the_snapshot_bound_element(monkeypatch):

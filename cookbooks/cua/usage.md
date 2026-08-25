@@ -25,7 +25,8 @@ optional Skill pack and does not register the driver's complete MCP server.
 - `get_app_state`: select an ordinary app window and return its AX state plus optional PNG.
 - `click`: semantic or screenshot-bound pointer action; `count=2` is a double click.
 - `type_text`: insert text into an exact element, screenshot point, or focused control.
-- `press_key`: send one key, optional modifiers (hotkeys), and optional repetition.
+- `press_key`: send one key, optional modifiers (routed through the dedicated hotkey action), and
+  optional repetition. Focus a text field first; the hotkey does not establish field focus.
 - `scroll`: scroll a focused region, semantic element, or screenshot point.
 - `drag`: perform a screenshot-bound drag gesture.
 - `set_value`: set a native accessibility value on an exact element.

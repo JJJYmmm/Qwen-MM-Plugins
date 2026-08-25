@@ -32,6 +32,8 @@ the user's authorization.
 
 Use `click(count=2)` for a double click and `press_key` with `modifiers` for a hotkey. Use
 `set_value` for deterministic native AX values, but prefer `type_text` for free-form web input.
+Before a modified key targets a text field, establish real field focus with `click`; a hotkey does
+not itself guarantee that focus.
 
 The server intentionally exposes nine narrow tools rather than Cua Driver's full roster. The
 driver's optional Skill pack is an implementation detail and should not be installed or invoked

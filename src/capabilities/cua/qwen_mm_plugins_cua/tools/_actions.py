@@ -133,9 +133,11 @@ def build_payload(
         payload = _base_payload(arguments, target, delivery_mode)
         address, address_kind = address_payload(arguments, record, action, allow_empty=True)
         payload.update(address)
+        modifiers = arguments.get("modifiers") or []
+        if modifiers:
+            payload["keys"] = [*modifiers, arguments["key"]]
+            return "hotkey", payload, address_kind, arguments.get("repeat", 1)
         payload["key"] = arguments["key"]
-        if arguments.get("modifiers") is not None:
-            payload["modifiers"] = arguments["modifiers"]
         return "press_key", payload, address_kind, arguments.get("repeat", 1)
 
     if action == "scroll":
@@ -216,14 +218,26 @@ def _observe_after(client, target):
     )
 
 
-def _attempt(client, tool: str, payload: dict, address_kind: str) -> dict[str, Any]:
-    result = client.call(tool, payload, timeout=45)
-    return {
+def _attempt(
+    client,
+    tool: str,
+    payload: dict,
+    address_kind: str,
+    *,
+    tolerate_driver_error: bool = False,
+) -> dict[str, Any]:
+    attempt = {
         "tool": tool,
         "delivery_mode": payload.get("delivery_mode"),
         "address": address_kind,
-        "driver_result": result,
     }
+    try:
+        attempt["driver_result"] = client.call(tool, payload, timeout=45)
+    except CuaError as exc:
+        if not tolerate_driver_error:
+            raise
+        attempt["driver_error"] = str(exc)
+    return attempt
 
 
 def _finite_number(value: Any, name: str) -> float:
@@ -398,7 +412,22 @@ def execute(action: str, arguments: dict[str, Any]) -> list[dict[str, str]]:
         delivery = arguments.get("delivery", "auto")
         initial_mode = "background" if delivery == "auto" else delivery
         tool, payload, address_kind, repeat = build_payload(action, arguments, target, before, initial_mode)
-        attempts = [_attempt(client, tool, payload, address_kind) for _ in range(repeat)]
+        tolerate_click_error = (
+            delivery == "auto"
+            and action == "click"
+            and arguments.get("count", 1) == 1
+            and arguments.get("retry_if_unverified", False)
+        )
+        attempts = [
+            _attempt(
+                client,
+                tool,
+                payload,
+                address_kind,
+                tolerate_driver_error=tolerate_click_error,
+            )
+            for _ in range(repeat)
+        ]
         state, after = _observe_after(client, target)
         checked = verification(arguments.get("expect"), before, after, state)
         pointer_fallback: dict[str, Any] | None = None
@@ -432,15 +461,32 @@ def execute(action: str, arguments: dict[str, Any]) -> list[dict[str, str]]:
                     "y": point[1],
                     "button": arguments.get("button", "left"),
                 }
-                attempts.append(_attempt(client, "click", pixel_payload, "pixel_fallback"))
-                state, after = _observe_after(client, target)
-                checked = verification(arguments.get("expect"), before, after, state)
+                if arguments.get("element_token"):
+                    attempts.append(
+                        _attempt(
+                            client,
+                            "click",
+                            pixel_payload,
+                            "pixel_fallback",
+                            tolerate_driver_error=True,
+                        )
+                    )
+                    state, after = _observe_after(client, target)
+                    checked = verification(arguments.get("expect"), before, after, state)
                 needs_foreground = (
                     checked.get("verified") is False if arguments.get("expect") else not checked["state_changed"]
                 )
                 if needs_foreground:
                     pixel_payload["delivery_mode"] = "foreground"
-                    attempts.append(_attempt(client, "click", pixel_payload, "pixel_fallback"))
+                    attempts.append(
+                        _attempt(
+                            client,
+                            "click",
+                            pixel_payload,
+                            "pixel_fallback",
+                            tolerate_driver_error=True,
+                        )
+                    )
                     state, after = _observe_after(client, target)
                     checked = verification(arguments.get("expect"), before, after, state)
 
