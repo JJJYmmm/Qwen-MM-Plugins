@@ -185,7 +185,7 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         False,
         "Search providers",
         "auto",
-        "text search backend (auto: serper > tavily > exa; or choose one)",
+        "text search backend (auto: serper > tavily > exa > serply; or choose one)",
     ),
     (
         "SERPER_API_KEY",
@@ -196,6 +196,7 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
     ),
     ("TAVILY_API_KEY", True, "Search providers", "", "Tavily web_search / web_extractor"),
     ("EXA_API_KEY", True, "Search providers", "", "Exa web_search / web_extractor"),
+    ("SERPLY_API_KEY", True, "Search providers", "", "Serply web_search / web_extractor"),
     # Runtime paths & limits
     ("QWEN_MM_CACHE", False, "Runtime paths & limits", "OS cache dir", "cache dir for derived render artifacts"),
     ("QWEN_MM_FFMPEG_TIMEOUT", False, "Runtime paths & limits", "120", "ffmpeg/ffprobe timeout seconds"),
