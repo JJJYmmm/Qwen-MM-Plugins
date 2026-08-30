@@ -273,8 +273,11 @@ def call_omni(
 
     model = resolve_omni_model(model)
 
-    if api_key in ("", "EMPTY") and "dashscope" in base_url:
-        raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
+    if api_key in ("", "EMPTY") and any(
+        base_url.startswith(f"https://{host}") for host in ("dashscope.aliyuncs.com", "api.orcarouter.ai")
+    ):
+        provider = "DASHSCOPE_API_KEY" if "dashscope" in base_url else "ORCAROUTER_API_KEY"
+        raise RuntimeError(f"no API key — set {provider} (or pass api_key)")
 
     inline = inline_b64_bytes(messages)
     if inline > OMNI_MAX_B64_BYTES:

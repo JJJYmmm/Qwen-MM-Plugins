@@ -13,6 +13,7 @@ import shared.api_dashscope as dsc
 import shared.api_omni as omni
 import shared.api_openai as oa
 import shared.retry as sr
+from shared import env
 
 # ── api_dashscope.retry_call ─────────────────────────────────────────
 
@@ -102,10 +103,70 @@ def test_model_resolvers_use_explicit_env_then_builtin(monkeypatch):
     assert omni.resolve_omni_model("explicit-omni") == "explicit-omni"
 
 
+# ── media-provider selection (QWEN_MM_API_BACKEND) ────────────────────
+
+
+def test_resolve_openai_endpoint_defaults_to_dashscope(monkeypatch):
+    monkeypatch.setattr(oa, "get_env", lambda _name: None)
+    base_url, api_key = oa.resolve_openai_endpoint({})
+    assert base_url == env.DEFAULT_DASHSCOPE_BASE_URL
+    assert api_key == "EMPTY"
+
+
+def test_resolve_openai_endpoint_orcarouter_backend(monkeypatch):
+    values = {"QWEN_MM_API_BACKEND": "orcarouter", "ORCAROUTER_API_KEY": "sk-orca-test"}
+    monkeypatch.setattr(oa, "get_env", values.get)
+    base_url, api_key = oa.resolve_openai_endpoint({})
+    assert base_url == env.DEFAULT_ORCAROUTER_BASE_URL
+    assert api_key == "sk-orca-test"
+
+
+def test_resolve_openai_endpoint_explicit_argument_wins(monkeypatch):
+    values = {
+        "QWEN_MM_API_BACKEND": "orcarouter",
+        "ORCAROUTER_API_KEY": "sk-orca-test",
+        "ORCAROUTER_BASE_URL": "https://orca.example/v1",
+    }
+    monkeypatch.setattr(oa, "get_env", values.get)
+    base_url, api_key = oa.resolve_openai_endpoint({"base_url": "http://local/v1", "api_key": "k"})
+    assert base_url == "http://local/v1"
+    assert api_key == "k"
+    # An env-level base URL still overrides the provider default, as before.
+    base_url, api_key = oa.resolve_openai_endpoint({})
+    assert base_url == "https://orca.example/v1"
+    assert api_key == "sk-orca-test"
+
+
+def test_resolve_openai_endpoint_unknown_backend_falls_back_to_dashscope(monkeypatch):
+    values = {"QWEN_MM_API_BACKEND": "not-a-provider", "ORCAROUTER_API_KEY": "k"}
+    monkeypatch.setattr(oa, "get_env", values.get)
+    base_url, _ = oa.resolve_openai_endpoint({})
+    assert base_url == env.DEFAULT_DASHSCOPE_BASE_URL
+
+
+def test_omni_endpoint_shares_provider_selection(monkeypatch):
+    values = {"QWEN_MM_API_BACKEND": "orcarouter", "ORCAROUTER_API_KEY": "sk-orca-test"}
+    monkeypatch.setattr(oa, "get_env", values.get)
+    monkeypatch.setattr(omni, "get_env", values.get)
+    base_url, api_key = omni.resolve_omni_endpoint({})
+    assert base_url == env.DEFAULT_ORCAROUTER_BASE_URL
+    assert api_key == "sk-orca-test"
+
+
 def test_call_openai_chat_missing_key_guard():
     with pytest.raises(RuntimeError, match="no API key"):
         oa.call_openai_chat(
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            api_key="EMPTY",
+            model="m",
+            messages=[],
+        )
+
+
+def test_call_openai_chat_orcarouter_missing_key_guard():
+    with pytest.raises(RuntimeError, match="ORCAROUTER_API_KEY"):
+        oa.call_openai_chat(
+            base_url="https://api.orcarouter.ai/v1",
             api_key="EMPTY",
             model="m",
             messages=[],

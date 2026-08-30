@@ -33,7 +33,8 @@ SYSTEM_DEPS = [
 ]
 
 USAGE_NOTE = (
-    "Cloud media-understanding APIs (need DASHSCOPE_API_KEY, model defaults per family). "
+    "Cloud media-understanding APIs (need DASHSCOPE_API_KEY or ORCAROUTER_API_KEY; "
+    "QWEN_MM_API_BACKEND picks dashscope (default) or orcarouter, model defaults per family). "
     "VL model: vision_chat (caption/VQA), ocr, grounding. "
     "Omni model (frames + audio together): omni_asr / omni_asr_timestamped / omni_multi_speaker_asr, "
     "omni_av_caption / omni_av_grounding / omni_av_counting, omni_music_caption. "

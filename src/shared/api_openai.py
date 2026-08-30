@@ -13,7 +13,7 @@ import mimetypes
 from pathlib import Path
 from typing import Any
 
-from shared.env import DEFAULT_DASHSCOPE_BASE_URL, get_env
+from shared.env import get_env
 
 log = logging.getLogger(__name__)
 
@@ -72,14 +72,30 @@ _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 _OPTIONAL_FIELD_REJECTION_STATUS = frozenset({400, 422})
 
 
+def _selected_provider() -> str:
+    """The active media provider for OpenAI-compatible calls (lowercased).
+
+    Reads QWEN_MM_API_BACKEND; falls back to ``dashscope`` when unset. A value outside the
+    MEDIA_PROVIDERS registry is treated as DashScope so a typo degrades to today's default
+    instead of failing at call time — invalid values surface via the ``--setup`` validator.
+    """
+    return (get_env("QWEN_MM_API_BACKEND") or "dashscope").strip().lower()
+
+
 def resolve_openai_endpoint(arguments: dict[str, Any]) -> tuple[str, str]:
     """Resolve (base_url, api_key) for an OpenAI-compatible call.
 
-    Precedence: explicit argument → DashScope env → default. api_key falls back to
-    "EMPTY" so local/self-hosted servers that ignore auth still work.
+    The provider is selected by QWEN_MM_API_BACKEND (``dashscope`` default, ``orcarouter``
+    alternative) and its named API key is used by default. An explicit ``base_url``/``api_key``
+    argument — or DASHSCOPE_BASE_URL / ORCAROUTER_BASE_URL, which still override the selected
+    provider's default — wins, so self-hosted / proxied endpoints keep working unchanged. The
+    api_key falls back to "EMPTY" so local/self-hosted servers that ignore auth still work.
     """
-    base_url = arguments.get("base_url") or get_env("DASHSCOPE_BASE_URL") or DEFAULT_DASHSCOPE_BASE_URL
-    api_key = arguments.get("api_key") or get_env("DASHSCOPE_API_KEY") or "EMPTY"
+    from shared.env import MEDIA_PROVIDERS
+
+    provider = MEDIA_PROVIDERS.get(_selected_provider(), MEDIA_PROVIDERS["dashscope"])
+    base_url = arguments.get("base_url") or get_env(provider["base_url_env"]) or provider["default_base_url"]
+    api_key = arguments.get("api_key") or get_env(provider["api_key_env"]) or "EMPTY"
     return base_url, api_key
 
 
@@ -171,10 +187,13 @@ def call_openai_chat(
 
     from shared.retry import retry_call
 
-    # A missing key against DashScope just 401s with "No API-key provided"; give an actionable
-    # message. Local/self-hosted servers ignore auth, so only guard the DashScope endpoint.
-    if api_key in ("", "EMPTY") and "dashscope" in base_url:
-        raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
+    # A missing key against a named provider just 401s with "No API-key provided"; give an
+    # actionable message. Local/self-hosted servers ignore auth, so only guard named providers.
+    if api_key in ("", "EMPTY") and any(
+        base_url.startswith(f"https://{host}") for host in ("dashscope.aliyuncs.com", "api.orcarouter.ai")
+    ):
+        provider = "DASHSCOPE_API_KEY" if "dashscope" in base_url else "ORCAROUTER_API_KEY"
+        raise RuntimeError(f"no API key — set {provider} (or pass api_key)")
 
     retryable = (
         openai.RateLimitError,

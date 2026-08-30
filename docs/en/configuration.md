@@ -46,6 +46,9 @@ come from [`CONFIG_FIELDS`](../../src/shared/env.py); `—` means unset or disab
 |---|---|---|
 | `DASHSCOPE_API_KEY` | — | vision, OCR, grounding, text-only image captions, ASR, generation, memory builds *(secret)* |
 | `DASHSCOPE_BASE_URL` | DashScope compat URL | override the DashScope OpenAI-compatible base URL |
+| `QWEN_MM_API_BACKEND` | dashscope | media API backend (dashscope or orcarouter) |
+| `ORCAROUTER_API_KEY` | — | OrcaRouter API key for the media API backend *(secret)* |
+| `ORCAROUTER_BASE_URL` | OrcaRouter API base URL | override the OrcaRouter base URL |
 | `QWEN_MM_API_VL_MODEL` | qwen3.7-plus | default VL model for vision_chat, OCR, grounding, and text-only image captions |
 | `QWEN_MM_API_OMNI_MODEL` | qwen3.5-omni-plus | default Omni model for audio/video understanding tools |
 | `SAM3_SERVER_URL` | — | segmentation SAM3 server URL |
