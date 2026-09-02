@@ -45,6 +45,7 @@ come from [`CONFIG_FIELDS`](../../src/shared/env.py); `—` means unset or disab
 | Variable | Default | Purpose |
 |---|---|---|
 | `DASHSCOPE_API_KEY` | — | vision, OCR, grounding, text-only image captions, ASR, generation, memory builds *(secret)* |
+| `MINIMAX_API_KEY` | — | MiniMax text-to-speech generation *(secret)* |
 | `DASHSCOPE_BASE_URL` | DashScope compat URL | override the DashScope OpenAI-compatible base URL |
 | `QWEN_MM_API_VL_MODEL` | qwen3.7-plus | default VL model for vision_chat, OCR, grounding, and text-only image captions |
 | `QWEN_MM_API_OMNI_MODEL` | qwen3.5-omni-plus | default Omni model for audio/video understanding tools |

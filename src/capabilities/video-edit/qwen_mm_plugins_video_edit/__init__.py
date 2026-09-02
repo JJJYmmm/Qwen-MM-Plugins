@@ -22,5 +22,6 @@ SYSTEM_DEPS_NOTE = "  The generation MCP tools (image/tts/video) call remote API
 
 USAGE_NOTE = (
     "Generation tools (qwen_image / qwen_tts / wan_s2v / wan_t2v / happyhorse) via DashScope.\n"
-    "Needs DASHSCOPE_API_KEY (inherited from the shell)."
+    "Needs DASHSCOPE_API_KEY (inherited from the shell).\n"
+    "minimax_tts additionally needs MINIMAX_API_KEY."
 )

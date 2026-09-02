@@ -157,6 +157,13 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         "vision, OCR, grounding, text-only image captions, ASR, generation, memory builds",
     ),
     (
+        "MINIMAX_API_KEY",
+        True,
+        "Media APIs & endpoints",
+        "",
+        "MiniMax text-to-speech generation",
+    ),
+    (
         "DASHSCOPE_BASE_URL",
         False,
         "Media APIs & endpoints",
