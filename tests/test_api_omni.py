@@ -582,3 +582,26 @@ def test_omni_asr_reachable(sample_media_av):
     assert blocks and blocks[0]["type"] == "text"
     low = blocks[0]["text"].lower()
     assert not any(x in low for x in ("no api key", "no api-key", "invalid api", "connection error"))
+
+
+def test_omni_audio_part_ignores_url_query_string():
+    """A pre-signed URL keeps its extension in the path, not the query string."""
+    from shared.api_omni import omni_audio_part
+
+    signed = "https://bkt.oss-cn-hangzhou.aliyuncs.com/tmp/clips/talk.wav?Expires=1757000000&Signature=abc%2Fdef"
+    part = omni_audio_part(signed)
+    assert part["input_audio"]["format"] == "wav"
+    assert part["input_audio"]["data"] == signed  # the URL itself is passed through untouched
+
+
+def test_omni_audio_part_url_without_extension_defaults_to_wav():
+    from shared.api_omni import omni_audio_part
+
+    assert omni_audio_part("https://example.com/stream?fmt=1")["input_audio"]["format"] == "wav"
+
+
+def test_omni_audio_part_explicit_format_wins_over_url_suffix():
+    from shared.api_omni import omni_audio_part
+
+    part = omni_audio_part("https://example.com/a.wav?x=1", audio_format="mp3")
+    assert part["input_audio"]["format"] == "mp3"

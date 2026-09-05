@@ -190,7 +190,10 @@ def omni_audio_part(source: str, *, audio_format: str | None = None) -> dict:
     ("Incorrect padding"), so ``QWEN_MM_AUDIO_RAW_B64=1`` sends the encoded bytes directly. Both
     forms go through the same local-file size guard.
     """
-    fmt = (audio_format or Path(source).suffix.lstrip(".") or "wav").lower()
+    # A URL's extension lives in its path: a pre-signed OSS/S3 link carries a query
+    # string, and ``Path("x.wav?Expires=...").suffix`` would return all of it.
+    name = source.split("?", 1)[0] if is_url(source) else source
+    fmt = (audio_format or Path(name).suffix.lstrip(".") or "wav").lower()
     if is_url(source):
         data = source
     elif (get_env("QWEN_MM_AUDIO_RAW_B64") or "").lower() in ("1", "true", "yes", "on"):
