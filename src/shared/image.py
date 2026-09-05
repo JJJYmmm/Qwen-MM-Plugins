@@ -104,6 +104,26 @@ def draw_boxes(img, detections: list[dict[str, Any]]):
     return annotated
 
 
+def open_image(path: str):
+    """Open an image file in display orientation, applying its EXIF Orientation flag.
+
+    Phones and cameras store a quarter-turned frame plus an orientation tag; PIL hands back the
+    stored pixels, so a portrait photo reaches the model on its side unless the tag is applied
+    here. Mirrors get_video_info's display-orientation handling for rotation-tagged video.
+    """
+    from PIL import Image, ImageOps
+
+    img = Image.open(path)
+    try:
+        orientation = img.getexif().get(0x0112, 1)
+    except Exception:  # noqa: BLE001 — malformed EXIF segment: keep the stored frame, as Image.open does
+        return img
+    # exif_transpose copies even when there is nothing to do — only pay for it when tagged.
+    if orientation != 1:
+        img = ImageOps.exif_transpose(img)
+    return img
+
+
 def render_pdf_page(page, dpi: int = 150):
     """Rasterize a pypdfium2 PdfPage to a PIL Image at `dpi` (scale = dpi / 72)."""
     return page.render(scale=dpi / 72).to_pil()
