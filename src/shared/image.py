@@ -91,6 +91,11 @@ def draw_boxes(img, detections: list[dict[str, Any]]):
     for i, det in enumerate(detections):
         color = det.get("color") or COLORS[i % len(COLORS)]
         x1, y1, x2, y2 = det["bbox_pixel"]
+        # A model may name the corners in either order; Pillow >= 9.5 raises on a
+        # rectangle whose second corner precedes the first, and in grounding that
+        # exception escapes the tool and discards the detections that were fine.
+        x1, x2 = sorted((x1, x2))
+        y1, y2 = sorted((y1, y2))
         draw.rectangle([x1, y1, x2, y2], outline=color, width=line_width)
 
         label = det.get("label") or ""

@@ -255,6 +255,30 @@ def test_visualize_missing_file():
     assert _is_error(visualize.handle({"file_path": "/no/such/file.pdf"}))
 
 
+# ── draw_bbox ────────────────────────────────────────────────────────
+
+
+def test_draw_bbox_accepts_reversed_corners(sample_image, tmp_path):
+    # The caller may name the corners in the other order; the box it describes is still drawn.
+    from PIL import Image
+
+    from qwen_mm_plugins_core.producers import draw_bbox
+
+    out = tmp_path / "annotated.png"
+    content = draw_bbox.handle(
+        {
+            "image_path": sample_image,
+            "bboxes": [{"bbox": [800, 100, 200, 400], "color": "#00FF00"}],
+            "output_path": str(out),
+        }
+    )
+    assert not _is_error(content)
+    annotated = Image.open(out)
+    assert annotated.size == (96, 64)
+    # [200, 100, 800, 400] on 96x64 is pixel [19, 6, 77, 26]; the top edge runs through (60, 6).
+    assert annotated.getpixel((60, 6)) == (0, 255, 0), "box was not drawn where the corners describe"
+
+
 # ── server protocol (real MCP client over stdio) ─────────────────────
 # Drives the installed/checked-out server binary through the official MCP SDK
 # client: full initialize handshake, tools/list, tools/call. This is the
