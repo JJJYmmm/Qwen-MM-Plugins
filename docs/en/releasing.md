@@ -49,8 +49,9 @@ require releases for every affected capability.
 
    The helper fetches `origin/main` and existing tags, verifies the release metadata and target tag
    are consistent, and builds the annotated message from non-merge commits that touched the
-   capability or its cookbook since the previous capability tag. It shows shared runtime commits
-   separately for review; include a relevant one with `--include-shared <commit>`. Pass `--dry-run`
+   capability since the previous capability tag, including cookbook history from before the Hub
+   migration. It does not inspect commits in the separate Hub repository. It shows shared runtime
+   commits separately for review; include a relevant one with `--include-shared <commit>`. Pass `--dry-run`
    to preview or `--push` to create and push in one step.
 
    Tagging after merge keeps releases on the main history even when GitHub uses squash or rebase
@@ -58,6 +59,16 @@ require releases for every affected capability.
    patch release instead.
 
 4. Smoke-test the published tag using the [installation guide](installation.md).
+
+## Hub documentation
+
+Cookbooks and cases now live in [JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub).
+Changes limited to that repository need a Hub deployment, not a plugin version bump. General
+English guides stay in this repository and are imported when the Hub builds.
+
+After a release or documentation update, follow [Publish and refresh](hub.md#publish-and-refresh)
+to update the website. The Hub currently reads `support_hub`; a release on `main` does not change
+that selection. Publishing a Hub preview never creates plugin tags or updates installed plugins.
 
 ## Release cadence
 

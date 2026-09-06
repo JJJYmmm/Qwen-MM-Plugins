@@ -93,7 +93,7 @@ NIfTI 文件仅在本地以只读方式打开，不会上传；该可视化能�
 - [安装](docs/zh/installation.md)
 - [配置参考（英文）](docs/en/configuration.md)
 - [贡献指南](CONTRIBUTING.md) · [本地开发](docs/zh/local_development.md)
-- [添加能力](docs/zh/how_to_add_new_capability.md) · [测试](docs/zh/testing.md)
+- [添加新插件](docs/zh/how_to_add_new_capability.md) · [Hub 维护](docs/zh/hub.md) · [测试](docs/zh/testing.md)
 
 ## 许可证
 

@@ -45,8 +45,8 @@ Marketplace entry 与 MCP `uvx --from` 固定到同一个插件 tag；`main` 只
    ```
 
    该脚本会拉取 `origin/main` 和现有 tags，检查发布元数据与目标 tag 是否一致，并把自上一个
-   capability tag 以来、实际修改该 capability 或其 cookbook 的非 merge commits 写入 tag
-   message。shared runtime commits 会单独列出供人工判断；确认相关时使用
+   capability tag 以来、实际修改该 capability 的非 merge commits（包括迁移到 Hub 前的 cookbook 历史）写入 tag
+   message；它不读取独立 Hub 仓库的提交。shared runtime commits 会单独列出供人工判断；确认相关时使用
    `--include-shared <commit>` 纳入说明。使用 `--dry-run` 预览，或使用 `--push` 一次完成创建和
    推送。
 
@@ -54,6 +54,12 @@ Marketplace entry 与 MCP `uvx --from` 固定到同一个插件 tag；`main` 只
    远端已有 tag。已发布 tag 不得移动；发现问题时发布新的 patch 版本。
 
 4. 按[安装文档](installation.md)对公开 tag 做 smoke test。
+
+## Hub 文档
+
+Cookbook 和 case 已迁入 [JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub)。只修改该仓库时需要部署 Hub，不需要提升插件版本。通用英文文档仍在本仓库维护，由 Hub 构建时导入。
+
+发布插件或修改文档后，按[发布与刷新](hub.md#发布与刷新)更新网站。Hub 当前读取 `support_hub`，在 `main` 发布插件不会改变该选择。发布 Hub 预览不会创建插件 tag，也不会更新已安装插件。
 
 ## 发布周期
 

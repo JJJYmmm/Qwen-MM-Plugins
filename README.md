@@ -100,7 +100,7 @@ See [Installation](docs/en/installation.md#dependencies) for prerequisites and t
 - [Installation](docs/en/installation.md)
 - [Configuration](docs/en/configuration.md)
 - [Contributing](CONTRIBUTING.md) · [Local development](docs/en/local_development.md)
-- [Add a capability](docs/en/how_to_add_new_capability.md) · [Testing](docs/en/testing.md)
+- [Add a new plugin](docs/en/how_to_add_new_capability.md) · [Hub authoring](docs/en/hub.md) · [Testing](docs/en/testing.md)
 
 ## License
 
