@@ -21,26 +21,23 @@ class DownloadSketchfabModelArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "download_sketchfab_model",
-    "description": (
-        "Download and import a Sketchfab model by its UID. "
-        "The model will be scaled so its largest dimension equals target_size.\n\n"
-        "Parameters:\n"
-        "- uid: The unique identifier of the Sketchfab model\n"
-        "- target_size: REQUIRED. The target size in Blender units/meters for the largest dimension. "
-        "You must specify the desired size for the model. Examples:\n"
-        "  - Chair: target_size=1.0 (1 meter tall)\n"
-        "  - Table: target_size=0.75 (75cm tall)\n"
-        "  - Car: target_size=4.5 (4.5 meters long)\n"
-        "  - Person: target_size=1.7 (1.7 meters tall)\n"
-        "  - Small object (cup, phone): target_size=0.1 to 0.3\n\n"
-        "Returns a message with import details including object names, dimensions, and bounding box. "
-        "The model must be downloadable and you must have proper access rights."
-    ),
     "args": DownloadSketchfabModelArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Download and import a Sketchfab model by its UID. The model will be scaled so its largest dimension equals target_size.
+
+    Parameters:
+    - uid: The unique identifier of the Sketchfab model
+    - target_size: REQUIRED. The target size in Blender units/meters for the largest dimension. You must specify the desired size for the model. Examples:
+      - Chair: target_size=1.0 (1 meter tall)
+      - Table: target_size=0.75 (75cm tall)
+      - Car: target_size=4.5 (4.5 meters long)
+      - Person: target_size=1.7 (1.7 meters tall)
+      - Small object (cup, phone): target_size=0.1 to 0.3
+
+    Returns a message with import details including object names, dimensions, and bounding box. The model must be downloadable and you must have proper access rights."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     uid = arguments.get("uid", "")

@@ -44,13 +44,6 @@ class PlanAndSearchArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "plan_and_search",
-    "description": "Run ONE retrieval from a plan you decide, fusing the memory containers: people, "
-    "stable facts, moments and (on request) environment, plus a ready-to-read evidence text and the "
-    "clips worth re-watching. **This does not answer the question — it returns evidence for you to "
-    "reason over.** Call get_memory_overview first: naming the right person_ids, fact keys and query "
-    "angles is what makes the recall precise, and the keys are an exact lookup. Use this for "
-    "open-ended questions; for a targeted one go straight to the matching tool (search_dialogue, "
-    "search_facts, get_person_dialogue, get_timeline, …).",
     "args": PlanAndSearchArgs,
 }
 
@@ -117,4 +110,5 @@ def plan_and_search(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Run ONE retrieval from a plan you decide, fusing the memory containers: people, stable facts, moments and (on request) environment, plus a ready-to-read evidence text and the clips worth re-watching. **This does not answer the question — it returns evidence for you to reason over.** Call get_memory_overview first: naming the right person_ids, fact keys and query angles is what makes the recall precise, and the keys are an exact lookup. Use this for open-ended questions; for a targeted one go straight to the matching tool (search_dialogue, search_facts, get_person_dialogue, get_timeline, …)."""
     return [json_text(plan_and_search(**arguments))]

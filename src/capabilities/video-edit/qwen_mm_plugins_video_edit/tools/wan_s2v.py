@@ -64,17 +64,6 @@ class WanS2vArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "wan_s2v",
-    "description": (
-        "Digital human lip-sync video generation using Wan2.2-S2V. "
-        "Takes a portrait image + audio and generates a talking-head video with lip sync. "
-        "Two actions: "
-        "(1) detect — check if an image is suitable for digital human generation "
-        "(sync and billed per successful request, regardless of detection result); "
-        "(2) generate — submit image + audio to create lip-sync video (async, billed). "
-        "Always run detect first before generate. "
-        "Supports real humans (portrait/half-body/full-body) and cartoon characters. "
-        "Audio max 20s, image must be single person, front-facing, clear."
-    ),
     "args": WanS2vArgs,
 }
 
@@ -187,6 +176,7 @@ def _generate(arguments: dict[str, Any], api_key: str) -> list[dict[str, Any]]:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Digital human lip-sync video generation using Wan2.2-S2V. Takes a portrait image + audio and generates a talking-head video with lip sync. Two actions: (1) detect — check if an image is suitable for digital human generation (sync and billed per successful request, regardless of detection result); (2) generate — submit image + audio to create lip-sync video (async, billed). Always run detect first before generate. Supports real humans (portrait/half-body/full-body) and cartoon characters. Audio max 20s, image must be single person, front-facing, clear."""
     action = arguments.get("action")
     image_url = arguments.get("image_url")
 

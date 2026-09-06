@@ -28,16 +28,12 @@ class CropArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "crop",
-    "description": (
-        "Crop a rectangular region from an image. "
-        "Saves the cropped result to disk and returns a preview. "
-        "Coordinates are normalized (0-1000), same as grounding output."
-    ),
     "args": CropArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Crop a rectangular region from an image. Saves the cropped result to disk and returns a preview. Coordinates are normalized (0-1000), same as grounding output."""
     image_path = arguments.get("image_path", "")
     if err := require_file(image_path):
         return err

@@ -45,21 +45,12 @@ class VisionChatArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "vision_chat",
-    "description": (
-        "Chat with a vision-language model about images and videos via DashScope. "
-        "Local videos are sampled into inline frames, so per request keep ≤ 250 items total "
-        "(frames + images) and fps = frames / duration within [0.1, 10] — set video_max_frames to the "
-        "video's length; for videos over ~40 min use read_video instead. "
-        "Remote video URLs are handled server-side. When OSS is configured (OSS_AK/OSS_SK/OSS_ENDPOINT/"
-        "OSS_BUCKET) a local video is uploaded and sampled server-side instead, lifting the inline frame "
-        "cap (still bounded by the model's server-side video-duration limit, e.g. 2 h for qwen3.7-plus). "
-        "Use dry_run=true to preview the request payload without calling."
-    ),
     "args": VisionChatArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Chat with a vision-language model about images and videos via DashScope. Local videos are sampled into inline frames, so per request keep ≤ 250 items total (frames + images) and fps = frames / duration within [0.1, 10] — set video_max_frames to the video's length; for videos over ~40 min use read_video instead. Remote video URLs are handled server-side. When OSS is configured (OSS_AK/OSS_SK/OSS_ENDPOINT/OSS_BUCKET) a local video is uploaded and sampled server-side instead, lifting the inline frame cap (still bounded by the model's server-side video-duration limit, e.g. 2 h for qwen3.7-plus). Use dry_run=true to preview the request payload without calling."""
     from shared.api_openai import (
         call_openai_chat,
         encode_image_source,

@@ -15,6 +15,11 @@ from shared.env import CONFIG_FIELDS
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _stable_tag(capability: str) -> str:
+    catalog = json.loads((ROOT / "plugin-versions.json").read_text())
+    return catalog["tag_format"].format(cap=capability, version=catalog["plugins"][capability])
+
+
 def _bash(script: str, **env_overrides: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "NO_COLOR": "1", **env_overrides}
     return subprocess.run(
@@ -449,14 +454,14 @@ def test_codebuddy_install_checks_inventory_when_cli_falsely_returns_zero(tmp_pa
                 "git ls-remote --exit-code",
                 "qwen extensions uninstall qwen-mm-plugins-core",
                 "qwen extensions install",
-                "--ref=qwen-mm-plugins-core-v1.0.5",
+                f"--ref={_stable_tag('core')}",
             ),
         ),
         (
             "gemini",
             (
                 "gemini mcp add -s user qwen-mm-plugins-core uvx --from",
-                "fetch --depth 1 origin qwen-mm-plugins-core-v1.0.5",
+                f"fetch --depth 1 origin {_stable_tag('core')}",
                 "gemini skills install",
             ),
         ),
@@ -491,12 +496,12 @@ def test_qwen_update_restores_previous_ref_when_new_install_fails(tmp_path):
 confirm() { return 0; }
 run_cmd() {
   printf '$ %s\n' "$*"
-  case "$*" in *--ref=qwen-mm-plugins-core-v1.0.5*) return 1 ;; *) return 0 ;; esac
+  case "$*" in *--ref=__CURRENT_REF__*) return 1 ;; *) return 0 ;; esac
 }
 update_for qwen-code qwen-mm-plugins-core
 test "$?" -eq 1
 """
-    result = _bash(script, HOME=str(tmp_path))
+    result = _bash(script.replace("__CURRENT_REF__", _stable_tag("core")), HOME=str(tmp_path))
     assert result.returncode == 0, result.stderr
     assert "restoring qwen-mm-plugins-core from its previous ref qwen-mm-plugins-core-v1.0.0" in result.stdout
     assert "--ref=qwen-mm-plugins-core-v1.0.0" in result.stdout
@@ -505,7 +510,7 @@ test "$?" -eq 1
 def test_cap_spec_defaults_to_capability_stable_tag():
     result = _bash("REPO_REF=; cap_spec search")
     assert result.returncode == 0, result.stderr
-    assert result.stdout.endswith("@qwen-mm-plugins-search-v1.0.4")
+    assert result.stdout.endswith("@" + _stable_tag("search"))
 
 
 def test_explicit_ref_overrides_package_and_marketplace():
@@ -521,7 +526,7 @@ def test_explicit_ref_overrides_package_and_marketplace():
 def test_gemini_skill_checkout_uses_same_stable_tag():
     result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skill gemini search")
     assert result.returncode == 0, result.stderr
-    assert "fetch --depth 1 origin qwen-mm-plugins-search-v1.0.4" in result.stdout
+    assert f"fetch --depth 1 origin {_stable_tag('search')}" in result.stdout
     assert "--path src/capabilities/search/skill" in result.stdout
 
 
@@ -546,7 +551,7 @@ def test_post_update_hint_explains_how_to_activate_updated_components(harness, e
 def test_manual_update_prints_same_tag_for_skill_and_mcp_without_claiming_detection():
     result = _bash("show_manual update qwen-mm-plugins-search")
     assert result.returncode == 0, result.stderr
-    tag = "qwen-mm-plugins-search-v1.0.4"
+    tag = _stable_tag("search")
     repo = "https://github.com/QwenLM/Qwen-MM-Plugins.git"
     assert f"/tree/{tag}/src/capabilities/search/skill" in result.stdout
     assert f"qwen-mm-plugins[search] @ git+{repo}@{tag}" in result.stdout

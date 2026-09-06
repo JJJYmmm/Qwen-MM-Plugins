@@ -23,21 +23,12 @@ class SearchByTimeArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "search_by_time",
-    "description": (
-        "Find macro events covering a time range. "
-        "Returns MacroEvent list with time ranges, parent SuperEvent labels, and key entities. "
-        "When to use: Question references a specific time or time range in the video. "
-        "For EgoLife: use start_time/end_time in 'DAY{N} HH:MM:SS' format "
-        "(e.g. 'DAY1 11:09:42', 'DAY3 15:30:00'). "
-        "For other datasets: use start_sec/end_sec in seconds. "
-        "Note: returns macro event summaries, not subgraph details. Always follow up "
-        "with get_subgraph if you need entity/event details."
-    ),
     "args": SearchByTimeArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Find macro events covering a time range. Returns MacroEvent list with time ranges, parent SuperEvent labels, and key entities. When to use: Question references a specific time or time range in the video. For EgoLife: use start_time/end_time in 'DAY{N} HH:MM:SS' format (e.g. 'DAY1 11:09:42', 'DAY3 15:30:00'). For other datasets: use start_sec/end_sec in seconds. Note: returns macro event summaries, not subgraph details. Always follow up with get_subgraph if you need entity/event details."""
     from qwen_mm_plugins_video_memory.loader import get_toolkit
 
     args = dict(arguments or {})

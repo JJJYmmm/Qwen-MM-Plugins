@@ -29,18 +29,6 @@ class OmniAvCaptionArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "omni_av_caption",
-    "description": (
-        "Produce a detailed Markdown report of an audio/video using the Qwen-Omni model (reads both "
-        "the video frames and the audio track): a timestamped storyline, all visible text, a "
-        "speaker-attributed transcript, plus flags for content inappropriate for minors with a "
-        "compliance-alert table and a final safety assessment. "
-        "A local file is uploaded inline, where the endpoint caps a media item at 10 MB of base64, so "
-        "it is transcoded to fit — about 9 min at the default 1 fps / 448² sampling. A longer local video "
-        "is delivered another way automatically: uploaded to OSS when OSS_* is configured (no size "
-        "limit), else split into sampled frames plus its full audio track. Passing an http(s)/OSS URL "
-        "skips all of that (fetched and sampled server-side); for hour-scale video use video-memory. "
-        "Use dry_run=true to preview the request payload without calling."
-    ),
     "args": OmniAvCaptionArgs,
 }
 
@@ -106,6 +94,7 @@ Content: “<content>”
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     # The prompt asks for a Markdown report, not JSON — return the model's text as-is. The
     # five-section report runs long, so give it more headroom than the default 4096 tokens.
+    """Produce a detailed Markdown report of an audio/video using the Qwen-Omni model (reads both the video frames and the audio track): a timestamped storyline, all visible text, a speaker-attributed transcript, plus flags for content inappropriate for minors with a compliance-alert table and a final safety assessment. A local file is uploaded inline, where the endpoint caps a media item at 10 MB of base64, so it is transcoded to fit — about 9 min at the default 1 fps / 448² sampling. A longer local video is delivered another way automatically: uploaded to OSS when OSS_* is configured (no size limit), else split into sampled frames plus its full audio track. Passing an http(s)/OSS URL skips all of that (fetched and sampled server-side); for hour-scale video use video-memory. Use dry_run=true to preview the request payload without calling."""
     text, blocks = run_omni(arguments, prompt=_PROMPT, mode="auto", json_output=False, max_tokens=65536)
     if blocks is not None:
         return blocks

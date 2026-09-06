@@ -19,14 +19,12 @@ class DownloadPolyhavenAssetArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "download_polyhaven_asset",
-    "description": (
-        "Download and import a Polyhaven asset into Blender. Returns a message indicating success or failure."
-    ),
     "args": DownloadPolyhavenAssetArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Download and import a Polyhaven asset into Blender. Returns a message indicating success or failure."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     asset_id = arguments.get("asset_id", "")

@@ -17,9 +17,6 @@ class WebSearchArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "web_search",
-    "description": (
-        "Search the internet for text information. Returns search results with titles, snippets, and URLs."
-    ),
     "args": WebSearchArgs,
 }
 
@@ -42,6 +39,7 @@ def _format_results(docs: list[dict[str, Any]], start_id: int = 1) -> tuple[str,
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Search the internet for text information. Returns search results with titles, snippets, and URLs."""
     from qwen_mm_plugins_search.backends import (
         backend_error,
         missing_key_error,

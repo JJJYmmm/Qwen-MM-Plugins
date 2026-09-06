@@ -31,17 +31,6 @@ class OmniAvCountingArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "omni_av_counting",
-    "description": (
-        "Count how many times a specified event/object/action occurs in an audio/video, returning the "
-        "total count and the timestamp of each occurrence, using the Qwen-Omni model (reads frames + "
-        "audio). "
-        "A local file is uploaded inline, where the endpoint caps a media item at 10 MB of base64, so "
-        "it is transcoded to fit — about 9 min at the default 1 fps / 448² sampling (less at a higher "
-        "fps). A longer local video is delivered another way automatically: uploaded to OSS when OSS_* "
-        "is configured (no size limit), else split into sampled frames plus its full audio track — at "
-        "which point the frame spacing bounds how finely occurrences can be separated. Passing an "
-        "http(s)/OSS URL keeps full sampling (fetched server-side), as does counting over a trimmed clip."
-    ),
     "args": OmniAvCountingArgs,
 }
 
@@ -55,6 +44,7 @@ _PROMPT = (
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Count how many times a specified event/object/action occurs in an audio/video, returning the total count and the timestamp of each occurrence, using the Qwen-Omni model (reads frames + audio). A local file is uploaded inline, where the endpoint caps a media item at 10 MB of base64, so it is transcoded to fit — about 9 min at the default 1 fps / 448² sampling (less at a higher fps). A longer local video is delivered another way automatically: uploaded to OSS when OSS_* is configured (no size limit), else split into sampled frames plus its full audio track — at which point the frame spacing bounds how finely occurrences can be separated. Passing an http(s)/OSS URL keeps full sampling (fetched server-side), as does counting over a trimmed clip."""
     target = arguments.get("target", "")
     data, blocks = run_omni(arguments, prompt=_PROMPT.format(target=target), mode="auto")
     if blocks is not None:

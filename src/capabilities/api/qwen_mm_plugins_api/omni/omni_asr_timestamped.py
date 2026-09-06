@@ -29,13 +29,6 @@ class OmniAsrTimestampedArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "omni_asr_timestamped",
-    "description": (
-        "Transcribe speech with controllable-granularity timestamps (sentence- or word-level) using "
-        "the Qwen-Omni model. Returns segments with start/end seconds plus an SRT rendering. "
-        "A local file travels inline, where the endpoint caps a media item at 10 MB of base64, so the "
-        "audio is downmixed to 16 kHz mono and MP3-compressed at a duration-fitted bitrate when needed "
-        "— good for roughly 55 min. For longer media pass an http(s)/OSS URL or transcribe in parts."
-    ),
     "args": OmniAsrTimestampedArgs,
 }
 
@@ -48,6 +41,7 @@ _PROMPT = (
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Transcribe speech with controllable-granularity timestamps (sentence- or word-level) using the Qwen-Omni model. Returns segments with start/end seconds plus an SRT rendering. A local file travels inline, where the endpoint caps a media item at 10 MB of base64, so the audio is downmixed to 16 kHz mono and MP3-compressed at a duration-fitted bitrate when needed — good for roughly 55 min. For longer media pass an http(s)/OSS URL or transcribe in parts."""
     gran = arguments.get("granularity", "sentence")
     prompt = _PROMPT.format(gran=gran, lang=language_hint(arguments))
     data, blocks = run_omni(arguments, prompt=prompt, mode="audio")

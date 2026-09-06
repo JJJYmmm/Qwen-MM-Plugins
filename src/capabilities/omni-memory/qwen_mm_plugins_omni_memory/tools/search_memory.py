@@ -17,10 +17,6 @@ class SearchMemoryArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "search_memory",
-    "description": "Hybrid search (dense embeddings + keyword, RRF-fused) across all three "
-    "containers at once: people, semantic facts, and moments. Start here for an open "
-    "question; narrow down with search_dialogue / search_facts / get_timeline when you "
-    "know which kind of evidence you need.",
     "args": SearchMemoryArgs,
 }
 
@@ -46,4 +42,5 @@ def search_memory(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Hybrid search (dense embeddings + keyword, RRF-fused) across all three containers at once: people, semantic facts, and moments. Start here for an open question; narrow down with search_dialogue / search_facts / get_timeline when you know which kind of evidence you need."""
     return [json_text(search_memory(**arguments))]

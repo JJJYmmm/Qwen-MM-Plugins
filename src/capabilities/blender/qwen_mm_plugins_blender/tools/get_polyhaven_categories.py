@@ -16,12 +16,12 @@ class PolyhavenCategoriesArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_polyhaven_categories",
-    "description": "Get a list of categories for a specific asset type on Polyhaven.",
     "args": PolyhavenCategoriesArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Get a list of categories for a specific asset type on Polyhaven."""
     from qwen_mm_plugins_blender.loader import get_connection, refresh_polyhaven
 
     asset_type = arguments.get("asset_type", "hdris")

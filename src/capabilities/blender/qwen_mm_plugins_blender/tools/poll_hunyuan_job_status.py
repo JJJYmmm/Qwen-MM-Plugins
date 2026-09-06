@@ -16,19 +16,12 @@ class PollHunyuanJobStatusArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "poll_hunyuan_job_status",
-    "description": (
-        "Check if the Hunyuan3D generation task is completed. Parameters: job_id, the job_id given "
-        "in the generate model step. Returns the generation task status; the task is done if status "
-        'is "DONE" and in progress if status is "RUN". If status is "DONE", the response includes a '
-        "field named ResultFile3Ds that contains the generated ZIP file path of the 3D model in OBJ "
-        "format. This is a polling API, so only proceed once the status is finally determined "
-        '("DONE" or some failed state).'
-    ),
     "args": PollHunyuanJobStatusArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Check if the Hunyuan3D generation task is completed. Parameters: job_id, the job_id given in the generate model step. Returns the generation task status; the task is done if status is "DONE" and in progress if status is "RUN". If status is "DONE", the response includes a field named ResultFile3Ds that contains the generated ZIP file path of the 3D model in OBJ format. This is a polling API, so only proceed once the status is finally determined ("DONE" or some failed state)."""
     import json
 
     from qwen_mm_plugins_blender.loader import get_connection

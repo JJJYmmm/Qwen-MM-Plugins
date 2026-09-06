@@ -53,18 +53,12 @@ class QwenTtsArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "qwen_tts",
-    "description": (
-        "Text-to-speech (TTS) using Qwen3-TTS-Flash via the DashScope SDK "
-        "(dashscope.MultiModalConversation). "
-        "Supports 10 languages and 44 system voices. "
-        "Input: text + voice + language. Output: audio file URL (WAV, 24h validity). "
-        "Max 512 tokens per call — split long text at sentence boundaries."
-    ),
     "args": QwenTtsArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Text-to-speech (TTS) using Qwen3-TTS-Flash via the DashScope SDK (dashscope.MultiModalConversation). Supports 10 languages and 44 system voices. Input: text + voice + language. Output: audio file URL (WAV, 24h validity). Max 512 tokens per call — split long text at sentence boundaries."""
     text = arguments["text"]
     voice = arguments.get("voice", "Cherry")
     language_type = arguments.get("language_type", "Auto")

@@ -17,15 +17,12 @@ class ViewportScreenshotArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_viewport_screenshot",
-    "description": (
-        "Capture a screenshot of the current Blender 3D viewport. Use it to visually verify the "
-        "scene BEFORE making changes and AFTER executing code or importing assets."
-    ),
     "args": ViewportScreenshotArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Capture a screenshot of the current Blender 3D viewport. Use it to visually verify the scene BEFORE making changes and AFTER executing code or importing assets."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     max_size = int(arguments.get("max_size", 1000))

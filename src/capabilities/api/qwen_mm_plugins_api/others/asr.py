@@ -59,13 +59,6 @@ class TranscribeAudioArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "transcribe_audio",
-    "description": (
-        "Transcribe speech from an audio or video file using DashScope Qwen3-ASR "
-        "(27 languages, automatic language detection). "
-        "Extracts audio automatically from video files. Supports time range selection. "
-        "Returns timestamped subtitles in SRT, plain text, or raw JSON format. "
-        "Long files are automatically chunked into segments for processing."
-    ),
     "args": TranscribeAudioArgs,
 }
 
@@ -194,6 +187,7 @@ def _format_text(chunks: list[tuple[float, float, list[str]]]) -> str:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Transcribe speech from an audio or video file using DashScope Qwen3-ASR (27 languages, automatic language detection). Extracts audio automatically from video files. Supports time range selection. Returns timestamped subtitles in SRT, plain text, or raw JSON format. Long files are automatically chunked into segments for processing."""
     file_path = arguments.get("file_path", "")
     if not os.path.isfile(file_path):
         return text_error(f"file not found: {file_path}")

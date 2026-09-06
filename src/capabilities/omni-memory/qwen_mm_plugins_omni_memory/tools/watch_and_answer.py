@@ -25,15 +25,6 @@ class WatchAndAnswerArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "watch_and_answer",
-    "description": "Watch a SHORT audio-video in one pass and answer from it, with NO memory involved. "
-    "Use it when the video is under ~10 minutes, or when the user has said they do not want a memory "
-    "built and just wants a quick answer. Past ~30 minutes build a memory instead — this tool sends the "
-    "whole video in a single request, so it cannot cover a long one no matter how the question is "
-    "phrased. The video is re-encoded once and that copy is kept, so "
-    "follow-up questions about the same video skip the re-encode. If the video will be asked about "
-    "several times, a memory is cheaper: build it and use plan_and_search. When a watch cannot get "
-    'through, the result carries fallback="build_memory" and the exact command to run. Needs ffmpeg '
-    "on PATH and an omni endpoint.",
     "args": WatchAndAnswerArgs,
 }
 
@@ -178,4 +169,5 @@ def watch_and_answer(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Watch a SHORT audio-video in one pass and answer from it, with NO memory involved. Use it when the video is under ~10 minutes, or when the user has said they do not want a memory built and just wants a quick answer. Past ~30 minutes build a memory instead — this tool sends the whole video in a single request, so it cannot cover a long one no matter how the question is phrased. The video is re-encoded once and that copy is kept, so follow-up questions about the same video skip the re-encode. If the video will be asked about several times, a memory is cheaper: build it and use plan_and_search. When a watch cannot get through, the result carries fallback="build_memory" and the exact command to run. Needs ffmpeg on PATH and an omni endpoint."""
     return [json_text(watch_and_answer(**arguments))]

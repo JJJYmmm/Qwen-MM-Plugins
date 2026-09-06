@@ -17,10 +17,6 @@ class GetMomentArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "get_moment",
-    "description": "Full detail for one or more clips — the most information-dense read. Returns the "
-    "visual caption, every spoken line with its speaker, who is present and what they are doing, "
-    "acoustic events, scene changes, and the path to the 30s clip file itself. Reach for this when a "
-    "moment brief from plan_and_search or get_timeline is too coarse.",
     "args": GetMomentArgs,
 }
 
@@ -97,4 +93,5 @@ def get_moment(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Full detail for one or more clips — the most information-dense read. Returns the visual caption, every spoken line with its speaker, who is present and what they are doing, acoustic events, scene changes, and the path to the 30s clip file itself. Reach for this when a moment brief from plan_and_search or get_timeline is too coarse."""
     return [json_text(get_moment(**arguments))]

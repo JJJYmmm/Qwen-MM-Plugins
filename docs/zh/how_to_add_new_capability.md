@@ -24,6 +24,10 @@ src/capabilities/example/
 
 ## 工具约定（自动发现）
 
+新工具推荐使用 [docstring 说明](hub.md)：省略 `TOOL.description`，在 `handle` 的 docstring
+中写工具说明和可选的 Google 风格 `Args:`；类型与约束仍放 Pydantic。下面的显式 description
+写法继续兼容，也适合需要动态生成的说明。
+
 在 `tools/`（或build_registry定义的子包列表下）下新建 `.py`，导出两样东西即可:
 
 ```python

@@ -39,11 +39,6 @@ class DrawBboxArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "draw_bbox",
-    "description": (
-        "Draw bounding boxes on an image. "
-        "Saves the annotated result to disk and returns a preview. "
-        "Coordinates are normalized (0-1000), same as grounding output."
-    ),
     "args": DrawBboxArgs,
 }
 
@@ -59,6 +54,7 @@ def _hex_to_rgb(hex_str: str) -> tuple[int, int, int] | None:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Draw bounding boxes on an image. Saves the annotated result to disk and returns a preview. Coordinates are normalized (0-1000), same as grounding output."""
     image_path = arguments.get("image_path", "")
     if err := require_file(image_path):
         return err

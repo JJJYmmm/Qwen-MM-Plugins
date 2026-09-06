@@ -17,17 +17,12 @@ class SearchAsrTextArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "search_asr_text",
-    "description": (
-        "Semantic search over ASR transcript text (speech, dialogue, narration). "
-        "When to use: Question asks about spoken content, dialogue, narration, "
-        "or any audio/verbal information in the video. "
-        "Returns matching transcript segments with timestamps and macro event context."
-    ),
     "args": SearchAsrTextArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Semantic search over ASR transcript text (speech, dialogue, narration). When to use: Question asks about spoken content, dialogue, narration, or any audio/verbal information in the video. Returns matching transcript segments with timestamps and macro event context."""
     from qwen_mm_plugins_video_memory.loader import get_toolkit
 
     args = dict(arguments or {})

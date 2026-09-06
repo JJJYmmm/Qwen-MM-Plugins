@@ -95,14 +95,6 @@ class QwenImageArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "qwen_image",
-    "description": (
-        "Image generation, editing, and translation using Qwen-Image models. "
-        "Three modes: "
-        "(1) text_to_image — generate image from text prompt (sync, qwen-image-2.0-pro); "
-        "(2) image_edit — edit an existing image with text instruction, supports up to 3 input images (sync, qwen-image-2.0-pro); "
-        "(3) image_translate — translate text in an image while preserving layout (async, qwen-mt-image). "
-        "All generated image URLs expire in 24 hours — download promptly."
-    ),
     "args": QwenImageArgs,
 }
 
@@ -271,6 +263,7 @@ def _format_image_result(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Image generation, editing, and translation using Qwen-Image models. Three modes: (1) text_to_image — generate image from text prompt (sync, qwen-image-2.0-pro); (2) image_edit — edit an existing image with text instruction, supports up to 3 input images (sync, qwen-image-2.0-pro); (3) image_translate — translate text in an image while preserving layout (async, qwen-mt-image). All generated image URLs expire in 24 hours — download promptly."""
     mode = arguments.get("mode", "text_to_image")
 
     api_key = get_env("DASHSCOPE_API_KEY")

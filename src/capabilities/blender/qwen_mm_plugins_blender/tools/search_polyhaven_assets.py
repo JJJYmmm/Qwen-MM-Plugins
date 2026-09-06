@@ -20,15 +20,12 @@ class SearchPolyhavenAssetsArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "search_polyhaven_assets",
-    "description": (
-        "Search for assets on Polyhaven with optional filtering. "
-        "Returns a list of matching assets with basic information."
-    ),
     "args": SearchPolyhavenAssetsArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Search for assets on Polyhaven with optional filtering. Returns a list of matching assets with basic information."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     asset_type = arguments.get("asset_type", "all")

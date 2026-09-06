@@ -16,20 +16,20 @@ class SearchSketchfabModelsArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "search_sketchfab_models",
-    "description": (
-        "Search for models on Sketchfab with optional filtering.\n\n"
-        "Parameters:\n"
-        "- query: Text to search for\n"
-        "- categories: Optional comma-separated list of categories\n"
-        "- count: Maximum number of results to return (default 20)\n"
-        "- downloadable: Whether to include only downloadable models (default True)\n\n"
-        "Returns a formatted list of matching models."
-    ),
     "args": SearchSketchfabModelsArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Search for models on Sketchfab with optional filtering.
+
+    Parameters:
+    - query: Text to search for
+    - categories: Optional comma-separated list of categories
+    - count: Maximum number of results to return (default 20)
+    - downloadable: Whether to include only downloadable models (default True)
+
+    Returns a formatted list of matching models."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     query = arguments.get("query", "")

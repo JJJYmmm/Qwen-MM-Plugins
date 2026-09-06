@@ -120,17 +120,6 @@ class HappyhorseArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "happyhorse",
-    "description": (
-        "Video generation and editing using HappyHorse models. "
-        "Four modes: "
-        "(1) text_to_video — generate video from text prompt (happyhorse-1.0-t2v); "
-        "(2) image_to_video — animate a single image into video (happyhorse-1.0-i2v); "
-        "(3) reference_to_video — generate video with 1-9 reference images fused as characters/objects "
-        "(happyhorse-1.0-r2v, use [Image 1] etc. in prompt to reference them); "
-        "(4) video_edit — edit an existing video with text instruction + optional reference images "
-        "(happyhorse-1.0-video-edit). "
-        "All modes are async — submit task then poll until completion (1-5 min typical)."
-    ),
     "args": HappyhorseArgs,
 }
 
@@ -222,6 +211,7 @@ def _submit_r2v(arguments: dict[str, Any], api_key: str) -> tuple[str | None, di
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Video generation and editing using HappyHorse models. Four modes: (1) text_to_video — generate video from text prompt (happyhorse-1.0-t2v); (2) image_to_video — animate a single image into video (happyhorse-1.0-i2v); (3) reference_to_video — generate video with 1-9 reference images fused as characters/objects (happyhorse-1.0-r2v, use [Image 1] etc. in prompt to reference them); (4) video_edit — edit an existing video with text instruction + optional reference images (happyhorse-1.0-video-edit). All modes are async — submit task then poll until completion (1-5 min typical)."""
     mode = arguments.get("mode")
     prompt = arguments.get("prompt", "")
 

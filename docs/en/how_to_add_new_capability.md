@@ -24,6 +24,11 @@ src/capabilities/example/
 
 ## Tool convention (auto-discovery)
 
+For new tools, prefer the [docstring-backed convention](hub.md#author-descriptions-once):
+omit `TOOL.description`, put the public description and optional Google-style `Args:` in
+`handle`'s docstring, and keep types/constraints in Pydantic. The explicit-description form
+below remains fully supported for compatibility and dynamic descriptions.
+
 Create a new `.py` under `tools/` (or under the subpackage list defined by build_registry), exporting just two things:
 
 ```python

@@ -14,12 +14,6 @@ class GetMemoryOverviewArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "get_memory_overview",
-    "description": "The vocabulary a retrieval plan is written from: the cast of people (person_id, "
-    "name, appearance, and also_heard_as for anyone still unnamed) and the COMPLETE directory of "
-    "semantic fact keys. Read this before plan_and_search — fact keys are an exact lookup, so a plan "
-    "that names none comes back with no facts. One call covers every later question about the same "
-    "video. `scene_env_available` only says a scene container exists; ask for the items with "
-    "plan_and_search(include_scene=True).",
     "args": GetMemoryOverviewArgs,
 }
 
@@ -46,4 +40,5 @@ def overview(video_path: str | None = None, namespace: str | None = None) -> dic
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """The vocabulary a retrieval plan is written from: the cast of people (person_id, name, appearance, and also_heard_as for anyone still unnamed) and the COMPLETE directory of semantic fact keys. Read this before plan_and_search — fact keys are an exact lookup, so a plan that names none comes back with no facts. One call covers every later question about the same video. `scene_env_available` only says a scene container exists; ask for the items with plan_and_search(include_scene=True)."""
     return [json_text(overview(**arguments))]

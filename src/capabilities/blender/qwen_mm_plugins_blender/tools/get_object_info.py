@@ -13,12 +13,12 @@ class ObjectInfoArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_object_info",
-    "description": "Get detailed information about a specific object in the Blender scene.",
     "args": ObjectInfoArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Get detailed information about a specific object in the Blender scene."""
     import json
 
     from qwen_mm_plugins_blender.loader import get_connection

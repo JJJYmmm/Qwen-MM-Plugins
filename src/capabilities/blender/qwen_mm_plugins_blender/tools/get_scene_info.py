@@ -14,12 +14,12 @@ class SceneInfoArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_scene_info",
-    "description": "Get detailed information about the current Blender scene (objects, materials, etc.).",
     "args": SceneInfoArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Get detailed information about the current Blender scene (objects, materials, etc.)."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     try:

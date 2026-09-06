@@ -13,15 +13,12 @@ class Hyper3DStatusArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_hyper3d_status",
-    "description": (
-        "Check if Hyper3D Rodin integration is enabled in Blender. "
-        "Returns a message indicating whether Hyper3D Rodin features are available."
-    ),
     "args": Hyper3DStatusArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Check if Hyper3D Rodin integration is enabled in Blender. Returns a message indicating whether Hyper3D Rodin features are available."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     try:

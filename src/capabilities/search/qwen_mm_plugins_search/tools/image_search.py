@@ -40,15 +40,6 @@ class ImageSearchArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "image_search",
-    "description": (
-        "Reverse image search using an image file path (or a public image URL). "
-        "Returns similar images with their source URLs, titles, and descriptions. "
-        "Local images require allow_public_upload=true and are uploaded to the third-party public host uguu.se; "
-        "their contents leave the machine and become publicly accessible. "
-        "Use this (and/or web_search) to CONFIRM any specific identification — model/species/place/person/event — "
-        "before you answer; appearance alone is not proof. "
-        "Grab the frame to search with save_view (don't run ffmpeg yourself)."
-    ),
     "args": ImageSearchArgs,
 }
 
@@ -143,6 +134,7 @@ def _format_results(docs: list[dict[str, Any]]) -> str:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Reverse image search using an image file path (or a public image URL). Returns similar images with their source URLs, titles, and descriptions. Local images require allow_public_upload=true and are uploaded to the third-party public host uguu.se; their contents leave the machine and become publicly accessible. Use this (and/or web_search) to CONFIRM any specific identification — model/species/place/person/event — before you answer; appearance alone is not proof. Grab the frame to search with save_view (don't run ffmpeg yourself)."""
     from qwen_mm_plugins_search.serper import resolve_serper_key
     from shared.content import require_dep, require_file, text_error
 

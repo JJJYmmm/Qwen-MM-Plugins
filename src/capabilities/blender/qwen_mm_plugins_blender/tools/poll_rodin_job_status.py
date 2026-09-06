@@ -20,19 +20,12 @@ class PollRodinJobStatusArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "poll_rodin_job_status",
-    "description": (
-        "Check if the Hyper3D Rodin generation task is completed. "
-        "For MAIN_SITE mode, pass subscription_key: returns a list of status, done when all are "
-        '"Done" ("Failed" means the generation failed). '
-        "For FAL_AI mode, pass request_id: returns the generation task status, done when "
-        '"COMPLETED" and in progress when "IN_PROGRESS". '
-        "This is a polling API, so only proceed once the status is finally determined."
-    ),
     "args": PollRodinJobStatusArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Check if the Hyper3D Rodin generation task is completed. For MAIN_SITE mode, pass subscription_key: returns a list of status, done when all are "Done" ("Failed" means the generation failed). For FAL_AI mode, pass request_id: returns the generation task status, done when "COMPLETED" and in progress when "IN_PROGRESS". This is a polling API, so only proceed once the status is finally determined."""
     import json
 
     from qwen_mm_plugins_blender.loader import get_connection

@@ -31,14 +31,6 @@ class MediaInfoArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "media_info",
-    "description": (
-        "Read full metadata from a video/audio file via ffprobe: container format, duration, file "
-        "size, overall bitrate, chapters, and every stream — video (codec/profile, resolution, "
-        "aspect ratio, fps, pixel format, bitrate, frame count, rotation, color space), audio "
-        "(codec, sample rate, channels/layout, bitrate), subtitles, and per-stream "
-        "language/disposition. Use this before any editing/clipping task to learn the source "
-        "properties; it reads only metadata, so it is fast even on huge files."
-    ),
     "args": MediaInfoArgs,
 }
 
@@ -172,6 +164,7 @@ def _describe_other(s: dict) -> str:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read full metadata from a video/audio file via ffprobe: container format, duration, file size, overall bitrate, chapters, and every stream — video (codec/profile, resolution, aspect ratio, fps, pixel format, bitrate, frame count, rotation, color space), audio (codec, sample rate, channels/layout, bitrate), subtitles, and per-stream language/disposition. Use this before any editing/clipping task to learn the source properties; it reads only metadata, so it is fast even on huge files."""
     path = arguments.get("path", "")
     if err := require_file(path):
         return err

@@ -20,17 +20,12 @@ class ReadImageArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "read_image",
-    "description": (
-        "Read an image with model-optimized dynamic resolution. "
-        "Automatically resizes to fit the target model's patch grid, "
-        "balancing resolution and detail preservation. "
-        "Returns the resized image for model consumption."
-    ),
     "args": ReadImageArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read an image with model-optimized dynamic resolution. Automatically resizes to fit the target model's patch grid, balancing resolution and detail preservation. Returns the resized image for model consumption."""
     from shared.content import image, require_dep, require_file, text
 
     image_path = arguments.get("image_path", "")

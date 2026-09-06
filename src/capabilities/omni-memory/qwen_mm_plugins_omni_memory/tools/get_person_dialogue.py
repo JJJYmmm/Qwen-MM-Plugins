@@ -23,10 +23,6 @@ class GetPersonDialogueArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "get_person_dialogue",
-    "description": "Everything one person said, in time order, with timestamps and tone. Use this "
-    "for 'what did X say', 'did X mention Y', 'who said Z'. Each line was bound to "
-    "its speaker by the omni model from lip movement and who is visibly speaking, so "
-    "attribution survives overlapping speech and similar voices.",
     "args": GetPersonDialogueArgs,
 }
 
@@ -54,4 +50,5 @@ def get_person_dialogue(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Everything one person said, in time order, with timestamps and tone. Use this for 'what did X say', 'did X mention Y', 'who said Z'. Each line was bound to its speaker by the omni model from lip movement and who is visibly speaking, so attribution survives overlapping speech and similar voices."""
     return [json_text(get_person_dialogue(**arguments))]

@@ -20,21 +20,12 @@ class GenerateHunyuan3DModelArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "generate_hunyuan3d_model",
-    "description": (
-        "Generate 3D asset using Hunyuan3D by providing either text description, image reference, "
-        "or both for the desired asset, and import the asset into Blender. The 3D asset has "
-        "built-in materials. Parameters: text_prompt (optional) a short description of the desired "
-        "model in English/Chinese; input_image_url (optional) the local or remote url of the input "
-        "image, accepts None if only using text prompt. When successful, returns a JSON with job_id "
-        '(format: "job_xxx") indicating the task is in progress; when the job completes, the status '
-        'will change to "DONE" indicating the model has been imported; returns error message if the '
-        "operation fails."
-    ),
     "args": GenerateHunyuan3DModelArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate 3D asset using Hunyuan3D by providing either text description, image reference, or both for the desired asset, and import the asset into Blender. The 3D asset has built-in materials. Parameters: text_prompt (optional) a short description of the desired model in English/Chinese; input_image_url (optional) the local or remote url of the input image, accepts None if only using text prompt. When successful, returns a JSON with job_id (format: "job_xxx") indicating the task is in progress; when the job completes, the status will change to "DONE" indicating the model has been imported; returns error message if the operation fails."""
     import json
 
     from qwen_mm_plugins_blender.loader import get_connection

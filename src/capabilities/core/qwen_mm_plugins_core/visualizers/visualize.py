@@ -39,18 +39,12 @@ class VisualizeArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "visualize",
-    "description": (
-        "Visualize any supported file for model consumption. "
-        "Renders documents (PDF, DOCX, PPTX, XLSX, CSV), "
-        "code files (syntax-highlighted), SVG, DrawIO diagrams, "
-        "subtitles (SRT/VTT), NIfTI medical volumes, images, and videos as visual output. "
-        "Automatically detects file type and applies the appropriate renderer."
-    ),
     "args": VisualizeArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Visualize any supported file for model consumption. Renders documents (PDF, DOCX, PPTX, XLSX, CSV), code files (syntax-highlighted), SVG, DrawIO diagrams, subtitles (SRT/VTT), NIfTI medical volumes, images, and videos as visual output. Automatically detects file type and applies the appropriate renderer."""
     file_path = arguments.get("file_path", "")
 
     # URLs go to the web renderer.

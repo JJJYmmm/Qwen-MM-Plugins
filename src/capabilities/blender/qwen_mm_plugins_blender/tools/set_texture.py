@@ -14,14 +14,12 @@ class SetTextureArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "set_texture",
-    "description": (
-        "Apply a previously downloaded Polyhaven texture to an object. Returns a message indicating success or failure."
-    ),
     "args": SetTextureArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Apply a previously downloaded Polyhaven texture to an object. Returns a message indicating success or failure."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     object_name = arguments.get("object_name", "")

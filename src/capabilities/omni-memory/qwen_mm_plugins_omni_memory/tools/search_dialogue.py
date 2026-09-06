@@ -20,10 +20,6 @@ class SearchDialogueArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "search_dialogue",
-    "description": "Search spoken lines and get them back WITH the speaker attached (person_id + "
-    "resolved name). Use it when the question is about who said what, or to find the "
-    "moment a topic was discussed. Unlike a standalone ASR index, every line here is "
-    "already bound to a person that persists across the whole video.",
     "args": SearchDialogueArgs,
 }
 
@@ -43,4 +39,5 @@ def search_dialogue(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Search spoken lines and get them back WITH the speaker attached (person_id + resolved name). Use it when the question is about who said what, or to find the moment a topic was discussed. Unlike a standalone ASR index, every line here is already bound to a person that persists across the whole video."""
     return [json_text(search_dialogue(**arguments))]

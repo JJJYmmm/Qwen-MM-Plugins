@@ -20,15 +20,12 @@ class WebExtractorArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "web_extractor",
-    "description": (
-        "Crawl and extract content from web pages, with optional summarization. "
-        "Returns the extracted text or a summary focused on the specified goal."
-    ),
     "args": WebExtractorArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Crawl and extract content from web pages, with optional summarization. Returns the extracted text or a summary focused on the specified goal."""
     from qwen_mm_plugins_search.backends import (
         backend_error,
         extract_page,

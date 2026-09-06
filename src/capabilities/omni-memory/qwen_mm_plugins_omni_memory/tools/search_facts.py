@@ -26,11 +26,6 @@ class SearchFactsArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "search_facts",
-    "description": "Stable semantic facts, induced across clips and kept de-duplicated (keys look "
-    "like 'P001/identity/name' or 'event:room_tidying/plan'). Three ways in: query "
-    "for semantic search, key_prefix to enumerate a branch, subject_id for one "
-    "person. Prefer this over re-reading moments when the question is about a "
-    "durable attribute, preference, role or relationship.",
     "args": SearchFactsArgs,
 }
 
@@ -106,4 +101,5 @@ def search_facts(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Stable semantic facts, induced across clips and kept de-duplicated (keys look like 'P001/identity/name' or 'event:room_tidying/plan'). Three ways in: query for semantic search, key_prefix to enumerate a branch, subject_id for one person. Prefer this over re-reading moments when the question is about a durable attribute, preference, role or relationship."""
     return [json_text(search_facts(**arguments))]

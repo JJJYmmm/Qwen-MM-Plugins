@@ -51,18 +51,12 @@ class SaveViewArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "save_view",
-    "description": (
-        "Materialize one or more views of a source as standalone image FILES and return their paths (+ previews). "
-        "For a document (PDF/SVG/XPS, and PPTX/DOCX/XLSX/LaTeX via conversion), pass `pages` (a range like "
-        "'1', '1-5', '2,4,7') to render those pages/slides; for a video, pass `times` (a list of seconds) for those "
-        "frames. Use this to turn document pages or video frames into image files you can then feed to "
-        "crop / draw_bbox / grounding / ocr / image_search / segmentation."
-    ),
     "args": SaveViewArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Materialize one or more views of a source as standalone image FILES and return their paths (+ previews). For a document (PDF/SVG/XPS, and PPTX/DOCX/XLSX/LaTeX via conversion), pass `pages` (a range like '1', '1-5', '2,4,7') to render those pages/slides; for a video, pass `times` (a list of seconds) for those frames. Use this to turn document pages or video frames into image files you can then feed to crop / draw_bbox / grounding / ocr / image_search / segmentation."""
     file_path = arguments.get("file_path", "")
     if err := require_file(file_path):
         return err

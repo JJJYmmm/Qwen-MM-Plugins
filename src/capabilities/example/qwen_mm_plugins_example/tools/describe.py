@@ -31,16 +31,12 @@ class DescribeArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "describe",
-    "description": (
-        "Ask an OpenAI-compatible chat model a question, optionally about a local image. "
-        "Demonstrates an API-calling tool whose endpoint/key are resolved via shared.env. "
-        "Set dry_run=true to see the request without a key or network call."
-    ),
     "args": DescribeArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Ask an OpenAI-compatible chat model a question, optionally about a local image. Demonstrates an API-calling tool whose endpoint/key are resolved via shared.env. Set dry_run=true to see the request without a key or network call."""
     prompt = arguments.get("prompt", "")
     image_path = arguments.get("image_path")
     model = arguments.get("model") or DEFAULT_MODEL

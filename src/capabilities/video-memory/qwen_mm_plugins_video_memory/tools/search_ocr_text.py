@@ -17,18 +17,12 @@ class SearchOcrTextArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "search_ocr_text",
-    "description": (
-        "Semantic search over OCR text nodes only (on-screen text: scores, names, "
-        "graphics, jersey numbers, broadcast overlays). "
-        "When to use: Question asks about on-screen information (scores, player stats, "
-        "quarter info, jersey names/numbers, broadcast graphics). "
-        "Do NOT use search_nodes for these — OCR text is excluded from search_nodes."
-    ),
     "args": SearchOcrTextArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Semantic search over OCR text nodes only (on-screen text: scores, names, graphics, jersey numbers, broadcast overlays). When to use: Question asks about on-screen information (scores, player stats, quarter info, jersey names/numbers, broadcast graphics). Do NOT use search_nodes for these — OCR text is excluded from search_nodes."""
     from qwen_mm_plugins_video_memory.loader import get_toolkit
 
     args = dict(arguments or {})

@@ -13,17 +13,12 @@ class ExecuteCodeArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "execute_code",
-    "description": (
-        "Execute arbitrary Python code in the running FreeCAD, on the GUI thread. This is the safe "
-        "default for FreeCAD automation that touches documents, document objects, FreeCADGui, the "
-        "active view, selection, recompute, or save. Returns the output and (unless disabled) a "
-        "screenshot of the active view."
-    ),
     "args": ExecuteCodeArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Execute arbitrary Python code in the running FreeCAD, on the GUI thread. This is the safe default for FreeCAD automation that touches documents, document objects, FreeCADGui, the active view, selection, recompute, or save. Returns the output and (unless disabled) a screenshot of the active view."""
     from qwen_mm_plugins_freecad._responses import add_screenshot_if_available, text_response
     from qwen_mm_plugins_freecad.loader import get_connection, only_text_feedback
 

@@ -29,14 +29,6 @@ class OmniMultiSpeakerAsrArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "omni_multi_speaker_asr",
-    "description": (
-        "Transcribe multi-speaker speech with speaker diarization: distinguishes and labels different "
-        "speakers, with start/end timestamps per segment, using the Qwen-Omni model. Returns diarized "
-        "segments plus an SRT rendering with speaker tags. "
-        "A local file travels inline, where the endpoint caps a media item at 10 MB of base64, so the "
-        "audio is downmixed to 16 kHz mono and MP3-compressed at a duration-fitted bitrate when needed "
-        "— good for roughly 55 min. For longer media pass an http(s)/OSS URL or transcribe in parts."
-    ),
     "args": OmniMultiSpeakerAsrArgs,
 }
 
@@ -50,6 +42,7 @@ _PROMPT = (
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Transcribe multi-speaker speech with speaker diarization: distinguishes and labels different speakers, with start/end timestamps per segment, using the Qwen-Omni model. Returns diarized segments plus an SRT rendering with speaker tags. A local file travels inline, where the endpoint caps a media item at 10 MB of base64, so the audio is downmixed to 16 kHz mono and MP3-compressed at a duration-fitted bitrate when needed — good for roughly 55 min. For longer media pass an http(s)/OSS URL or transcribe in parts."""
     n = arguments.get("num_speakers")
     speakers_hint = f" There are {n} distinct speakers." if n else ""
     prompt = _PROMPT.format(speakers=speakers_hint, lang=language_hint(arguments))

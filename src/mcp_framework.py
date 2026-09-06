@@ -8,13 +8,16 @@ A server is just its tool subpackages plus a thin `__init__.py` (`__version__`, 
   - run_main(import_name)                        — console / `python3 <dir>` entry dispatcher
   - tool_schema(model)                          — Pydantic model -> advertised inputSchema
 
-Each tool module exports `TOOL = {"name", "description", "args": <PydanticModel>}` + `handle(dict)`.
-Depends only on the `mcp` SDK (bundles FastMCP + pydantic) + anyio, so servers stay independent.
+Each tool module exports `TOOL = {"name", "args": <PydanticModel>}` + `handle(dict)`.
+An explicit TOOL.description keeps the legacy path; otherwise the handler's Google-style
+docstring supplies the tool description and missing field descriptions.
+Depends on the `mcp` SDK (bundles FastMCP + pydantic), anyio and docstring-parser;
+servers stay independent of sibling capabilities.
 """
 
 from __future__ import annotations
 
-__version__ = "1.0.9"  # distribution/release-train version; plugin versions are per capability
+__version__ = "1.1.0"  # distribution/release-train version; plugin versions are per capability
 
 import asyncio
 import importlib
@@ -24,10 +27,12 @@ import json
 import logging
 import os
 import pkgutil
+import re
 import shutil
 import signal
 import sys
 import warnings
+from copy import deepcopy
 from typing import Annotated
 
 import anyio
@@ -156,7 +161,55 @@ def build_registry(import_name: str, tool_packages: list[str]):
 def _spec_from_module(mod) -> ToolSpec:
     t = mod.TOOL
     model = t["args"]
-    return ToolSpec(t["name"], t.get("description", ""), tool_schema(model), model, mod.handle)
+    if "description" in t:
+        # Opt-in by omission: old tools retain exactly their existing schemas, including
+        # explicitly empty descriptions and handlers with implementation-only docstrings.
+        description = t["description"]
+    else:
+        doc_format = t.get("docstring_format", "google")
+        if doc_format not in ("google", "plain"):
+            raise ValueError(f"{t['name']}: docstring_format must be 'google' or 'plain'")
+        description, model = _documented_args(t["name"], model, mod.handle, structured=doc_format == "google")
+    return ToolSpec(t["name"], description, tool_schema(model), model, mod.handle)
+
+
+def _documented_args(name, model, handle, *, structured=True):
+    """Derive public descriptions without modifying a shared Pydantic model.
+
+    Docstrings supply prose only; annotations, constraints, aliases, defaults and
+    validators still come from the original model. The enriched model also reaches
+    FastMCP's wrapper, not just the website/exported metadata.
+    """
+    from docstring_parser import DocstringStyle, parse
+    from pydantic import create_model
+
+    raw = inspect.getdoc(handle) or ""
+    if not raw.strip():
+        raise ValueError(f"{name}: provide TOOL.description or a public handler docstring")
+    # Existing public descriptions can contain free-form "Parameters:"/"Returns:"
+    # prose. Only the documented Args: marker opts into structured Google parsing.
+    if not structured or not re.search(r"^Args:\s*$", raw, re.MULTILINE):
+        return raw, model
+    doc = parse(raw, style=DocstringStyle.GOOGLE)
+    description = "\n\n".join(part for part in (doc.short_description, doc.long_description) if part)
+    if not description.strip():
+        raise ValueError(f"{name}: provide TOOL.description or a public handler docstring")
+    overrides, seen = {}, set()
+    for param in doc.params:
+        key = param.arg_name
+        if key not in model.model_fields:
+            raise ValueError(f"{name}: docstring argument {key!r} is not a field of {model.__name__}")
+        if key in seen:
+            raise ValueError(f"{name}: duplicate docstring argument {key!r}")
+        seen.add(key)
+        field = model.model_fields[key]
+        if field.description is None and param.description:
+            documented = deepcopy(field)
+            documented.description = param.description
+            overrides[key] = (field.annotation, documented)
+    if overrides:
+        model = create_model(f"{model.__name__}For_{name}", __base__=model, **overrides)
+    return description, model
 
 
 # Runtime: bridge specs onto FastMCP and run over stdio.

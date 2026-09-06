@@ -19,9 +19,6 @@ class GetTimelineArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "get_timeline",
-    "description": "Moments within a time window, in order — one brief per 30s clip (caption, who "
-    "is present, how many lines were spoken). Use it for 'what happens around 12:30' "
-    "or to walk a stretch of the video; then call get_moment on the interesting idxs.",
     "args": GetTimelineArgs,
 }
 
@@ -42,4 +39,5 @@ def get_timeline(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Moments within a time window, in order — one brief per 30s clip (caption, who is present, how many lines were spoken). Use it for 'what happens around 12:30' or to walk a stretch of the video; then call get_moment on the interesting idxs."""
     return [json_text(get_timeline(**arguments))]

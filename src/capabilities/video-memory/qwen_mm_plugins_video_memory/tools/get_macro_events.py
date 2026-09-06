@@ -21,17 +21,12 @@ class GetMacroEventsArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_macro_events",
-    "description": (
-        "Get Macro Event list (detailed events within a Super Event). "
-        "Each macro event has macro_id, time_range, label, key_entities, summary. "
-        "When to use: You know which SuperEvent is relevant but need to find the right "
-        "MacroEvent within it. If super_id is omitted, lists ALL macro events."
-    ),
     "args": GetMacroEventsArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Get Macro Event list (detailed events within a Super Event). Each macro event has macro_id, time_range, label, key_entities, summary. When to use: You know which SuperEvent is relevant but need to find the right MacroEvent within it. If super_id is omitted, lists ALL macro events."""
     from qwen_mm_plugins_video_memory.loader import get_toolkit
 
     args = dict(arguments or {})

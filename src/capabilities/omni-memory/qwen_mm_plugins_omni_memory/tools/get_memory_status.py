@@ -17,12 +17,6 @@ class GetMemoryStatusArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "get_memory_status",
-    "description": "Does a memory exist, is it COMPLETE, and does this video even need one? Call this "
-    "before anything else: it tells you whether to build, resume an interrupted build, watch the video "
-    "directly instead, or start querying. An interrupted build leaves a library that looks normal but "
-    "is truncated, so the extracted-clip count is checked against the slice plan. When no memory "
-    "exists it also reports the source video's `duration_min` and a `next_step` that applies the "
-    "length routing — short videos are answered by watch_and_answer without building anything.",
     "args": GetMemoryStatusArgs,
 }
 
@@ -143,4 +137,5 @@ def memory_status(video_path: str | None = None, namespace: str | None = None) -
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Does a memory exist, is it COMPLETE, and does this video even need one? Call this before anything else: it tells you whether to build, resume an interrupted build, watch the video directly instead, or start querying. An interrupted build leaves a library that looks normal but is truncated, so the extracted-clip count is checked against the slice plan. When no memory exists it also reports the source video's `duration_min` and a `next_step` that applies the length routing — short videos are answered by watch_and_answer without building anything."""
     return [json_text(memory_status(**arguments))]

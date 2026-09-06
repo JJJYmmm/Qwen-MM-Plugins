@@ -13,15 +13,12 @@ class InsertPartFromLibraryArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "insert_part_from_library",
-    "description": (
-        "Insert a part from the parts library addon. Returns a message indicating the success or "
-        "failure of the part insertion and a screenshot of the object."
-    ),
     "args": InsertPartFromLibraryArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Insert a part from the parts library addon. Returns a message indicating the success or failure of the part insertion and a screenshot of the object."""
     from qwen_mm_plugins_freecad._responses import add_screenshot_if_available, text_response
     from qwen_mm_plugins_freecad.loader import get_connection, only_text_feedback
 

@@ -94,15 +94,6 @@ class WanT2vArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "wan_t2v",
-    "description": (
-        "Video generation using Wan models (wan2.7 series). "
-        "Supports multiple generation modes: "
-        "(1) text_to_video — generate video from text prompt only (wan2.7-t2v); "
-        "(2) first_frame — generate video from a first-frame image + text prompt (wan2.7-i2v); "
-        "(3) first_last_frame — generate video from first-frame + last-frame images + text prompt (wan2.7-i2v). "
-        "Synchronous call via DashScope SDK — blocks until video is ready. "
-        "Typical generation time: 30s-3min depending on duration and resolution."
-    ),
     "args": WanT2vArgs,
 }
 
@@ -119,6 +110,7 @@ _WAN27_SIZE_PRESETS = {
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Video generation using Wan models (wan2.7 series). Supports multiple generation modes: (1) text_to_video — generate video from text prompt only (wan2.7-t2v); (2) first_frame — generate video from a first-frame image + text prompt (wan2.7-i2v); (3) first_last_frame — generate video from first-frame + last-frame images + text prompt (wan2.7-i2v). Synchronous call via DashScope SDK — blocks until video is ready. Typical generation time: 30s-3min depending on duration and resolution."""
     prompt = arguments.get("prompt", "")
     if not prompt:
         return text_error("prompt is required")

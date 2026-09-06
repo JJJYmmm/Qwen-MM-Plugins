@@ -20,12 +20,12 @@ class GetViewArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_view",
-    "description": "Get a screenshot of the FreeCAD active view from a named standard angle.",
     "args": GetViewArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Get a screenshot of the FreeCAD active view from a named standard angle."""
     from qwen_mm_plugins_freecad._responses import text_response
     from qwen_mm_plugins_freecad.loader import get_connection
     from shared.content import image

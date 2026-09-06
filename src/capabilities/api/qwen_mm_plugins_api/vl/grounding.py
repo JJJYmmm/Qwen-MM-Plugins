@@ -26,11 +26,6 @@ class GroundingArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "grounding",
-    "description": (
-        "Detect and locate objects in an image using a vision-language model. "
-        "Returns bounding box coordinates mapped to original image pixel dimensions. "
-        "Optionally draws boxes on the image and returns the annotated image."
-    ),
     "args": GroundingArgs,
 }
 
@@ -103,6 +98,7 @@ def parse_grounding(text: str, img_w: int, img_h: int) -> list[dict[str, Any]]:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Detect and locate objects in an image using a vision-language model. Returns bounding box coordinates mapped to original image pixel dimensions. Optionally draws boxes on the image and returns the annotated image."""
     from shared.api_openai import call_openai_chat, resolve_openai_endpoint, resolve_vl_model
     from shared.content import require_dep, require_file
 

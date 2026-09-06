@@ -27,15 +27,6 @@ class OmniMusicCaptionArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "omni_music_caption",
-    "description": (
-        "Analyze a music track and return structured tags (genre, moods, instruments, key, time "
-        "signature, vocal profile) plus a dense English caption suitable as a music-generation prompt, "
-        "using the Qwen-Omni model. Whole-track global analysis — NO timestamps or per-section "
-        "breakdown. Extracts the audio track if given a video. "
-        "An audio file that fits the endpoint's inline cap (10 MB of base64) is sent untouched; a longer "
-        "one is downmixed to 16 kHz mono MP3 to fit, which costs some fidelity — pass an http(s)/OSS URL "
-        "to avoid that."
-    ),
     "args": OmniMusicCaptionArgs,
 }
 
@@ -66,6 +57,7 @@ _PROMPT = (
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Analyze a music track and return structured tags (genre, moods, instruments, key, time signature, vocal profile) plus a dense English caption suitable as a music-generation prompt, using the Qwen-Omni model. Whole-track global analysis — NO timestamps or per-section breakdown. Extracts the audio track if given a video. An audio file that fits the endpoint's inline cap (10 MB of base64) is sent untouched; a longer one is downmixed to 16 kHz mono MP3 to fit, which costs some fidelity — pass an http(s)/OSS URL to avoid that."""
     data, blocks = run_omni(arguments, prompt=_PROMPT, mode="audio")
     if blocks is not None:
         return blocks

@@ -17,12 +17,12 @@ class SwatchArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "make_swatch",
-    "description": "Generate a solid-color square PNG. Demonstrates returning an image content block.",
     "args": SwatchArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate a solid-color square PNG. Demonstrates returning an image content block."""
     if err := require_dep("PIL", "pillow"):
         return err
     from PIL import Image

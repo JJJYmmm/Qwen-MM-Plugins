@@ -13,16 +13,12 @@ class ExecuteBlenderCodeArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "execute_blender_code",
-    "description": (
-        "Execute arbitrary Python code in the running Blender (bpy). This is the PRIMARY tool for "
-        "modeling: create/edit geometry, modifiers, materials, lighting, cameras, and rendering. "
-        "Make sure to do it step-by-step by breaking complex work into smaller chunks."
-    ),
     "args": ExecuteBlenderCodeArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Execute arbitrary Python code in the running Blender (bpy). This is the PRIMARY tool for modeling: create/edit geometry, modifiers, materials, lighting, cameras, and rendering. Make sure to do it step-by-step by breaking complex work into smaller chunks."""
     from qwen_mm_plugins_blender.loader import get_connection
 
     code = arguments.get("code", "")

@@ -18,10 +18,6 @@ class GetPeopleArgs(MemoryRef):
 
 TOOL: dict[str, Any] = {
     "name": "get_people",
-    "description": "Person dossiers: canonical person_id, resolved name, appearance, when they are "
-    "on screen, how much they speak, and the semantic facts attached to them. "
-    "Identities are carried across overlapping clips, so the same person keeps one "
-    "person_id for the whole video.",
     "args": GetPeopleArgs,
 }
 
@@ -60,4 +56,5 @@ def get_people(
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, str]]:
+    """Person dossiers: canonical person_id, resolved name, appearance, when they are on screen, how much they speak, and the semantic facts attached to them. Identities are carried across overlapping clips, so the same person keeps one person_id for the whole video."""
     return [json_text(get_people(**arguments))]

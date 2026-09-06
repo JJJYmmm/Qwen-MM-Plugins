@@ -17,10 +17,6 @@ class FilmStripArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "make_film_strip",
-    "description": (
-        "Generate N synthetic video frames and return them as image blocks (plus a text summary). "
-        "Demonstrates the multi-frame return shape real video tools use."
-    ),
     "args": FilmStripArgs,
 }
 
@@ -28,6 +24,7 @@ _COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#1
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate N synthetic video frames and return them as image blocks (plus a text summary). Demonstrates the multi-frame return shape real video tools use."""
     if err := require_dep("PIL", "pillow"):
         return err
     from PIL import Image, ImageDraw

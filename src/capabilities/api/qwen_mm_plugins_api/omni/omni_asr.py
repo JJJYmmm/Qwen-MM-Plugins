@@ -25,14 +25,6 @@ class OmniAsrArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "omni_asr",
-    "description": (
-        "Transcribe all speech in an audio/video file into ONE continuous plain-text string, with no "
-        "timestamps, using the Qwen-Omni model. For timestamps use omni_asr_timestamped; for speaker "
-        "labels use omni_multi_speaker_asr. "
-        "A local file travels inline, where the endpoint caps a media item at 10 MB of base64, so the "
-        "audio is downmixed to 16 kHz mono and MP3-compressed at a duration-fitted bitrate when needed "
-        "— good for roughly 55 min. For longer media pass an http(s)/OSS URL or transcribe in parts."
-    ),
     "args": OmniAsrArgs,
 }
 
@@ -44,6 +36,7 @@ _PROMPT = (
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Transcribe all speech in an audio/video file into ONE continuous plain-text string, with no timestamps, using the Qwen-Omni model. For timestamps use omni_asr_timestamped; for speaker labels use omni_multi_speaker_asr. A local file travels inline, where the endpoint caps a media item at 10 MB of base64, so the audio is downmixed to 16 kHz mono and MP3-compressed at a duration-fitted bitrate when needed — good for roughly 55 min. For longer media pass an http(s)/OSS URL or transcribe in parts."""
     data, blocks = run_omni(arguments, prompt=_PROMPT.format(lang=language_hint(arguments)), mode="audio")
     if blocks is not None:
         return blocks

@@ -1,7 +1,7 @@
 {
   "name": "qwen-mm-plugins-omni-memory",
   "displayName": "Qwen MM Plugins Omni Memory",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Build and query persistent stateful audio-visual memory for long videos, including people, speaker-attributed dialogue, paralinguistics, non-speech sound, events, semantic facts, and selective source-clip replay.",
   "skills": "./skill",
   "mcp": ".mcp.json"

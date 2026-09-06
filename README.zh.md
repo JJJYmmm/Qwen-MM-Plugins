@@ -39,19 +39,19 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 
 | 能力 | 用途 | Cookbook |
 |---|---|---|
-| `core` | 面向 VL / Omni agentic 模型。原生读取图片和视频，并可视化文档、代码、数据、3D 文件与 NIfTI 影像。全部在本机完成，不需要 API key。 | [Cookbook](cookbooks/core/usage.md) |
-| `api` | 面向任意模型（含纯文本模型）。用 DashScope key 或本地 endpoint 调用多模态模型 API：VL 的 `vision_chat` / `ocr` / `grounding`，Omni 的 `omni_av_*` / `omni_asr*` / `omni_music_caption`，另有 `transcribe_audio` 与 `segmentation`。 | [Cookbook](cookbooks/api/usage.md) |
-| `search` | 面向任意模型。网页搜索、页面抽取和反向图像搜索，需要 Serper、Exa 或 Tavily key。 | [Cookbook](cookbooks/search/usage.md) |
+| `core` | 面向 VL / Omni agentic 模型。原生读取图片和视频，并可视化文档、代码、数据、3D 文件与 NIfTI 影像。全部在本机完成，不需要 API key。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
+| `api` | 面向任意模型（含纯文本模型）。用 DashScope key 或本地 endpoint 调用多模态模型 API：VL 的 `vision_chat` / `ocr` / `grounding`，Omni 的 `omni_av_*` / `omni_asr*` / `omni_music_caption`，另有 `transcribe_audio` 与 `segmentation`。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/api/cookbook/) |
+| `search` | 面向任意模型。网页搜索、页面抽取和反向图像搜索，需要 Serper、Exa 或 Tavily key。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/search/cookbook/) |
 
 **Qwen VL 系列模型**（例如 **Qwen3.8-Max**、**Qwen3.7-Plus**）：
 
 | 能力 | 用途 | Cookbook |
 |---|---|---|
-| `video-memory` | 为长视频构建层次化记忆，之后的提问直接从记忆里回答，不必重看视频。需要 DashScope key 和 ffmpeg。 | [Cookbook](cookbooks/video-memory/usage.md) |
-| `video-edit` | 生成图片、视频和音频，并在其上运行剪辑工作流。需要 DashScope key、ffmpeg 和 Node。 | [Cookbook](cookbooks/video-edit/usage.md) |
-| `blender` | 驱动一个正在运行的 Blender：建模、材质、灯光与渲染。需要已安装 Blender。 | [Cookbook](cookbooks/blender/usage.md) |
-| `freecad` | 驱动一个正在运行的 FreeCAD：参数化 CAD、STEP/STL 与 FEM。需要已安装 FreeCAD。 | [Cookbook](cookbooks/freecad/usage.md) |
-| `edu-agent` | 生成中文数理讲解视频与交互页面。纯 Skill，需要 Node 和 ffmpeg。 | [Cookbook](cookbooks/edu-agent/usage.md) |
+| `video-memory` | 为长视频构建层次化记忆，之后的提问直接从记忆里回答，不必重看视频。需要 DashScope key 和 ffmpeg。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/video-memory/cookbook/) |
+| `video-edit` | 生成图片、视频和音频，并在其上运行剪辑工作流。需要 DashScope key、ffmpeg 和 Node。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/video-edit/cookbook/) |
+| `blender` | 驱动一个正在运行的 Blender：建模、材质、灯光与渲染。需要已安装 Blender。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/blender/cookbook/) |
+| `freecad` | 驱动一个正在运行的 FreeCAD：参数化 CAD、STEP/STL 与 FEM。需要已安装 FreeCAD。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/freecad/cookbook/) |
+| `edu-agent` | 生成中文数理讲解视频与交互页面。纯 Skill，需要 Node 和 ffmpeg。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/edu-agent/cookbook/) |
 
 **Qwen Omni 系列模型**（例如 **Qwen3.5-Omni-Plus**）：
 
@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 
 | 能力 | 用途 | Cookbook |
 |---|---|---|
-| `omni-memory` | 为长音视频构建音视频记忆：谁在场、谁说了什么、怎么说的、听起来是什么样。由 Omni 模型连同音轨一起读取视频。需要 DashScope key 和 ffmpeg。 | [Cookbook](cookbooks/omni-memory/usage.md) |
+| `omni-memory` | 为长音视频构建音视频记忆：谁在场、谁说了什么、怎么说的、听起来是什么样。由 Omni 模型连同音轨一起读取视频。需要 DashScope key 和 ffmpeg。 | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/omni-memory/cookbook/) |
 
 具体版本与可选依赖见[安装文档](docs/zh/installation.md#依赖)。
 

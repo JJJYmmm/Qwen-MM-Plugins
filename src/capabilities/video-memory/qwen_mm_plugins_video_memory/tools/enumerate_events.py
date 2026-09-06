@@ -34,24 +34,12 @@ class EnumerateEventsArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "enumerate_events",
-    "description": (
-        "Enumerate ALL matching event instances in time order — built for COUNTING and "
-        "'how many times / list every occurrence' questions. "
-        "Unlike search_nodes (top-k best matches), this returns every node above a similarity "
-        "threshold, deduplicated and sorted by start time, in a compact format. "
-        "Protocol for counting: "
-        "1) Call this with a descriptive statement of the target event. "
-        "2) Review the time-ordered list; merge adjacent entries that describe the same real occurrence. "
-        "3) Verify borderline or ambiguous entries with read_video at their time ranges. "
-        "4) If the expected count seems higher than returned matches, retry with lower min_cosine "
-        "and also try alternative phrasings of the event. "
-        "Never count from a single top-10 search — recurring events are spread across the whole video."
-    ),
     "args": EnumerateEventsArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Enumerate ALL matching event instances in time order — built for COUNTING and 'how many times / list every occurrence' questions. Unlike search_nodes (top-k best matches), this returns every node above a similarity threshold, deduplicated and sorted by start time, in a compact format. Protocol for counting: 1) Call this with a descriptive statement of the target event. 2) Review the time-ordered list; merge adjacent entries that describe the same real occurrence. 3) Verify borderline or ambiguous entries with read_video at their time ranges. 4) If the expected count seems higher than returned matches, retry with lower min_cosine and also try alternative phrasings of the event. Never count from a single top-10 search — recurring events are spread across the whole video."""
     from qwen_mm_plugins_video_memory.loader import get_toolkit
 
     args = dict(arguments or {})

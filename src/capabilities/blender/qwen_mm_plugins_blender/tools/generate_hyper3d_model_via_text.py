@@ -30,16 +30,12 @@ class GenerateHyper3DViaTextArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "generate_hyper3d_model_via_text",
-    "description": (
-        "Generate 3D asset using Hyper3D by giving description of the desired asset, and import the "
-        "asset into Blender. The 3D asset has built-in materials. The generated model has a "
-        "normalized size, so re-scaling after generation can be useful."
-    ),
     "args": GenerateHyper3DViaTextArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate 3D asset using Hyper3D by giving description of the desired asset, and import the asset into Blender. The 3D asset has built-in materials. The generated model has a normalized size, so re-scaling after generation can be useful."""
     import json
 
     from qwen_mm_plugins_blender.loader import get_connection

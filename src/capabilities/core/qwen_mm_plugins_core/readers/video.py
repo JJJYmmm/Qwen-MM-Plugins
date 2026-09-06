@@ -60,18 +60,12 @@ class ReadVideoArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "read_video",
-    "description": (
-        "Extract frames from a video file with dynamic resolution and FPS. "
-        "When fps=0 (default), automatically selects the best sampling rate based on video duration. "
-        "Resolution is automatically adjusted to fit the patch grid. "
-        "For full source properties (codec, bitrate, native fps, rotation, VFR, audio tracks) — and "
-        "before any clip/edit task — run media_info first."
-    ),
     "args": ReadVideoArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract frames from a video file with dynamic resolution and FPS. When fps=0 (default), automatically selects the best sampling rate based on video duration. Resolution is automatically adjusted to fit the patch grid. For full source properties (codec, bitrate, native fps, rotation, VFR, audio tracks) — and before any clip/edit task — run media_info first."""
     video_path = arguments.get("video_path", "")
     if not os.path.isfile(video_path):
         return text_error(f"file not found: {video_path}")

@@ -14,15 +14,12 @@ class GetObjectArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "get_object",
-    "description": (
-        "Get an object from a document. You can use this tool to get the properties of an object "
-        "to see what you can check or edit. Returns the object and a screenshot of the object."
-    ),
     "args": GetObjectArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Get an object from a document. You can use this tool to get the properties of an object to see what you can check or edit. Returns the object and a screenshot of the object."""
     from qwen_mm_plugins_freecad._responses import (
         add_screenshot_if_available,
         json_response,

@@ -20,16 +20,12 @@ class SegmentationArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "segmentation",
-    "description": (
-        "Segment objects in an image using a SAM3 server. "
-        "Provide a text prompt describing what to segment. "
-        "Returns mask metadata and a visualization image with masks overlaid."
-    ),
     "args": SegmentationArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Segment objects in an image using a SAM3 server. Provide a text prompt describing what to segment. Returns mask metadata and a visualization image with masks overlaid."""
     from shared.content import image, require_dep, require_file, text, text_error
 
     image_path = arguments.get("image_path", "")

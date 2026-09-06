@@ -13,15 +13,12 @@ class CreateDocumentArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "create_document",
-    "description": (
-        "Create a new document in FreeCAD. Returns a message indicating the success or "
-        "failure of the document creation."
-    ),
     "args": CreateDocumentArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Create a new document in FreeCAD. Returns a message indicating the success or failure of the document creation."""
     from qwen_mm_plugins_freecad._responses import text_response
     from qwen_mm_plugins_freecad.loader import get_connection
 

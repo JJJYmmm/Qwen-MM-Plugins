@@ -54,18 +54,12 @@ class GenerateHyper3DViaImagesArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "generate_hyper3d_model_via_images",
-    "description": (
-        "Generate 3D asset using Hyper3D by giving images of the wanted asset, and import the "
-        "generated asset into Blender. The 3D asset has built-in materials. The generated model has "
-        "a normalized size, so re-scaling after generation can be useful. Only one of "
-        "{input_image_paths, input_image_urls} should be given at a time, depending on the Hyper3D "
-        "Rodin's current mode."
-    ),
     "args": GenerateHyper3DViaImagesArgs,
 }
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate 3D asset using Hyper3D by giving images of the wanted asset, and import the generated asset into Blender. The 3D asset has built-in materials. The generated model has a normalized size, so re-scaling after generation can be useful. Only one of {input_image_paths, input_image_urls} should be given at a time, depending on the Hyper3D Rodin's current mode."""
     import base64
     import json
     import os

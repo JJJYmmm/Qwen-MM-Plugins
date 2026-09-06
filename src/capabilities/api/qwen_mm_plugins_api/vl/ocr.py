@@ -26,11 +26,6 @@ class OcrArgs(BaseModel):
 
 TOOL: dict[str, Any] = {
     "name": "ocr",
-    "description": (
-        "Extract text from an image using a vision-language model. "
-        "Supports printed text, handwriting, documents, signs, and more. "
-        "Returns the recognized text content."
-    ),
     "args": OcrArgs,
 }
 
@@ -38,6 +33,7 @@ DEFAULT_PROMPT = "请对这张图片进行OCR文字识别，提取图片中所�
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract text from an image using a vision-language model. Supports printed text, handwriting, documents, signs, and more. Returns the recognized text content."""
     from shared.api_openai import call_openai_chat, resolve_openai_endpoint, resolve_vl_model
     from shared.content import require_dep, require_file
 
