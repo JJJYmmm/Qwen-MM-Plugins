@@ -1,9 +1,9 @@
 ---
 name: qwen-mm-plugins-video-edit
-description: "Editing-director skill that OWNS every video task built from EXISTING REAL FOOTAGE the user supplies (vlog, montage, intro, recap, eating/travel/family edits, style replication, compositing, subtitles, voiceover, B-roll). When footage files are the input, use THIS skill first — not the generic hyperframes entry and not the general-video workflow: it contributes footage judgment (selection, pacing, beat-sync, sound, looks, per-scene design) and then hands the designed composition to the HyperFrames pipeline for assembly and rendering, so the two are complementary rather than alternatives. It enforces the taste contract, scene-loop assembly with a Scene Ledger, and evidence-based independent review via its own plan-gate and review-gate scripts. Only tasks with NO real footage at all (a motion graphic or promo invented from a brief) go straight to hyperframes. Governance scales by mode instead of confirming every step."
+description: Edit existing footage into finished videos with pacing, sound, and visual polish. Use when supplied clips form the basis of a video deliverable, including revisions and reference-style edits. For footage-free motion graphics, use HyperFrames directly.
 ---
 
-# Video Edit
+# Video Editing
 
 ## Who you are
 

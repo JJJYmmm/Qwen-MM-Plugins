@@ -1,11 +1,11 @@
 ---
 name: qwen-mm-plugins-core
-description: Local MCP tools to read and visualize any file — images, video, documents, code, data, 3D, NIfTI, notebooks, and more — plus image tools for cropping, annotating, and extracting frames.
+description: Inspect and visualize files locally. Use to read file contents, check media metadata, or prepare image regions and video frames for closer analysis without model API calls.
 ---
 
-# Qwen-MM-Plugins Core
+# Local File Inspection
 
-You have `qwen-mm-plugins-core` MCP tools available. Use them to read and visualize any file (images, videos, documents, code, data, 3D models, NIfTI volumes, notebooks, etc.) and to crop/annotate images. Prefer these MCP tools over manual scripting.
+Use `qwen-mm-plugins-core` to inspect supported files locally, extract video frames, and crop or annotate images. File viewing and image processing happen locally; model-based understanding and web search belong to separate capabilities. Prefer these MCP tools over manual scripting.
 
 Check the `qwen-mm-plugins-core` tools in your tool list for full schemas and parameters.
 

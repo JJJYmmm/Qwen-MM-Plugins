@@ -30,16 +30,16 @@ LOCAL_REPO_ROOT=''
 CAP_ITEMS=(core api search video-memory omni-memory video-edit blender freecad edu-agent)
 # Latest stable plugin versions, in exactly the same order as CAP_ITEMS. Keep this release index in
 # sync with plugin-versions.json; scripts/check_manifests.py and tests/test_install_sh.py enforce it.
-CAP_VERSIONS=(1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.0.2)
-CAP_DESC=("read/visualize any local file — images, video, docs, 3D"
-          "cloud media APIs by model family: VL (vision_chat/ocr/grounding), Omni A/V, ASR, segmentation"
-          "web search/extraction (Serper, Exa, Tavily) + Serper reverse-image search"
-          "hierarchical graph memory for long-video QA"
-          "audio-visual memory for long video: who said what, how, and what it sounded like"
-          "video-edit + image/video/audio generation"
-          "drive a running Blender: 3D modeling / materials / render (thin client)"
-          "drive a running FreeCAD: parametric CAD / STEP·STL / FEM (thin client)"
-          "step-by-step Chinese math/science tutorial videos (skill-only)")
+CAP_VERSIONS=(1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.0.3)
+CAP_DESC=("Inspect local files and media, extract video frames, and crop or annotate images."
+          "Understand images, audio, and video through model APIs, including OCR, object localization, and speech transcription."
+          "Search the web, read pages, and identify objects or places with reverse-image search."
+          "Build searchable, hierarchical memory of long videos to summarize content and locate events, text, and dialogue."
+          "Build and query audio-visual memory to track speakers, dialogue, sounds, and events across videos."
+          "Edit existing footage into finished videos with pacing, sound, subtitles, and visual effects."
+          "Create, refine, and render 3D scenes and assets in Blender."
+          "Create and edit parametric CAD models, technical drawings, and model exports in FreeCAD."
+          "Create narrated Mandarin math and science tutorial videos or interactive explainers from problem statements and images.")
 # Skill-only capabilities have NO MCP server / pyproject extra / console entry: they install via
 # the marketplace like any plugin, but the uvx --check-system self-test doesn't apply to them.
 CAP_SKILL_ONLY=" edu-agent "

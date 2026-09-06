@@ -2,7 +2,7 @@
   "name": "qwen-mm-plugins-core",
   "displayName": "Qwen MM Plugins Core",
   "version": "1.1.0",
-  "description": "Vision: read/visualize any file (images, video, PDF, Office, code, SVG, 3D, GIS, notebooks) plus OCR, grounding, segmentation, ASR and vision-chat as MCP tools.",
+  "description": "Inspect local files and media, extract video frames, and crop or annotate images.",
   "skills": "./skill",
   "mcp": ".mcp.json"
 }

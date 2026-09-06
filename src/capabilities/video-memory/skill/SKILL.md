@@ -1,9 +1,9 @@
 ---
 name: qwen-mm-plugins-video-memory
-description: "Triggered for long videos (30+ minutes), whether a single file or a directory of multiple videos. Vision-language MCP tools designed for efficient reading and semantic analysis of long videos (30+ minutes), supporting memory construction and semantic search."
+description: Build and query hierarchical video memory to summarize content and locate events, visual details, on-screen text, and transcripts. Use for questions about videos longer than 30 minutes, including video collections.
 ---
 
-# Graph Memory — Long Video QA Retrieval
+# Long-Video Memory
 
 Check the `qwen-mm-plugins-video-memory` tools in your tool list for full schemas and parameters.
 
