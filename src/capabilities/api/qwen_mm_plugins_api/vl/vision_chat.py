@@ -6,51 +6,54 @@ import importlib.util
 import json
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from shared.content import text_error
 
 
 class VisionChatArgs(BaseModel):
-    model: Optional[str] = Field(
-        default=None,
-        description="Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.",
-    )
-    text: str = Field(
-        default="Describe the visual content.",
-        description="Text prompt (default: 'Describe the visual content.')",
-    )
-    images: Optional[list[str]] = Field(default=None, description="Image URLs, data URLs, or local file paths")
-    videos: Optional[list[str]] = Field(
-        default=None,
-        description="Video URLs or local file paths. Local files are auto-extracted into frames.",
-    )
-    base_url: Optional[str] = Field(default=None, description="API base URL (defaults to DASHSCOPE_BASE_URL)")
-    api_key: Optional[str] = Field(default=None, description="API key (defaults to DASHSCOPE_API_KEY)")
-    max_tokens: int = Field(default=2048, description="Maximum tokens in response (default: 2048)")
-    temperature: Optional[float] = Field(default=None, description="Sampling temperature")
-    dry_run: bool = Field(default=False, description="If true, return the request payload without calling the endpoint")
-    vl_high_resolution_images: bool = Field(
-        default=False,
-        description=(
-            "Request an image token limit of 16384 (up to 16M pixels). Overrides max_pixels; "
-            "endpoints that reject this optional hint fall back to their default image resolution."
-        ),
-    )
-    video_max_frames: int = Field(
-        default=128,
-        description="Max frames to extract from a local video. Default 128 (max 250); see the tool description for the 250-item and fps limits.",
-    )
+    model: Optional[str] = None
+    text: str = "Describe the visual content."
+    images: Optional[list[str]] = None
+    videos: Optional[list[str]] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    max_tokens: int = 2048
+    temperature: Optional[float] = None
+    dry_run: bool = False
+    vl_high_resolution_images: bool = False
+    video_max_frames: int = 128
 
 
-TOOL: dict[str, Any] = {
-    "name": "vision_chat",
-    "args": VisionChatArgs,
-}
+TOOL = {"name": "vision_chat", "args": VisionChatArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
-    """Chat with a vision-language model about images and videos via DashScope. Local videos are sampled into inline frames, so per request keep ≤ 250 items total (frames + images) and fps = frames / duration within [0.1, 10] — set video_max_frames to the video's length; for videos over ~40 min use read_video instead. Remote video URLs are handled server-side. When OSS is configured (OSS_AK/OSS_SK/OSS_ENDPOINT/OSS_BUCKET) a local video is uploaded and sampled server-side instead, lifting the inline frame cap (still bounded by the model's server-side video-duration limit, e.g. 2 h for qwen3.7-plus). Use dry_run=true to preview the request payload without calling."""
+    """Chat with a vision-language model about images and videos via DashScope. Local videos are
+    sampled into inline frames, so per request keep ≤ 250 items total (frames + images) and fps =
+    frames / duration within [0.1, 10] — set video_max_frames to the video's length; for videos over
+    ~40 min use read_video instead. Remote video URLs are handled server-side. When OSS is
+    configured (OSS_AK/OSS_SK/OSS_ENDPOINT/OSS_BUCKET) a local video is uploaded and sampled server-
+    side instead, lifting the inline frame cap (still bounded by the model's server-side video-
+    duration limit, e.g. 2 h for qwen3.7-plus). Use dry_run=true to preview the request payload
+    without calling.
+
+    Args:
+        model: Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.
+        text: Text prompt (default: 'Describe the visual content.')
+        images: Image URLs, data URLs, or local file paths
+        videos: Video URLs or local file paths. Local files are auto-extracted into frames.
+        base_url: API base URL (defaults to DASHSCOPE_BASE_URL)
+        api_key: API key (defaults to DASHSCOPE_API_KEY)
+        max_tokens: Maximum tokens in response (default: 2048)
+        temperature: Sampling temperature
+        dry_run: If true, return the request payload without calling the endpoint
+        vl_high_resolution_images: Request an image token limit of 16384 (up to 16M pixels).
+            Overrides max_pixels; endpoints that reject this optional hint fall back to their
+            default image resolution.
+        video_max_frames: Max frames to extract from a local video. Default 128 (max 250); see the
+            tool description for the 250-item and fps limits.
+    """
     from shared.api_openai import (
         call_openai_chat,
         encode_image_source,

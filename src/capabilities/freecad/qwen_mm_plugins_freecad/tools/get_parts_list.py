@@ -11,10 +11,7 @@ class GetPartsListArgs(BaseModel):
     pass
 
 
-TOOL: dict[str, Any] = {
-    "name": "get_parts_list",
-    "args": GetPartsListArgs,
-}
+TOOL = {"name": "get_parts_list", "args": GetPartsListArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:

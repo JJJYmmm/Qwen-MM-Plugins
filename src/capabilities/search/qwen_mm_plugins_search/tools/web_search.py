@@ -4,21 +4,15 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class WebSearchArgs(BaseModel):
-    queries: list[str] = Field(description="List of search queries to execute.")
-    api_key: Optional[str] = Field(
-        default=None,
-        description="API key for the selected search backend (defaults to its backend-specific environment key).",
-    )
+    queries: list[str]
+    api_key: Optional[str] = None
 
 
-TOOL: dict[str, Any] = {
-    "name": "web_search",
-    "args": WebSearchArgs,
-}
+TOOL = {"name": "web_search", "args": WebSearchArgs}
 
 
 def _format_results(docs: list[dict[str, Any]], start_id: int = 1) -> tuple[str, int]:
@@ -39,7 +33,14 @@ def _format_results(docs: list[dict[str, Any]], start_id: int = 1) -> tuple[str,
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
-    """Search the internet for text information. Returns search results with titles, snippets, and URLs."""
+    """Search the internet for text information. Returns search results with titles, snippets, and
+    URLs.
+
+    Args:
+        queries: List of search queries to execute.
+        api_key: API key for the selected search backend (defaults to its backend-specific
+            environment key).
+    """
     from qwen_mm_plugins_search.backends import (
         backend_error,
         missing_key_error,

@@ -12,10 +12,7 @@ class SceneInfoArgs(BaseModel):
     pass
 
 
-TOOL: dict[str, Any] = {
-    "name": "get_scene_info",
-    "args": SceneInfoArgs,
-}
+TOOL = {"name": "get_scene_info", "args": SceneInfoArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:

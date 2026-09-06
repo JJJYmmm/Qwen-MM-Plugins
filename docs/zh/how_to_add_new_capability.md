@@ -24,9 +24,8 @@ src/capabilities/example/
 
 ## 工具约定（自动发现）
 
-新工具推荐使用 [docstring 说明](hub.md)：省略 `TOOL.description`，在 `handle` 的 docstring
-中写工具说明和可选的 Google 风格 `Args:`；类型与约束仍放 Pydantic。下面的显式 description
-写法继续兼容，也适合需要动态生成的说明。
+所有工具使用[同一套 docstring 约定](hub.md)：`TOOL` 只声明名称和 Pydantic 参数模型，
+`handle` 的 Google-style docstring 写工具说明，并在 `Args:` 中逐一说明参数。
 
 在 `tools/`（或build_registry定义的子包列表下）下新建 `.py`，导出两样东西即可:
 
@@ -35,16 +34,21 @@ from pydantic import BaseModel, Field
 
 
 class EchoArgs(BaseModel):
-    message: str = Field(description="Text to echo back.")
-    repeat: int = Field(default=1, description="Repeat count (1-10).")
+    message: str
+    repeat: int = Field(default=1, ge=1, le=10)
 
 
-TOOL = {"name": "echo", "description": "...", "args": EchoArgs}
+TOOL = {"name": "echo", "args": EchoArgs}
 
 
 def handle(arguments: dict) -> list[dict]:
-    ...
-    return [{"type": "text", "text": ...}]  # 或 {"type": "image", "data": <base64>, "mimeType": ...}
+    """Echo a message.
+
+    Args:
+        message: Text to echo back.
+        repeat: Repeat count, from 1 to 10.
+    """
+    return [{"type": "text", "text": arguments["message"] * arguments.get("repeat", 1)}]
 ```
 
 - `args` 是一个 Pydantic 模型，自动生成工具的 `inputSchema` 并校验每次调用;`handle` 收到普通 dict，返回 MCP content blocks（`text` / `image`）。

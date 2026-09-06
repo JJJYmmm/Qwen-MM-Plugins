@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,36 +11,18 @@ from shared.image import draw_boxes, norm_to_pixel
 
 
 class BBox(BaseModel):
-    bbox: Annotated[
-        list[int],
-        Field(description="[x1, y1, x2, y2] in normalized coordinates (0-1000)", min_length=4, max_length=4),
-    ]
-    label: Annotated[Optional[str], Field(description="Optional label text displayed above the box")] = None
-    color: Annotated[
-        Optional[str],
-        Field(
-            description=(
-                "Optional box color as hex string (e.g. '#FF0000'). Cycles through a default palette if omitted."
-            )
-        ),
-    ] = None
+    bbox: list[int] = Field(min_length=4, max_length=4)
+    label: Optional[str] = None
+    color: Optional[str] = None
 
 
 class DrawBboxArgs(BaseModel):
-    image_path: Annotated[str, Field(description="Absolute path to the source image file")]
-    bboxes: Annotated[list[BBox], Field(description="List of bounding boxes to draw")]
-    output_path: Annotated[
-        Optional[str],
-        Field(
-            description="Where to save the annotated image. Defaults to {stem}_annotated.{ext} next to the original."
-        ),
-    ] = None
+    image_path: str
+    bboxes: list[BBox]
+    output_path: Optional[str] = None
 
 
-TOOL: dict[str, Any] = {
-    "name": "draw_bbox",
-    "args": DrawBboxArgs,
-}
+TOOL = {"name": "draw_bbox", "args": DrawBboxArgs}
 
 
 def _hex_to_rgb(hex_str: str) -> tuple[int, int, int] | None:
@@ -54,7 +36,17 @@ def _hex_to_rgb(hex_str: str) -> tuple[int, int, int] | None:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
-    """Draw bounding boxes on an image. Saves the annotated result to disk and returns a preview. Coordinates are normalized (0-1000), same as grounding output."""
+    """Draw bounding boxes on an image. Saves the annotated result to disk and returns a preview.
+    Coordinates are normalized (0-1000), same as grounding output.
+
+    Args:
+        image_path: Absolute path to the source image file
+        bboxes: Boxes to draw. Each item has bbox=[x1, y1, x2, y2] in normalized coordinates
+            (0-1000), an optional label above the box, and an optional hex color such as
+            '#FF0000'. Omitted colors cycle through the default palette.
+        output_path: Where to save the annotated image. Defaults to {stem}_annotated.{ext} next to
+            the original.
+    """
     image_path = arguments.get("image_path", "")
     if err := require_file(image_path):
         return err

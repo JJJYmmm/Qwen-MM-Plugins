@@ -55,7 +55,10 @@ def _is_error(blocks) -> bool:
 
 @pytest.mark.parametrize("module", [vision_chat, ocr, grounding])
 def test_vl_model_schema_documents_env_override(module):
-    description = module.TOOL["args"].model_fields["model"].description
+    from qwen_mm_plugins_api import SPECS
+
+    tool = next(spec for spec in SPECS if spec.handle is module.handle)
+    description = tool.input_schema["properties"]["model"]["description"]
     assert "QWEN_MM_API_VL_MODEL" in description
 
 

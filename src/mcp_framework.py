@@ -9,8 +9,7 @@ A server is just its tool subpackages plus a thin `__init__.py` (`__version__`, 
   - tool_schema(model)                          — Pydantic model -> advertised inputSchema
 
 Each tool module exports `TOOL = {"name", "args": <PydanticModel>}` + `handle(dict)`.
-An explicit TOOL.description keeps the legacy path; otherwise the handler's Google-style
-docstring supplies the tool description and missing field descriptions.
+The handler's Google-style docstring supplies all tool and argument descriptions.
 Depends on the `mcp` SDK (bundles FastMCP + pydantic), anyio and docstring-parser;
 servers stay independent of sibling capabilities.
 """
@@ -27,7 +26,6 @@ import json
 import logging
 import os
 import pkgutil
-import re
 import shutil
 import signal
 import sys
@@ -160,53 +158,31 @@ def build_registry(import_name: str, tool_packages: list[str]):
 
 def _spec_from_module(mod) -> ToolSpec:
     t = mod.TOOL
-    model = t["args"]
-    if "description" in t:
-        # Opt-in by omission: old tools retain exactly their existing schemas, including
-        # explicitly empty descriptions and handlers with implementation-only docstrings.
-        description = t["description"]
-    else:
-        doc_format = t.get("docstring_format", "google")
-        if doc_format not in ("google", "plain"):
-            raise ValueError(f"{t['name']}: docstring_format must be 'google' or 'plain'")
-        description, model = _documented_args(t["name"], model, mod.handle, structured=doc_format == "google")
+    description, model = _documented_args(t["name"], t["args"], mod.handle)
     return ToolSpec(t["name"], description, tool_schema(model), model, mod.handle)
 
 
-def _documented_args(name, model, handle, *, structured=True):
-    """Derive public descriptions without modifying a shared Pydantic model.
-
-    Docstrings supply prose only; annotations, constraints, aliases, defaults and
-    validators still come from the original model. The enriched model also reaches
-    FastMCP's wrapper, not just the website/exported metadata.
-    """
+def _documented_args(name, model, handle):
+    """Combine Google-style prose with Pydantic validation for both MCP and Hub."""
     from docstring_parser import DocstringStyle, parse
     from pydantic import create_model
 
-    raw = inspect.getdoc(handle) or ""
-    if not raw.strip():
-        raise ValueError(f"{name}: provide TOOL.description or a public handler docstring")
-    # Existing public descriptions can contain free-form "Parameters:"/"Returns:"
-    # prose. Only the documented Args: marker opts into structured Google parsing.
-    if not structured or not re.search(r"^Args:\s*$", raw, re.MULTILINE):
-        return raw, model
-    doc = parse(raw, style=DocstringStyle.GOOGLE)
+    doc = parse(inspect.getdoc(handle) or "", style=DocstringStyle.GOOGLE)
     description = "\n\n".join(part for part in (doc.short_description, doc.long_description) if part)
     if not description.strip():
-        raise ValueError(f"{name}: provide TOOL.description or a public handler docstring")
-    overrides, seen = {}, set()
+        raise ValueError(f"{name}: handle needs a public docstring")
+    for example in doc.examples:
+        description += "\n\nExamples:\n" + (example.description or example.snippet or "")
+    names = [param.arg_name for param in doc.params]
+    if len(names) != len(set(names)) or set(names) != set(model.model_fields):
+        raise ValueError(f"{name}: docstring Args must document each model field exactly once")
+    overrides = {}
     for param in doc.params:
-        key = param.arg_name
-        if key not in model.model_fields:
-            raise ValueError(f"{name}: docstring argument {key!r} is not a field of {model.__name__}")
-        if key in seen:
-            raise ValueError(f"{name}: duplicate docstring argument {key!r}")
-        seen.add(key)
-        field = model.model_fields[key]
-        if field.description is None and param.description:
-            documented = deepcopy(field)
-            documented.description = param.description
-            overrides[key] = (field.annotation, documented)
+        if not param.description:
+            raise ValueError(f"{name}: missing description for {param.arg_name}")
+        field = deepcopy(model.model_fields[param.arg_name])
+        field.description = param.description
+        overrides[param.arg_name] = (field.annotation, field)
     if overrides:
         model = create_model(f"{model.__name__}For_{name}", __base__=model, **overrides)
     return description, model

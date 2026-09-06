@@ -7,27 +7,21 @@ import os
 import re
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from shared.image import draw_boxes, norm_to_pixel
 
 
 class GroundingArgs(BaseModel):
-    image_path: str = Field(description="Absolute path to the image file")
-    prompt: str = Field(description="What to detect (e.g., 'all cats', 'the red car', 'every person')")
-    model: Optional[str] = Field(
-        default=None,
-        description="Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.",
-    )
-    return_img: bool = Field(default=False, description="Return annotated image with bounding boxes drawn")
-    api_key: Optional[str] = Field(default=None, description="API key (defaults to DASHSCOPE_API_KEY)")
-    base_url: Optional[str] = Field(default=None, description="API base URL (defaults to DASHSCOPE_BASE_URL)")
+    image_path: str
+    prompt: str
+    model: Optional[str] = None
+    return_img: bool = False
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
 
 
-TOOL: dict[str, Any] = {
-    "name": "grounding",
-    "args": GroundingArgs,
-}
+TOOL = {"name": "grounding", "args": GroundingArgs}
 
 
 def _parse_json(text: str, img_w: int, img_h: int) -> list[dict[str, Any]] | None:
@@ -98,7 +92,18 @@ def parse_grounding(text: str, img_w: int, img_h: int) -> list[dict[str, Any]]:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
-    """Detect and locate objects in an image using a vision-language model. Returns bounding box coordinates mapped to original image pixel dimensions. Optionally draws boxes on the image and returns the annotated image."""
+    """Detect and locate objects in an image using a vision-language model. Returns bounding box
+    coordinates mapped to original image pixel dimensions. Optionally draws boxes on the image and
+    returns the annotated image.
+
+    Args:
+        image_path: Absolute path to the image file
+        prompt: What to detect (e.g., 'all cats', 'the red car', 'every person')
+        model: Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.
+        return_img: Return annotated image with bounding boxes drawn
+        api_key: API key (defaults to DASHSCOPE_API_KEY)
+        base_url: API base URL (defaults to DASHSCOPE_BASE_URL)
+    """
     from shared.api_openai import call_openai_chat, resolve_openai_endpoint, resolve_vl_model
     from shared.content import require_dep, require_file
 

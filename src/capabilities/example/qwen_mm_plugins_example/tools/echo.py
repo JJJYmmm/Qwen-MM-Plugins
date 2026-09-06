@@ -14,10 +14,7 @@ class EchoArgs(BaseModel):
     repeat: int = 1
 
 
-TOOL: dict[str, Any] = {
-    "name": "echo",
-    "args": EchoArgs,
-}
+TOOL = {"name": "echo", "args": EchoArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:

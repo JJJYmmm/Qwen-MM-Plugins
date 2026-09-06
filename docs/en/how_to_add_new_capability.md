@@ -24,10 +24,9 @@ src/capabilities/example/
 
 ## Tool convention (auto-discovery)
 
-For new tools, prefer the [docstring-backed convention](hub.md#author-descriptions-once):
-omit `TOOL.description`, put the public description and optional Google-style `Args:` in
-`handle`'s docstring, and keep types/constraints in Pydantic. The explicit-description form
-below remains fully supported for compatibility and dynamic descriptions.
+All tools use the [same docstring convention](hub.md#author-descriptions-once):
+`TOOL` declares only the name and Pydantic argument model. The handler's Google-style
+docstring supplies the tool description and every argument description.
 
 Create a new `.py` under `tools/` (or under the subpackage list defined by build_registry), exporting just two things:
 
@@ -36,16 +35,21 @@ from pydantic import BaseModel, Field
 
 
 class EchoArgs(BaseModel):
-    message: str = Field(description="Text to echo back.")
-    repeat: int = Field(default=1, description="Repeat count (1-10).")
+    message: str
+    repeat: int = Field(default=1, ge=1, le=10)
 
 
-TOOL = {"name": "echo", "description": "...", "args": EchoArgs}
+TOOL = {"name": "echo", "args": EchoArgs}
 
 
 def handle(arguments: dict) -> list[dict]:
-    ...
-    return [{"type": "text", "text": ...}]  # or {"type": "image", "data": <base64>, "mimeType": ...}
+    """Echo a message.
+
+    Args:
+        message: Text to echo back.
+        repeat: Repeat count, from 1 to 10.
+    """
+    return [{"type": "text", "text": arguments["message"] * arguments.get("repeat", 1)}]
 ```
 
 - `args` is a Pydantic model that auto-generates the tool's `inputSchema` and validates every call; `handle` receives a plain dict and returns MCP content blocks (`text` / `image`).

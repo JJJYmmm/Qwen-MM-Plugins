@@ -4,19 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class DeleteObjectArgs(BaseModel):
-    doc_name: str = Field(description="The name of the document to delete the object from.")
-    obj_name: str = Field(description="The name of the object to delete.")
+    doc_name: str
+    obj_name: str
 
 
-TOOL: dict[str, Any] = {
-    "name": "delete_object",
-    "docstring_format": "plain",
-    "args": DeleteObjectArgs,
-}
+TOOL = {"name": "delete_object", "args": DeleteObjectArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
@@ -25,9 +21,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     Args:
         doc_name: The name of the document to delete the object from.
         obj_name: The name of the object to delete.
-
-    Returns:
-        A message indicating the success or failure of the object deletion and a screenshot of the object."""
+    """
     from qwen_mm_plugins_freecad._responses import add_screenshot_if_available, text_response
     from qwen_mm_plugins_freecad.loader import get_connection, only_text_feedback
 

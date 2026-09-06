@@ -4,43 +4,32 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class CreateObjectArgs(BaseModel):
-    doc_name: str = Field(description="The name of the document to create the object in.")
-    obj_type: str = Field(
-        description=(
-            "The type of the object to create (e.g. 'Part::Box', 'Part::Cylinder', "
-            "'Draft::Circle', 'PartDesign::Body', etc.)."
-        )
-    )
-    obj_name: str = Field(description="The name of the object to create.")
-    analysis_name: Optional[str] = Field(
-        default=None, description="The name of the FEM analysis to add the object to (for Fem:: objects)."
-    )
-    obj_properties: Optional[dict] = Field(default=None, description="The properties of the object to create.")
+    doc_name: str
+    obj_type: str
+    obj_name: str
+    analysis_name: Optional[str] = None
+    obj_properties: Optional[dict] = None
 
 
-TOOL: dict[str, Any] = {
-    "name": "create_object",
-    "docstring_format": "plain",  # Preserve the agent-facing examples in the full docstring.
-    "args": CreateObjectArgs,
-}
+TOOL = {"name": "create_object", "args": CreateObjectArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     """Create a new object in FreeCAD.
+
     Object type starts with "Part::" or "Draft::" or "PartDesign::" or "Fem::".
 
     Args:
         doc_name: The name of the document to create the object in.
-        obj_type: The type of the object to create (e.g. 'Part::Box', 'Part::Cylinder', 'Draft::Circle', 'PartDesign::Body', etc.).
+        obj_type: The type of the object to create (e.g. 'Part::Box', 'Part::Cylinder',
+            'Draft::Circle', 'PartDesign::Body', etc.).
         obj_name: The name of the object to create.
+        analysis_name: The name of the FEM analysis to add the object to (for Fem:: objects).
         obj_properties: The properties of the object to create.
-
-    Returns:
-        A message indicating the success or failure of the object creation and a screenshot of the object.
 
     Examples:
         If you want to create a cylinder with a height of 30 and a radius of 10, you can use the following data.
@@ -144,7 +133,8 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
                 "CharacteristicLengthMin": 0.1
             }
         }
-        ```"""
+        ```
+    """
     from qwen_mm_plugins_freecad._responses import add_screenshot_if_available, text_response
     from qwen_mm_plugins_freecad.loader import get_connection, only_text_feedback
 

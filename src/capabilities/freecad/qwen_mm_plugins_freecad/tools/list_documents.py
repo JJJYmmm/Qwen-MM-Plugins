@@ -11,10 +11,7 @@ class ListDocumentsArgs(BaseModel):
     pass
 
 
-TOOL: dict[str, Any] = {
-    "name": "list_documents",
-    "args": ListDocumentsArgs,
-}
+TOOL = {"name": "list_documents", "args": ListDocumentsArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
