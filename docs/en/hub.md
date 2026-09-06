@@ -39,4 +39,4 @@ Types, defaults, aliases, constraints and validators belong in Pydantic; prose b
 
 ## Branch and release
 
-Production Hub builds read upstream main. `support_hub` prepares these changes without merging main or publishing release tags. For source testing, run Python from the checkout or use `bash install.sh local` in a dedicated clone; restore tracked manifests with `bash install.sh local --restore` before committing. Tag-pinned installs require the normal [release process](releasing.md).
+Hub builds read the upstream branch selected in the Hub's `source.config.json`; the site displays that branch and pins source links to its commit. A development branch such as `support_hub` can be previewed without merging main or publishing release tags. For source testing, check out that branch in a dedicated clone, then run Python from the checkout or use `bash install.sh local`; restore tracked manifests with `bash install.sh local --restore` before committing. The default installer still uses published releases, which require the normal [release process](releasing.md).

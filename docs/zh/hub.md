@@ -39,4 +39,4 @@ Pydantic 只负责类型、默认值、别名、约束和 validator，说明只�
 
 ## 分支与发布
 
-线上 Hub 从远程 main 构建。`support_hub` 只准备修改，不合并 main、不发布标签。本地可直接从源码运行 Python，或在独立 clone 中用 `bash install.sh local`；提交前运行 `bash install.sh local --restore` 恢复 manifest。按 tag 安装的插件需要走正常[发布流程](releasing.md)才会更新。
+Hub 从其 `source.config.json` 指定的远程分支构建，页面显示分支名称，源码链接固定到对应 commit。`support_hub` 等开发分支可在不合并 main、不发布标签的情况下预览。本地测试时，在独立 clone 中切换到该分支，再直接从源码运行 Python，或使用 `bash install.sh local`；提交前运行 `bash install.sh local --restore` 恢复 manifest。默认安装器仍使用正式发布版本，需要走正常[发布流程](releasing.md)才会更新。
