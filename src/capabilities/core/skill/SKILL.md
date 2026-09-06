@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-core
-description: Inspect and visualize files locally. Use to read file contents, check media metadata, or prepare image regions and video frames for closer analysis without model API calls.
+description: Local MCP tools to read and visualize files — images, video, documents, code, data, 3D, NIfTI, notebooks, and more — plus image tools for cropping, annotating, and extracting frames.
 ---
 
 # Local File Inspection

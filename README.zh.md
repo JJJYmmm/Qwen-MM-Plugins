@@ -4,6 +4,13 @@
 
 面向 Qwen 模型的原生多模态理解插件，让任何 Agent Harness 都具备原生多模态能力。
 
+[浏览 Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/) ·
+[安装指南（英文）](https://jjjymmm.github.io/qwen-mm-plugins-hub/docs/) ·
+[添加插件（英文）](https://jjjymmm.github.io/qwen-mm-plugins-hub/docs/how-to-add-new-capability/)
+
+按能力查找插件，预览 Skill 和工具定义，并在 Cookbook 中直接查看示例视频和交互案例。
+Hub 同时收录英文文档；中文文档继续在本仓库维护。
+
 ## 架构
 
 ![Qwen-MM-Plugins 架构](docs/assets/architecture.svg)

@@ -1,6 +1,17 @@
 ---
 name: qwen-mm-plugins-edu-agent
-description: Create narrated Mandarin tutorial videos or interactive explainers from math and science problems. Use when a user asks to turn a problem statement or image into a step-by-step video lesson or interactive page, not for ordinary text-only explanations.
+description: |
+  Generate step-by-step math problem-solving tutorial videos in Chinese (Mandarin).
+  Use when: (1) a user provides a math problem and wants an explanation video,
+  (2) someone says "make a math tutorial", "explain this equation", "create a
+  teaching video for this problem", "讲解这道题", "生成解题视频",
+  (3) the user wants a Chinese-language math lesson covering formulas, equations,
+  or geometric figures, (4) the user shares a math problem in text or LaTeX and
+  asks for a video walkthrough, (5) the input is an image_assets/ folder
+  containing problem images — the skill will extract the problem via visual
+  recognition, solve it, and generate a tutorial video. Teaching components are
+  rendered as realistic objects (solid opaque panels, 3D cards, SVG figures) with a
+  modern aurora mesh aesthetic.
 ---
 
 # Math and Science Tutorials

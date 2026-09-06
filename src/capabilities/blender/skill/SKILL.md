@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-blender
-description: Create, refine, and render 3D scenes and assets in Blender. Use for modeling, materials, lighting, or integrating generated and imported assets through a live Blender instance with the bundled add-on.
+description: Use whenever a task involves building or editing a 3D scene or asset in Blender — modeling, characters/people, architecture/interiors, terrain/landscapes, props, materials, lighting, or rendering. Covers discovering installed add-ons, using generators, importing and REFINING ready-made assets, and matching the result to the spec. Requires a running Blender instance with the blender-mcp addon (see Prerequisite).
 ---
 
 # Blender 3D Creation

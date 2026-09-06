@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-omni-memory
-description: Build and query audio-visual memory for questions about who said what, surrounding sounds, and events. Use for long videos, repeated questions, or continuous sessions. Short one-off questions can use direct viewing without building memory.
+description: "Build and query persistent stateful audio-visual memory for long videos, including people, speaker-attributed dialogue, paralinguistics, non-speech sound, events, semantic facts, and selective source-clip replay."
 ---
 
 # Audio-Visual Memory

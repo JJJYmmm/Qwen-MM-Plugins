@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-search
-description: Search the web, read pages, and find reverse-image matches. Use for source-backed answers, fact-checking, or identifying a place or object in a photo or video frame.
+description: Web search and page extraction MCP tools (Serper, Exa, or Tavily) plus Serper Lens reverse-image search for confirming facts — web_search (find facts), web_extractor (read a page in depth), image_search (reverse-search a frame to identify an entity). Use to verify anything you cannot confirm from the media alone.
 ---
 
 # Web Search and Verification

@@ -4,6 +4,13 @@
 
 Native multimodal plugins for Qwen models. Make any agent harness multimodal-native.
 
+[Explore the Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/) ·
+[Installation](https://jjjymmm.github.io/qwen-mm-plugins-hub/docs/) ·
+[Add a plugin](https://jjjymmm.github.io/qwen-mm-plugins-hub/docs/how-to-add-new-capability/)
+
+Browse plugins by capability, preview their Skills and tool definitions, and try the cookbook
+examples with embedded videos and interactive cases. The Hub also hosts the English documentation.
+
 ## Architecture
 
 ![Qwen-MM-Plugins architecture](docs/assets/architecture.svg)

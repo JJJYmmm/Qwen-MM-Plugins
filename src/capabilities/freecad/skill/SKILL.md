@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-freecad
-description: Create and edit parametric CAD models in FreeCAD. Use for dimensioned parts and assemblies, technical drawings, model exports, or finite-element analysis through a live FreeCAD instance with the bundled add-on.
+description: Use whenever a task involves parametric CAD in FreeCAD — modeling parts and assemblies, editing object properties, technical drawings, importing/exporting STEP/STL/OBJ/DXF, PDF/Excel reports from a model, or finite-element (FEM/CalculiX) analysis. Requires a running FreeCAD instance with the FreeCADMCP addon (see Prerequisite).
 ---
 
 # FreeCAD Parametric Modeling

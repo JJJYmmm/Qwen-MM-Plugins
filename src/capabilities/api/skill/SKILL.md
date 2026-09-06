@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-api
-description: Interpret images, audio, and video with model APIs. Use for media questions, text extraction, object localization or segmentation, and speech transcription beyond local file inspection.
+description: "Cloud MCP tools for understanding media, by model family. VL model: vision_chat (caption/VQA), ocr, grounding (detect/locate objects). Omni model (reads frames + audio together): timestamped captioning, ASR (plain / controllable / multi-speaker diarized), temporal grounding, event counting, music captioning. Plus transcribe_audio (ASR) and segmentation (SAM3). Use when a question about an image/video/audio needs an external model, not just local reading."
 ---
 
 # Media Understanding
