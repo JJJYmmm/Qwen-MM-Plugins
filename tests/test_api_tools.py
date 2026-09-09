@@ -696,3 +696,16 @@ def test_segmentation_returns_error_on_non_connection_failure(monkeypatch, sampl
     monkeypatch.setattr(requests, "post", _boom)
     out = segmentation.handle({"image_path": sample_image, "server": "http://sam3.invalid"})
     assert _is_error(out)
+
+
+def test_grounding_draws_boxes_with_reversed_corners(monkeypatch, sample_image):
+    pytest.importorskip("openai")
+    model_json = '[{"label": "cat", "bbox_2d": [800, 100, 200, 400]}]'
+    monkeypatch.setattr(oa, "call_openai_chat", lambda **kwargs: _chat_response(model_json))
+
+    blocks = grounding.handle({"image_path": sample_image, "prompt": "cat", "return_img": True})
+
+    assert not _is_error(blocks)
+    result = json.loads(blocks[0]["text"])
+    assert result["detections"][0]["label"] == "cat"
+    assert any(block["type"] == "image" for block in blocks)
