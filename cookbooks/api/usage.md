@@ -22,6 +22,7 @@ Set credentials through the installer's **Configure** action, environment variab
 |---|---|
 | `DASHSCOPE_API_KEY` | DashScope vision, Omni, and Qwen3-ASR calls |
 | `ORCAROUTER_API_KEY` | Calls to `api.orcarouter.ai` |
+| `OPENROUTER_API_KEY` | Calls to `openrouter.ai` |
 | `DASHSCOPE_BASE_URL` | Default OpenAI-compatible endpoint for VL and Omni calls |
 | `ASR_SERVER_URLS` | Self-hosted Qwen3-ASR fallback |
 | `SAM3_SERVER_URL` | Self-hosted segmentation service |
@@ -52,8 +53,9 @@ limits. Omni tools use non-realtime HTTP models.
 
 Pass `base_url` and `model` to select another compatible service. An explicit `base_url` overrides
 `DASHSCOPE_BASE_URL`, and an explicit `api_key` overrides the configured key. DashScope endpoints
-read `DASHSCOPE_API_KEY`; `api.orcarouter.ai` reads `ORCAROUTER_API_KEY`. For other endpoints,
-pass `api_key` if authentication is required, or omit it for an authentication-free server.
+read `DASHSCOPE_API_KEY`; `api.orcarouter.ai` reads `ORCAROUTER_API_KEY`; `openrouter.ai` reads
+`OPENROUTER_API_KEY`. For other endpoints, pass `api_key` if authentication is required, or omit it
+for an authentication-free server.
 The endpoint and model must support the selected tool's media format.
 
 ### OrcaRouter example
@@ -77,6 +79,45 @@ Call `vision_chat` with these arguments, replacing the image path with your own 
 
 The call reads `ORCAROUTER_API_KEY` automatically. See the
 [OrcaRouter model catalog](https://www.orcarouter.ai/models) for other model IDs.
+
+### OpenRouter example
+
+Add your key through **Configure** or in `~/.qwen-mm-plugins/config`:
+
+```text
+OPENROUTER_API_KEY=your-openrouter-api-key
+```
+
+Call `vision_chat` with these arguments, replacing the image path with your own file:
+
+```json
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "model": "qwen/qwen3.7-plus",
+  "images": ["/absolute/path/photo.jpg"],
+  "text": "Describe the main objects in this image."
+}
+```
+
+The call reads `OPENROUTER_API_KEY` automatically. This example uses
+[Qwen3.7 Plus](https://openrouter.ai/qwen/qwen3.7-plus), which supports image input. See
+[OpenRouter authentication](https://openrouter.ai/docs/api_reference/authentication) for key setup
+and the [model catalog](https://openrouter.ai/models) for other model IDs and supported media.
+
+For video, pass `videos` and a suitable model, such as
+[Qwen3.8 Max](https://openrouter.ai/qwen/qwen3.8-max-0902):
+
+```json
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "model": "qwen/qwen3.8-max-0902",
+  "videos": ["/absolute/path/clip.mp4"],
+  "text": "Summarize the scene changes in chronological order."
+}
+```
+
+Local sampled frames are sent as ordered images. Direct video URLs and video data URLs require
+a model and provider that support [video input](https://openrouter.ai/docs/guides/overview/multimodal/videos).
 
 ## Tools
 
@@ -114,10 +155,10 @@ See the [API Skill](../../src/capabilities/api/skill/SKILL.md) and MCP tool sche
 
 Remote URLs are passed to the endpoint for fetching. Local videos use these delivery paths:
 
-- **Vision**: sample local frames, or upload the video to OSS and send a signed URL when OSS is
-  configured and the video fits the model's duration limit. Inline requests support up to 250
-  media items, including images and frames.
-- **Omni**: transcode to fit the inline budget, then use OSS or sampled frames plus audio for
+- **Vision**: send local sampled frames as ordered images, or upload the video to OSS and send a
+  signed URL when OSS is configured and the video fits the model's duration limit. Inline requests
+  support up to 250 media items, including images and frames.
+- **Omni**: transcode to fit the inline budget, then use OSS or ordered images plus audio for
   larger videos.
 
 `dry_run=true` previews a VL or Omni request. For long recordings, use

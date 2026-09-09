@@ -299,6 +299,28 @@ def test_vision_chat_model_precedence(monkeypatch):
     assert explicit_payload["request"]["model"] == "explicit-vl"
 
 
+@pytest.mark.parametrize("base_url", [oa.DEFAULT_DASHSCOPE_BASE_URL, "https://openrouter.ai/api/v1"])
+def test_vision_chat_preview_contains_sampled_images(monkeypatch, sample_video, base_url):
+    from shared import oss
+
+    monkeypatch.setattr(oss, "is_upload_configured", lambda: False)
+    blocks = vision_chat.handle(
+        {
+            "base_url": base_url,
+            "videos": [sample_video],
+            "video_max_frames": 4,
+            "dry_run": True,
+        }
+    )
+    payload = json.loads(blocks[0]["text"])
+    parts = payload["request"]["messages"][0]["content"]
+    assert not any(part["type"] == "video" for part in parts)
+    images = [part for part in parts if part["type"] == "image_url"]
+    assert len(images) == 4
+    assert all(part["image_url"]["url"].startswith("<base64 image") for part in images)
+    assert "fps" in parts[0]["text"]
+
+
 def test_encode_video_source_uploads_to_oss_when_configured(monkeypatch):
     """Unified OSS trigger: a local video is uploaded and passed by URL when OSS is configured —
     no local frame extraction (so this needs neither ffmpeg nor a real file)."""

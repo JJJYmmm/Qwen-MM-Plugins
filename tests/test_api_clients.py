@@ -8,7 +8,9 @@ module's attribute is enough, no live network.
 
 import base64
 import io
+from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -127,25 +129,62 @@ def test_model_resolvers_use_explicit_env_then_builtin(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "base_url,orca_key,explicit_key,expected_key",
+    "base_url,missing_key,explicit_key,expected_key",
     [
-        (None, "orca", None, "dashscope"),
-        ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "orca", None, "dashscope"),
-        ("https://api.orcarouter.ai/v1", "orca", None, "orca"),
-        ("https://api.orcarouter.ai/v1", None, None, "EMPTY"),
-        ("https://api.orcarouter.ai/v1", "orca", "explicit", "explicit"),
-        ("https://api.orcarouter.ai.example/v1", "orca", None, "EMPTY"),
-        ("http://localhost:8000/v1", "orca", None, "EMPTY"),
-        ("http://localhost:8000/v1", "orca", "custom", "custom"),
+        (None, None, None, "dashscope"),
+        ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", None, None, "dashscope"),
+        ("https://api.orcarouter.ai/v1", None, None, "orca"),
+        ("https://api.orcarouter.ai/v1", "ORCAROUTER_API_KEY", None, "EMPTY"),
+        ("https://api.orcarouter.ai/v1", None, "explicit", "explicit"),
+        ("https://api.orcarouter.ai.example/v1", None, None, "EMPTY"),
+        ("https://openrouter.ai/api/v1", None, None, "openrouter"),
+        ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", None, "EMPTY"),
+        ("https://openrouter.ai/api/v1", None, "explicit", "explicit"),
+        ("https://openrouter.ai.example/api/v1", None, None, "EMPTY"),
+        ("http://localhost:8000/v1", None, None, "EMPTY"),
+        ("http://localhost:8000/v1", None, "custom", "custom"),
     ],
 )
-def test_endpoint_selects_key_by_host(monkeypatch, base_url, orca_key, explicit_key, expected_key):
-    values = {"DASHSCOPE_API_KEY": "dashscope", "ORCAROUTER_API_KEY": orca_key}
+def test_endpoint_selects_key_by_host(monkeypatch, base_url, missing_key, explicit_key, expected_key):
+    values = {
+        "DASHSCOPE_API_KEY": "dashscope",
+        "ORCAROUTER_API_KEY": "orca",
+        "OPENROUTER_API_KEY": "openrouter",
+    }
+    if missing_key:
+        del values[missing_key]
     monkeypatch.setattr(oa, "get_env", values.get)
     arguments = {"base_url": base_url, "api_key": explicit_key}
     expected = (base_url or oa.DEFAULT_DASHSCOPE_BASE_URL, expected_key)
     assert oa.resolve_openai_endpoint(arguments) == expected
     assert omni.resolve_omni_endpoint(arguments) == expected
+
+
+def test_openrouter_endpoint_from_config(monkeypatch, tmp_path):
+    import shared.env as env
+
+    config = tmp_path / "config"
+    config.write_text(
+        "DASHSCOPE_BASE_URL=https://openrouter.ai/api/v1\n"
+        "OPENROUTER_API_KEY=config-openrouter\n"
+        "DASHSCOPE_API_KEY=config-dashscope\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("QWEN_MM_CONFIG", str(config))
+    for key in ("DASHSCOPE_BASE_URL", "OPENROUTER_API_KEY", "DASHSCOPE_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(env, "_config_cache", None)
+
+    for resolve in (oa.resolve_openai_endpoint, omni.resolve_omni_endpoint):
+        assert resolve({}) == ("https://openrouter.ai/api/v1", "config-openrouter")
+        assert resolve({"base_url": oa.DEFAULT_DASHSCOPE_BASE_URL}) == (
+            oa.DEFAULT_DASHSCOPE_BASE_URL,
+            "config-dashscope",
+        )
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "env-openrouter")
+    for resolve in (oa.resolve_openai_endpoint, omni.resolve_omni_endpoint):
+        assert resolve({}) == ("https://openrouter.ai/api/v1", "env-openrouter")
 
 
 class _FakeCompletions:
@@ -175,6 +214,52 @@ def _install_fake_openai(monkeypatch, behavior):
     monkeypatch.setattr(openai, "OpenAI", factory)
     monkeypatch.setattr(sr.time, "sleep", lambda *_: None)
     return holder
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://openrouter.ai/api/v1",
+        "http://localhost:8000/v1",
+        oa.DEFAULT_DASHSCOPE_BASE_URL,
+        "https://api.orcarouter.ai/v1",
+    ],
+)
+def test_clients_send_video_frames_as_ordered_images(monkeypatch, streaming, base_url):
+    frame_urls = [f"https://example.com/frame{i}.jpg" for i in range(4)]
+    other_parts = [
+        {"type": "input_audio", "input_audio": {"data": "YQ==", "format": "wav"}},
+        {"type": "video_url", "video_url": {"url": "https://example.com/clip.mp4"}},
+        {"type": "text", "text": "Describe the videos."},
+    ]
+    messages = [
+        {"role": "system", "content": "Describe media."},
+        {
+            "role": "user",
+            "content": [
+                {"type": "video", "video": frame_urls[:2], "fps": 2},
+                {"type": "video", "video": frame_urls[2:]},
+                *other_parts,
+            ],
+        },
+    ]
+    original = deepcopy(messages)
+    chunk = SimpleNamespace(usage=None, choices=[SimpleNamespace(delta=SimpleNamespace(content="ok"))])
+    holder = _install_fake_openai(monkeypatch, lambda _: [chunk] if streaming else "ok")
+    call = omni.call_omni if streaming else oa.call_openai_chat
+    call(base_url=base_url, api_key="test-key", model="test-model", messages=messages)
+    sent = holder["client"].chat.completions.seen[0]["messages"]
+
+    assert messages == original
+    assert sent[0] == original[0]
+    assert sent[1]["role"] == "user"
+    parts = sent[1]["content"]
+    assert not any(part["type"] == "video" for part in parts)
+    assert [part["image_url"]["url"] for part in parts if part["type"] == "image_url"] == frame_urls
+    assert parts[-3:] == other_parts
+    assert "2 fps" in parts[0]["text"]
+    assert parts[3]["type"] == "text"
 
 
 def test_call_openai_chat_retries_transient_then_succeeds(monkeypatch):

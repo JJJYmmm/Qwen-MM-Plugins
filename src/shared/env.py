@@ -164,6 +164,13 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         "OpenAI-compatible calls to api.orcarouter.ai",
     ),
     (
+        "OPENROUTER_API_KEY",
+        True,
+        "Media APIs & endpoints",
+        "",
+        "OpenAI-compatible calls to openrouter.ai",
+    ),
+    (
         "MINIMAX_API_KEY",
         True,
         "Media APIs & endpoints",

@@ -79,6 +79,7 @@ _API_KEY_ENV_BY_HOST: dict[str, str] = {
     "dashscope.aliyuncs.com": "DASHSCOPE_API_KEY",
     "dashscope-intl.aliyuncs.com": "DASHSCOPE_API_KEY",
     "api.orcarouter.ai": "ORCAROUTER_API_KEY",
+    "openrouter.ai": "OPENROUTER_API_KEY",
 }
 
 
@@ -93,6 +94,29 @@ def resolve_openai_endpoint(arguments: dict[str, Any]) -> tuple[str, str]:
     key_env = _API_KEY_ENV_BY_HOST.get(urlsplit(base_url).hostname or "")
     api_key = arguments.get("api_key") or (get_env(key_env) if key_env else None) or "EMPTY"
     return base_url, api_key
+
+
+def expand_video_frames(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Send sampled video frames as ordered, standard ``image_url`` content parts.
+
+    Preserve the frame rate, video URLs, and other media without mutating the caller's messages.
+    """
+    prepared = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            prepared.append(message)
+            continue
+        parts = []
+        for part in content:
+            if part.get("type") != "video" or not isinstance(part.get("video"), list):
+                parts.append(part)
+                continue
+            fps = f" at {part['fps']} fps" if part.get("fps") else ""
+            parts.append({"type": "text", "text": f"Video frames in chronological order{fps}:"})
+            parts.extend({"type": "image_url", "image_url": {"url": frame}} for frame in part["video"])
+        prepared.append({**message, "content": parts})
+    return prepared
 
 
 def is_url(value: str) -> bool:
@@ -201,6 +225,8 @@ def call_openai_chat(
         )
 
     base_extra_body = kwargs.get("extra_body") or {}
+    if "messages" in kwargs:
+        kwargs["messages"] = expand_video_frames(kwargs["messages"])
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=_chat_timeout())
 
     def _create(hints: dict[str, Any] | None) -> Any:

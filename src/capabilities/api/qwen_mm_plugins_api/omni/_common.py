@@ -395,7 +395,7 @@ def _frames_and_audio_parts(file_path: str, fps: float, max_pixels: int, cleanup
     """Decompose a too-long local video into a frame list + its audio track + a timestamp note.
 
     Omni's image-list video form carries no audio, so the sound track rides along as its own part and
-    the model combines them (multi-modal combination in one request needs a Qwen3.5-Omni model). The
+    the model combines them when it supports image and audio input in one request. The
     inline budget is split: speech only exists in the sound track, so that is fitted first — up to
     ``_AUDIO_SHARE``, stretched to ``_AUDIO_SHARE_MAX`` when the floor bitrate needs it — and the frames
     take whatever is left.
@@ -571,14 +571,6 @@ def run_omni(
     cleanup: list[str] = []
     try:
         parts = _build_media_parts(file_path, mode, fps, max_pixels, cleanup, omni_video_max_sec(model), model)
-        if any(p.get("type") == "video" and isinstance(p.get("video"), list) for p in parts) and (
-            "qwen3.5-omni" not in model
-        ):
-            log.warning(
-                "model %r may reject a frame list combined with audio — multi-modal combination in one "
-                "request is documented for the Qwen3.5-Omni series only",
-                model,
-            )
         messages = [{"role": "user", "content": [*parts, {"type": "text", "text": prompt}]}]
         if json_output:
             data = call_omni_json(
