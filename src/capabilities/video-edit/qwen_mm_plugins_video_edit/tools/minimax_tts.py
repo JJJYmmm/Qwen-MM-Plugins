@@ -17,25 +17,21 @@ from shared.retry import retry_call
 class MiniMaxVoiceSetting(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    speed: float = Field(default=1.0, ge=0.5, le=2.0, description="Speech speed multiplier.")
-    vol: float = Field(default=1.0, gt=0, le=10, description="Speech volume multiplier.")
-    pitch: int = Field(default=0, ge=-12, le=12, description="Pitch adjustment in semitones.")
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    vol: float = Field(default=1.0, gt=0, le=10)
+    pitch: int = Field(default=0, ge=-12, le=12)
     emotion: (
         Literal["happy", "sad", "angry", "fearful", "disgusted", "surprised", "calm", "fluent", "whisper"] | None
-    ) = Field(default=None, description="Optional emotion supported by the selected model.")
+    ) = None
 
 
 class MiniMaxAudioSetting(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    format: Literal["mp3", "wav", "flac", "pcm"] = Field(default="mp3", description="Audio file format.")
-    sample_rate: Literal[8000, 16000, 22050, 24000, 32000, 44100] = Field(
-        default=32000, description="Sample rate in Hz."
-    )
-    bitrate: Literal[32000, 64000, 128000, 256000] = Field(
-        default=128000, description="MP3 bitrate in bits per second."
-    )
-    channel: Literal[1, 2] = Field(default=1, description="One channel for mono or two for stereo.")
+    format: Literal["mp3", "wav", "flac", "pcm"] = "mp3"
+    sample_rate: Literal[8000, 16000, 22050, 24000, 32000, 44100] = 32000
+    bitrate: Literal[32000, 64000, 128000, 256000] = 128000
+    channel: Literal[1, 2] = 1
 
 
 class MiniMaxVoiceModify(BaseModel):
@@ -50,56 +46,22 @@ class MiniMaxVoiceModify(BaseModel):
 class MiniMaxTtsArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    text: str = Field(description="Text to synthesize, fewer than 10,000 characters.", max_length=9999, pattern=r"\S")
-    voice: str = Field(description="MiniMax voice ID, such as English_expressive_narrator.", pattern=r"\S")
-    language_type: str = Field(
-        default="Auto",
-        description="Language hint, e.g. Chinese, English, Japanese, or Auto for automatic detection.",
-        pattern=r"\S",
-    )
-    output_dir: str | None = Field(
-        default=None,
-        description="Directory to save audio. If omitted, returns a URL (valid 24h), or saves hex audio to a temp directory.",
-    )
-    model: str = Field(default="speech-2.8-hd", description="MiniMax speech model ID.", pattern=r"\S")
-    region: Literal["global", "cn"] = Field(
-        default="global",
-        description="API region matching your MiniMax account: global or cn. Independent of spoken language.",
-    )
-    subtitle_enable: bool = Field(default=False, description="Also return aligned subtitles as a URL.")
-    voice_setting: MiniMaxVoiceSetting = Field(
-        default=MiniMaxVoiceSetting(),
-        description="Optional voice controls. Omit for normal speed, volume, and pitch; select the voice with voice.",
-    )
-    audio_setting: MiniMaxAudioSetting = Field(
-        default=MiniMaxAudioSetting(),
-        description="Optional output settings. Defaults to MP3, 32 kHz, 128 kbps, mono.",
-    )
-    pronunciation_dict: dict[str, list[str]] | None = Field(
-        default=None,
-        description='Optional pronunciation replacements, e.g. {"tone": ["Omg/Oh my god"]}.',
-    )
-    voice_modify: MiniMaxVoiceModify | None = Field(
-        default=None, description="Optional voice effects; disabled by default."
-    )
-    stream: Literal[False] = Field(
-        default=False, description="This synchronous tool supports non-streaming responses only."
-    )
-    output_format: Literal["url", "hex"] = Field(
-        default="url",
-        description="URL by default; hex responses are decoded and saved locally.",
-    )
+    text: str = Field(max_length=9999, pattern=r"\S")
+    voice: str = Field(pattern=r"\S")
+    language_type: str = Field(default="Auto", pattern=r"\S")
+    output_dir: str | None = None
+    model: str = Field(default="speech-2.8-hd", pattern=r"\S")
+    region: Literal["global", "cn"] = "global"
+    subtitle_enable: bool = False
+    voice_setting: MiniMaxVoiceSetting = Field(default=MiniMaxVoiceSetting())
+    audio_setting: MiniMaxAudioSetting = Field(default=MiniMaxAudioSetting())
+    pronunciation_dict: dict[str, list[str]] | None = None
+    voice_modify: MiniMaxVoiceModify | None = None
+    stream: Literal[False] = False
+    output_format: Literal["url", "hex"] = "url"
 
 
-TOOL: dict[str, Any] = {
-    "name": "minimax_tts",
-    "description": (
-        "Generate speech with MiniMax from text and a voice ID. Optional voice, audio, pronunciation, and effect settings "
-        "have defaults. Returns an MP3 URL by default; pass output_dir to also save the file locally. "
-        "Set subtitle_enable=true for an aligned subtitle URL. Requires MINIMAX_API_KEY."
-    ),
-    "args": MiniMaxTtsArgs,
-}
+TOOL = {"name": "minimax_tts", "args": MiniMaxTtsArgs}
 
 _ENDPOINTS = {
     "global": "https://api.minimax.io/v1/t2a_v2",
@@ -134,6 +96,34 @@ def _request(endpoint: str, api_key: str, payload: dict[str, Any]) -> dict[str, 
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate speech with MiniMax from text and a voice ID.
+
+    Optional voice, audio, pronunciation, and effect settings have defaults. Returns an MP3
+    URL by default; pass output_dir to also save the file locally. Set subtitle_enable=true
+    for an aligned subtitle URL. Requires MINIMAX_API_KEY.
+
+    Args:
+        text: Text to synthesize, fewer than 10,000 characters.
+        voice: MiniMax voice ID, such as English_expressive_narrator.
+        language_type: Language hint, e.g. Chinese, English, Japanese, or Auto for detection.
+        output_dir: Directory to save audio. If omitted, returns a URL valid for 24 hours,
+            or saves hex audio to a temporary directory.
+        model: MiniMax speech model ID. Defaults to speech-2.8-hd.
+        region: API region matching your MiniMax account: global or cn, independently of
+            the spoken language.
+        subtitle_enable: Also return aligned subtitles as a URL.
+        voice_setting: Optional voice controls. speed is a multiplier from 0.5 to 2;
+            vol is a multiplier above 0 and up to 10; pitch shifts by -12 to 12 semitones.
+            emotion is an optional model-supported emotion. Omitted fields keep their
+            defaults; select the voice with voice, not this object.
+        audio_setting: Optional output format, sample_rate in Hz, MP3 bitrate in bits per
+            second, and channel count. Defaults to MP3, 32 kHz, 128 kbps, mono.
+        pronunciation_dict: Optional replacements, e.g. {"tone": ["Omg/Oh my god"]}.
+        voice_modify: Optional pitch, intensity, and timbre effects from -100 to 100,
+            plus sound_effects. Disabled by default.
+        stream: Only false is supported; this tool returns non-streaming responses.
+        output_format: URL by default; hex responses are decoded and saved locally.
+    """
     api_key = get_env("MINIMAX_API_KEY")
     if not api_key:
         return text_error("MINIMAX_API_KEY not set")

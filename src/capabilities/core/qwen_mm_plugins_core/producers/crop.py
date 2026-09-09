@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,33 +11,24 @@ from shared.image import norm_to_pixel, open_image
 
 
 class CropArgs(BaseModel):
-    image_path: Annotated[str, Field(description="Absolute path to the source image file")]
-    box: Annotated[
-        list[int],
-        Field(
-            description="Crop region as [x1, y1, x2, y2] in normalized coordinates (0-1000)",
-            min_length=4,
-            max_length=4,
-        ),
-    ]
-    output_path: Annotated[
-        Optional[str],
-        Field(description="Where to save the cropped image. Defaults to {stem}_cropped.{ext} next to the original."),
-    ] = None
+    image_path: str
+    box: list[int] = Field(min_length=4, max_length=4)
+    output_path: Optional[str] = None
 
 
-TOOL: dict[str, Any] = {
-    "name": "crop",
-    "description": (
-        "Crop a rectangular region from an image. "
-        "Saves the cropped result to disk and returns a preview. "
-        "Coordinates are normalized (0-1000), same as grounding output."
-    ),
-    "args": CropArgs,
-}
+TOOL = {"name": "crop", "args": CropArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Crop a rectangular region from an image. Saves the cropped result to disk and returns a preview.
+    Coordinates are normalized (0-1000), same as grounding output.
+
+    Args:
+        image_path: Absolute path to the source image file
+        box: Crop region as [x1, y1, x2, y2] in normalized coordinates (0-1000)
+        output_path: Where to save the cropped image. Defaults to {stem}_cropped.{ext} next to the
+            original.
+    """
     image_path = arguments.get("image_path", "")
     if err := require_file(image_path):
         return err

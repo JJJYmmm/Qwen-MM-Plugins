@@ -3,9 +3,9 @@ name: qwen-mm-plugins-api
 description: "Understand images, video, and audio using hosted or self-hosted model services through MCP tools. Use for visual questions, OCR, object grounding, speech transcription, speaker diarization, timestamped captions, event localization/counting, music captioning, or segmentation. Includes VL and Omni model tools, transcribe_audio (Qwen3-ASR), and segmentation (SAM3)."
 ---
 
-# Qwen-MM-Plugins API
+# Media Understanding
 
-You have `qwen-mm-plugins-api` MCP tools available. They call hosted or self-hosted models/services to understand media, grouped by model family:
+Use `qwen-mm-plugins-api` to understand media through configured model services. The tools are grouped by model family:
 
 - **VL model** (Qwen-VL, OpenAI-compatible endpoint): `vision_chat`, `ocr`, `grounding`.
 - **Omni model** (Qwen-Omni — the AV tools combine video frames and audio; the ASR/music tools focus on audio): `omni_asr`, `omni_asr_timestamped`, `omni_multi_speaker_asr`, `omni_av_caption`, `omni_av_grounding`, `omni_av_counting`, `omni_music_caption`.

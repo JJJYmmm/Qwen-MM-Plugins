@@ -1,8 +1,8 @@
 {
   "name": "qwen-mm-plugins-api",
   "displayName": "Qwen MM Plugins API",
-  "version": "1.0.5",
-  "description": "API: Understand images, video, and audio through VL/Omni models, Qwen3-ASR, and SAM3. Provides vision chat, OCR, object grounding, transcription, speaker diarization, timestamped captions, event analysis, and segmentation as MCP tools, using hosted or self-hosted model services.",
+  "version": "1.1.0",
+  "description": "Understand images, audio, and video through model APIs, including OCR, object localization, and speech transcription.",
   "skills": "./skill",
   "mcp": ".mcp.json"
 }

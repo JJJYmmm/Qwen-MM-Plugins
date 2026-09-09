@@ -3,7 +3,7 @@ name: qwen-mm-plugins-core
 description: Read and visualize any file — images, video, documents, code, data, 3D models, NIfTI volumes, and more — with MCP tools. Use when the agent needs to inspect file contents or media metadata, crop an image, draw bounding boxes, or save document pages and video frames.
 ---
 
-# Qwen-MM-Plugins Core
+# Local File Inspection
 
 You have `qwen-mm-plugins-core` MCP tools available. Use them to read and visualize supported local files, inspect media metadata, crop/annotate images, and save document pages or video frames. Prefer these MCP tools over manual scripting.
 

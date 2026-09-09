@@ -36,6 +36,7 @@ classifiers = [
 dependencies = [
     "mcp>=1.0.0,<2",
     "anyio>=4.0,<5",
+    "docstring-parser>=0.18,<0.19",
     "pillow<12",
     "openai",  # shared text-only fallback captions for MCP image results
 ]

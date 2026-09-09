@@ -4,33 +4,29 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from shared.env import DEFAULT_BUDGET, IMAGE_BUDGET_TOKENS, IMAGE_MIN_PIXELS
 from shared.image import budget_to_pixels, open_image, process_image
 
 
 class ReadImageArgs(BaseModel):
-    image_path: str = Field(description="Absolute path to the image file")
-    budget: Literal["small", "normal", "large"] = Field(
-        default=DEFAULT_BUDGET,
-        description="Resolution preset: small (~512×512), normal (~1024×1024), large (~1448×1448).",
-    )
+    image_path: str
+    budget: Literal["small", "normal", "large"] = DEFAULT_BUDGET
 
 
-TOOL: dict[str, Any] = {
-    "name": "read_image",
-    "description": (
-        "Read an image with model-optimized dynamic resolution. "
-        "Automatically resizes to fit the target model's patch grid, "
-        "balancing resolution and detail preservation. "
-        "Returns the resized image for model consumption."
-    ),
-    "args": ReadImageArgs,
-}
+TOOL = {"name": "read_image", "args": ReadImageArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read an image with model-optimized dynamic resolution. Automatically resizes to fit the target
+    model's patch grid, balancing resolution and detail preservation. Returns the resized image for
+    model consumption.
+
+    Args:
+        image_path: Absolute path to the image file
+        budget: Resolution preset: small (~512×512), normal (~1024×1024), large (~1448×1448).
+    """
     from shared.content import image, require_dep, require_file, text
 
     image_path = arguments.get("image_path", "")
