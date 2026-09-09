@@ -345,8 +345,8 @@ TESTS = [
     ("avg152T1_LR_nifti.nii.gz", "image", 3, "NIfTI (nibabel)", ["nibabel"]),
     ("sample.ipynb", "text", 3, "Jupyter notebook", ["nbformat"]),
     ("charts.ipynb", "image", 3, "Jupyter notebook (charts)", ["nbformat"]),
-    ("sample.tex", "image", 1, "LaTeX (pdflatex)", ["pdflatex"]),
-    ("tex_project/main.tex", "image", 1, "LaTeX multi-file", ["pdflatex"]),
+    ("sample.tex", "image", 1, "LaTeX (pdflatex)", ["pdflatex", "pypdfium2"]),
+    ("tex_project/main.tex", "image", 1, "LaTeX multi-file", ["pdflatex", "pypdfium2"]),
     ("broken.tex", "text", 1, "LaTeX fallback (text)", []),
 ]
 
