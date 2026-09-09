@@ -1,0 +1,18 @@
+{
+  "name": "qwen-mm-plugins-omni-memory",
+  "version": "1.0.0",
+  "description": "Qwen-MM-Plugins omni-memory — build and query persistent stateful audio-visual memory for long videos, including people, speaker-attributed dialogue, paralinguistics, non-speech sound, events, semantic facts, and selective source-clip replay.",
+  "skills": [
+    "./skill"
+  ],
+  "mcpServers": {
+    "qwen-mm-plugins-omni-memory": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "qwen-mm-plugins[omni-memory] @ git+https://github.com/QwenLM/Qwen-MM-Plugins.git@qwen-mm-plugins-omni-memory-v1.0.0",
+        "qwen-mm-plugins-omni-memory"
+      ]
+    }
+  }
+}

@@ -19,6 +19,7 @@ Live reachability (does the real API answer?) lives in test_api_reachability.py.
 """
 
 import base64
+import io
 import json
 import os
 import sys
@@ -448,6 +449,49 @@ def test_grounding_maps_boxes_and_draws(monkeypatch, sample_image):
     assert result["detections"][0]["bbox_pixel"] == [48, 0, 96, 64]
     # return_img=True with a detection → an image block is appended
     assert any(b["type"] == "image" for b in blocks)
+
+
+def test_grounding_request_and_crop_share_display_coordinates(monkeypatch, rotated_image, tmp_path):
+    from PIL import Image
+
+    from qwen_mm_plugins_core.producers import crop
+
+    box = [500, 0, 1000, 300]
+
+    def fake_call(**kwargs):
+        # Inspect the actual uploaded pixels, without applying EXIF in the fake endpoint.
+        url = kwargs["messages"][0]["content"][0]["image_url"]["url"]
+        with Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1]))) as sent:
+            assert sent.size == (120, 320)
+            assert sent.getexif().get(274, 1) == 1
+            assert sent.crop((60, 0, 120, 96)).convert("L").getextrema()[1] > 128
+        return _chat_response(json.dumps([{"label": "white square", "bbox_2d": box}]))
+
+    monkeypatch.setattr(oa, "call_openai_chat", fake_call)
+    blocks = grounding.handle({"image_path": rotated_image, "prompt": "white square", "return_img": True})
+    assert not _is_error(blocks)
+    result = json.loads(blocks[0]["text"])
+    assert result["image_size"] == {"width": 120, "height": 320}
+    detection = result["detections"][0]
+    assert detection["bbox_pixel"] == [60, 0, 120, 96]
+    out = tmp_path / "grounded-crop.png"
+    crop.handle({"image_path": rotated_image, "box": detection["bbox_normalized"], "output_path": str(out)})
+    with Image.open(out) as cropped:
+        assert cropped.size == (60, 96)
+        assert cropped.convert("L").getextrema()[1] > 128
+
+
+def test_image_search_crops_display_coordinates(rotated_image):
+    from PIL import Image
+
+    path = image_search._crop_bbox(rotated_image, [500, 0, 1000, 300])
+    try:
+        with Image.open(path) as cropped:
+            assert cropped.size == (60, 96)
+            assert cropped.convert("L").getextrema()[1] > 128
+            assert cropped.getexif().get(274, 1) == 1
+    finally:
+        os.unlink(path)
 
 
 def test_web_search_formats_serper_docs(monkeypatch):

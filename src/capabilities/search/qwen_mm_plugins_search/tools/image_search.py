@@ -57,9 +57,9 @@ def _crop_bbox(image_path: str, bbox: list[float]) -> str:
     """Crop image by bbox [x1,y1,x2,y2] in 0-1000 coords; returns path to temp file."""
     from PIL import Image
 
-    from shared.image import norm_to_pixel
+    from shared.image import norm_to_pixel, open_image
 
-    with Image.open(image_path) as img:
+    with open_image(image_path) as img:
         x1, y1, x2, y2 = norm_to_pixel([int(v) for v in bbox], img.width, img.height)
         cropped = img.crop((x1, y1, x2, y2))
 

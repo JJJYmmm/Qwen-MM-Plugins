@@ -157,32 +157,25 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         "vision, OCR, grounding, text-only image captions, ASR, generation, memory builds",
     ),
     (
+        "ORCAROUTER_API_KEY",
+        True,
+        "Media APIs & endpoints",
+        "",
+        "OpenAI-compatible calls to api.orcarouter.ai",
+    ),
+    (
+        "MINIMAX_API_KEY",
+        True,
+        "Media APIs & endpoints",
+        "",
+        "MiniMax text-to-speech generation",
+    ),
+    (
         "DASHSCOPE_BASE_URL",
         False,
         "Media APIs & endpoints",
         "DashScope compat URL",
         "override the DashScope OpenAI-compatible base URL",
-    ),
-    (
-        "QWEN_MM_API_BACKEND",
-        False,
-        "Media APIs & endpoints",
-        "dashscope",
-        "media API backend (dashscope or orcarouter)",
-    ),
-    (
-        "ORCAROUTER_API_KEY",
-        True,
-        "Media APIs & endpoints",
-        "",
-        "OrcaRouter API key for the media API backend",
-    ),
-    (
-        "ORCAROUTER_BASE_URL",
-        False,
-        "Media APIs & endpoints",
-        "OrcaRouter API base URL",
-        "override the OrcaRouter base URL",
     ),
     (
         "QWEN_MM_API_VL_MODEL",
@@ -196,7 +189,7 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         False,
         "Media APIs & endpoints",
         "qwen3.5-omni-plus",
-        "default Omni model for audio/video understanding tools",
+        "default Omni model for audio/video understanding tools and omni-memory",
     ),
     ("SAM3_SERVER_URL", False, "Media APIs & endpoints", "", "segmentation SAM3 server URL"),
     ("ASR_SERVER_URLS", False, "Media APIs & endpoints", "", "self-hosted ASR fallback URLs (comma-separated)"),
@@ -258,6 +251,17 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
     ("GRAPH_MEMORY_PATH", False, "Video-memory", "", "graph_memory.json path (overrides a passed video path)"),
     ("EMBEDDINGS_PATH", False, "Video-memory", "", "embeddings.npz path"),
     ("CUTOFF_SEC", False, "Video-memory", "", "time cutoff (seconds) for retrieval"),
+    # Omni-memory location. Its endpoint, key, and model use the shared DASHSCOPE_BASE_URL,
+    # DASHSCOPE_API_KEY, and QWEN_MM_API_OMNI_MODEL fields above. Retrieval and encoder internals
+    # are tunable through further MEM_* variables that are deliberately not catalogued here; see
+    # the capability's own SKILL.md.
+    (
+        "MEM_LOCAL_DIR",
+        False,
+        "Omni-memory",
+        "video directory",
+        "optional shared root for namespace memories; defaults beside the input video",
+    ),
     # Blender / FreeCAD hosts
     ("BLENDER_BINARY", False, "Blender / FreeCAD hosts", "", "path to the Blender executable"),
     ("BLENDER_HOST", False, "Blender / FreeCAD hosts", "localhost", "Blender addon host"),
@@ -329,29 +333,9 @@ STREAM_THRESHOLD = 1024 * 1024
 # Hard cap on frames returned by read_video.
 MAX_TOTAL_FRAMES = _int_env("QWEN_MM_MAX_TOTAL_FRAMES", 600)
 
-# OpenAI-compatible endpoints for the supported media providers. DashScope is the default when
-# DASHSCOPE_BASE_URL is unset; OrcaRouter is the alternative backend (see QWEN_MM_API_BACKEND).
-# Credentials (DASHSCOPE_API_KEY, ORCAROUTER_API_KEY, OSS_*, …) are read at call time via get_env —
-# there are no per-var accessors.
+# OpenAI-compatible DashScope endpoint — the default when DASHSCOPE_BASE_URL is unset. Credentials
+# (DASHSCOPE_API_KEY, OSS_*, …) are read at call time via get_env — there are no per-var accessors.
 DEFAULT_DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-DEFAULT_ORCAROUTER_BASE_URL = "https://api.orcarouter.ai/v1"
-
-# Media provider registry: the transport backends the OpenAI-compatible media APIs can target.
-# Each entry maps the QWEN_MM_API_BACKEND selector to its API-key env var and base URL (unset →
-# DEFAULT_*_BASE_URL). A base_url explicitly given in a tool call or via DASHSCOPE_BASE_URL still
-# overrides the selected provider's default, so self-hosted / proxied endpoints keep working.
-MEDIA_PROVIDERS = {
-    "dashscope": {
-        "api_key_env": "DASHSCOPE_API_KEY",
-        "base_url_env": "DASHSCOPE_BASE_URL",
-        "default_base_url": DEFAULT_DASHSCOPE_BASE_URL,
-    },
-    "orcarouter": {
-        "api_key_env": "ORCAROUTER_API_KEY",
-        "base_url_env": "ORCAROUTER_BASE_URL",
-        "default_base_url": DEFAULT_ORCAROUTER_BASE_URL,
-    },
-}
 
 # Per-preset resolution budgets (visual-token counts) → pixels via budget_to_pixels(budget, MAP).
 IMAGE_BUDGET_TOKENS = {"small": 256, "normal": 1024, "large": 2048}

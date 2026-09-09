@@ -1,10 +1,10 @@
-"""Qwen-MM-Plugins api: cloud APIs for understanding media, grouped by model family.
+"""Qwen-MM-Plugins api: model services for understanding media, grouped by model family.
 
 A pure-tools MCP server. Each module under ``vl/`` / ``omni/`` / ``others/`` exports ``TOOL`` +
 ``handle`` and is auto-discovered by the framework:
 
 * ``vl/`` — a Qwen-VL model (OpenAI-compatible endpoint): vision_chat, ocr, grounding.
-* ``omni/`` — the Qwen-Omni model, reading video frames AND the embedded audio track together:
+* ``omni/`` — Qwen-Omni audio transcription/analysis and joint video/audio understanding:
   omni_asr(+_timestamped / multi_speaker), omni_av_caption / grounding / counting, omni_music_caption.
 * ``others/`` — services that are neither: transcribe_audio (Qwen3-ASR) and segmentation (SAM3).
 
@@ -33,13 +33,14 @@ SYSTEM_DEPS = [
 ]
 
 USAGE_NOTE = (
-    "Cloud media-understanding APIs (need DASHSCOPE_API_KEY or ORCAROUTER_API_KEY; "
-    "QWEN_MM_API_BACKEND picks dashscope (default) or orcarouter, model defaults per family). "
+    "Media-understanding model services (model defaults per family). "
     "VL model: vision_chat (caption/VQA), ocr, grounding. "
-    "Omni model (frames + audio together): omni_asr / omni_asr_timestamped / omni_multi_speaker_asr, "
+    "Omni model: omni_asr / omni_asr_timestamped / omni_multi_speaker_asr, "
     "omni_av_caption / omni_av_grounding / omni_av_counting, omni_music_caption. "
-    "Others: transcribe_audio (Qwen3-ASR), segmentation (needs a SAM3 server via SAM3_SERVER_URL). "
-    "For video, a local file is uploaded and sampled server-side when OSS is configured (OSS_AK/OSS_SK/"
-    "OSS_ENDPOINT/OSS_BUCKET + the 'oss' extra), else sampled into inline frames. "
+    "VL/Omni default to DashScope; compatible endpoints can be configured with base_url/api_key/model. "
+    "Others: transcribe_audio (DashScope Qwen3-ASR with ASR_SERVER_URLS fallback), "
+    "segmentation (SAM3_SERVER_URL or the server argument). "
+    "VL uploads local video when OSS and duration limits allow; otherwise it samples inline frames. "
+    "Omni first fits local media inline, then uses OSS or frames plus audio when needed. "
     "Read/visualize local files with qwen-mm-plugins-core; find/confirm facts with qwen-mm-plugins-search."
 )

@@ -11,9 +11,13 @@ import base64
 import logging
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
-from shared.env import get_env
+from shared.env import DEFAULT_DASHSCOPE_BASE_URL, get_env
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
 log = logging.getLogger(__name__)
 
@@ -72,30 +76,16 @@ _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 _OPTIONAL_FIELD_REJECTION_STATUS = frozenset({400, 422})
 
 
-def _selected_provider() -> str:
-    """The active media provider for OpenAI-compatible calls (lowercased).
-
-    Reads QWEN_MM_API_BACKEND; falls back to ``dashscope`` when unset. A value outside the
-    MEDIA_PROVIDERS registry is treated as DashScope so a typo degrades to today's default
-    instead of failing at call time — invalid values surface via the ``--setup`` validator.
-    """
-    return (get_env("QWEN_MM_API_BACKEND") or "dashscope").strip().lower()
-
-
 def resolve_openai_endpoint(arguments: dict[str, Any]) -> tuple[str, str]:
     """Resolve (base_url, api_key) for an OpenAI-compatible call.
 
-    The provider is selected by QWEN_MM_API_BACKEND (``dashscope`` default, ``orcarouter``
-    alternative) and its named API key is used by default. An explicit ``base_url``/``api_key``
-    argument — or DASHSCOPE_BASE_URL / ORCAROUTER_BASE_URL, which still override the selected
-    provider's default — wins, so self-hosted / proxied endpoints keep working unchanged. The
-    api_key falls back to "EMPTY" so local/self-hosted servers that ignore auth still work.
+    URL precedence: explicit argument → DASHSCOPE_BASE_URL → default. An explicit
+    api_key wins; otherwise api.orcarouter.ai uses ORCAROUTER_API_KEY and other hosts
+    use DASHSCOPE_API_KEY. Missing keys fall back to "EMPTY" for local servers.
     """
-    from shared.env import MEDIA_PROVIDERS
-
-    provider = MEDIA_PROVIDERS.get(_selected_provider(), MEDIA_PROVIDERS["dashscope"])
-    base_url = arguments.get("base_url") or get_env(provider["base_url_env"]) or provider["default_base_url"]
-    api_key = arguments.get("api_key") or get_env(provider["api_key_env"]) or "EMPTY"
+    base_url = arguments.get("base_url") or get_env("DASHSCOPE_BASE_URL") or DEFAULT_DASHSCOPE_BASE_URL
+    key_env = "ORCAROUTER_API_KEY" if urlsplit(base_url).hostname == "api.orcarouter.ai" else "DASHSCOPE_API_KEY"
+    api_key = arguments.get("api_key") or get_env(key_env) or "EMPTY"
     return base_url, api_key
 
 
@@ -103,8 +93,13 @@ def is_url(value: str) -> bool:
     return value.startswith(("http://", "https://", "data:"))
 
 
-def encode_image_source(source: str) -> dict[str, Any]:
-    """OpenAI-style image content part: a URL/data-URL passthrough, or a local file base64'd."""
+def encode_image_source(source: str | Image) -> dict[str, Any]:
+    """Encode a path, URL, or prepared PIL image. Prepared images retain their exact dimensions."""
+    if not isinstance(source, str):
+        from shared.image import encode_image
+
+        _, encoded, mime_type = encode_image(source)
+        return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}
     if is_url(source):
         return {"type": "image_url", "image_url": {"url": source}}
     path = Path(source)
@@ -187,13 +182,11 @@ def call_openai_chat(
 
     from shared.retry import retry_call
 
-    # A missing key against a named provider just 401s with "No API-key provided"; give an
-    # actionable message. Local/self-hosted servers ignore auth, so only guard named providers.
-    if api_key in ("", "EMPTY") and any(
-        base_url.startswith(f"https://{host}") for host in ("dashscope.aliyuncs.com", "api.orcarouter.ai")
-    ):
-        provider = "DASHSCOPE_API_KEY" if "dashscope" in base_url else "ORCAROUTER_API_KEY"
-        raise RuntimeError(f"no API key — set {provider} (or pass api_key)")
+    # Give actionable errors for known credentials; local servers may ignore auth.
+    if api_key in ("", "EMPTY") and "dashscope" in base_url:
+        raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
+    if api_key in ("", "EMPTY") and urlsplit(base_url).hostname == "api.orcarouter.ai":
+        raise RuntimeError("no API key — set ORCAROUTER_API_KEY (or pass api_key)")
 
     retryable = (
         openai.RateLimitError,

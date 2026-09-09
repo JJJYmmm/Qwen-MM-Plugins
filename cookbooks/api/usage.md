@@ -187,21 +187,99 @@ Count every completed push-up and list the timestamp of each repetition.
 
 ---
 
-## Shared Case: local views, cloud grounding, and web verification
+## VL examples
 
-This Codex session locates cakes, annotates the image, identifies a photographed place, and verifies
-the result on the web. The API part uses grounding and vision reasoning; local file/annotation work
-belongs to [`core`](../core/usage.md#shared-case-local-views-cloud-grounding-and-web-verification),
-and external verification belongs to
-[`search`](../search/usage.md#shared-case-local-views-cloud-grounding-and-web-verification).
+Locate cakes with `grounding` and identify a photographed place with `vision_chat`. The session uses
+[`core`](../core/usage.md) for image annotation and [`search`](../search/usage.md) for web verification.
 
-▶ **[View the shared detailed trace](https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen-MM-Plugins/asserts/core/case-core-codex-api-use.html)**
+[View the session](https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen-MM-Plugins/asserts/core/case-core-codex-api-use.html)
 
-> The trace predates the capability split, so API calls appear under the old
-> `qwen_mm_plugins_core` namespace. Today `grounding`, `ocr`, and `vision_chat` are provided by
-> `qwen-mm-plugins-api`; the recorded inputs and outputs remain representative of the shared
-> workflow.
+The recording uses the old `core` namespace; these VL tools now belong to `api`.
 
 <p align="center">
   <img src="../core/assets/codex-api-use.png" alt="Shared Core, API, and Search workflow" width="520">
 </p>
+
+---
+
+## Omni examples
+
+Paths below are relative to `cookbooks/api/`. Outputs are excerpts from the contributor's
+DashScope runs. See [asset sources](assets/SOURCES.md).
+
+### Case 1 — speech to subtitles
+
+Transcribe a 9-second English clip with sentence-level timestamps.
+
+```python
+omni_asr_timestamped(
+    file_path="assets/guess_age_gender.wav",
+    language="en",
+    granularity="sentence",
+    format="srt",
+)
+```
+
+**SRT output**
+
+```text
+1
+00:00:00,647 --> 00:00:05,387
+I heard that you can understand what people say and even know their age and gender.
+
+2
+00:00:05,907 --> 00:00:09,017
+So can you guess my age and gender from my voice?
+```
+
+### Case 2 — describe a video
+
+Follow a 15-second video of someone drawing on a tablet.
+
+<p align="center">
+  <img src="assets/case-video-caption.png" alt="draw1_clip.mp4 key frames" width="520">
+</p>
+
+```python
+omni_av_caption(file_path="assets/draw1_clip.mp4")
+```
+
+**Output excerpt**
+
+```text
+00:00.000 – 00:02.500
+... On the tablet's screen is a cartoon-style drawing of a small guitar-like instrument (ukulele
+or acoustic guitar) ... At this moment a young female voice ... says, "Hello, take a look at what
+I'm drawing." ...
+
+00:10.000 – 00:13.000
+The artist taps an icon ... a vertical color-selection panel slides out ... Across the top of the
+panel appears the Chinese word "颜色," meaning "Color." ...
+```
+
+### Case 3 — find an event
+
+Locate a made basket in a 20-second clip.
+
+<p align="center">
+  <img src="assets/case-video-grounding.png" alt="basketball_clip.mp4 key frames" width="520">
+</p>
+
+```python
+omni_av_grounding(
+    file_path="assets/basketball_clip.mp4",
+    query="a player making a basket",
+)
+```
+
+**JSON output**
+
+```json
+{
+  "query": "a player making a basket",
+  "matches": [
+    { "start": 13.0, "end": 17.0, "score": 0.95,
+      "reason": "The video shows a player shooting the basketball and it successfully going through the hoop." }
+  ]
+}
+```

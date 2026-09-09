@@ -27,14 +27,15 @@ QMP_DRY=0
 LOCAL_REPO_ROOT=''
 
 # ── capability catalog — the ONE place capabilities are declared; every menu iterates this ──
-CAP_ITEMS=(core api search video-memory video-edit blender freecad edu-agent)
+CAP_ITEMS=(core api search video-memory omni-memory video-edit blender freecad edu-agent)
 # Latest stable plugin versions, in exactly the same order as CAP_ITEMS. Keep this release index in
 # sync with plugin-versions.json; scripts/check_manifests.py and tests/test_install_sh.py enforce it.
-CAP_VERSIONS=(1.0.5 1.0.5 1.0.4 1.0.3 1.0.2 1.0.2 1.0.2 1.0.2)
-CAP_DESC=("read/visualize any local file — images, video, docs, 3D"
-          "cloud media APIs by model family: VL (vision_chat/ocr/grounding), Omni A/V, ASR, segmentation"
+CAP_VERSIONS=(1.0.5 1.0.5 1.0.4 1.0.3 1.0.0 1.0.2 1.0.2 1.0.2 1.0.2)
+CAP_DESC=("read/visualize any local file, inspect media metadata, crop/annotate, export pages/frames"
+          "media understanding via VL/Omni model services, ASR, and SAM3 segmentation"
           "web search/extraction (Serper, Exa, Tavily) + Serper reverse-image search"
           "hierarchical graph memory for long-video QA"
+          "audio-visual memory for long video: who said what, how, and what it sounded like"
           "video-edit + image/video/audio generation"
           "drive a running Blender: 3D modeling / materials / render (thin client)"
           "drive a running FreeCAD: parametric CAD / STEP·STL / FEM (thin client)"
@@ -65,12 +66,11 @@ ALL_HARNESSES="$MP_HARNESSES $CFG_HARNESSES"
 # bash-3.2 safe (no assoc arrays).
 CONFIG_SPEC=(
   "DASHSCOPE_API_KEY|1|services||vision, OCR, grounding, text-only image captions, ASR, generation, memory builds"
+  "ORCAROUTER_API_KEY|1|services||OpenAI-compatible calls to api.orcarouter.ai"
+  "MINIMAX_API_KEY|1|services||MiniMax text-to-speech generation"
   "DASHSCOPE_BASE_URL|0|services|DashScope compat URL|override the DashScope OpenAI-compatible base URL"
-  "QWEN_MM_API_BACKEND|0|services|dashscope|media API backend (dashscope or orcarouter)"
-  "ORCAROUTER_API_KEY|1|services||OrcaRouter API key for the media API backend"
-  "ORCAROUTER_BASE_URL|0|services|OrcaRouter API base URL|override the OrcaRouter base URL"
   "QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|default VL model for vision_chat, OCR, grounding, and text-only image captions"
-  "QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|default Omni model for audio/video understanding tools"
+  "QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|default Omni model for audio/video understanding tools and omni-memory"
   "SAM3_SERVER_URL|0|services||segmentation SAM3 server URL"
   "ASR_SERVER_URLS|0|services||self-hosted ASR fallback URLs (comma-separated)"
   "QWEN_MM_SEARCH_BACKEND|0|search|auto|text search backend (auto: serper > tavily > exa; or choose one)"
@@ -91,6 +91,7 @@ CONFIG_SPEC=(
   "GRAPH_MEMORY_PATH|0|memory||graph_memory.json path (overrides a passed video path)"
   "EMBEDDINGS_PATH|0|memory||embeddings.npz path"
   "CUTOFF_SEC|0|memory||time cutoff (seconds) for retrieval"
+  "MEM_LOCAL_DIR|0|omni|video directory|optional shared root for namespace memories; defaults beside the input video"
   "BLENDER_BINARY|0|hosts||path to the Blender executable"
   "BLENDER_HOST|0|hosts|localhost|Blender addon host"
   "BLENDER_PORT|0|hosts|9876|Blender addon port"
@@ -101,7 +102,7 @@ CONFIG_SPEC=(
   "NODE_PATH|0|edu||Node.js module resolution path"
   "PUPPETEER_EXECUTABLE_PATH|0|edu||headless Chromium executable for Puppeteer"
 )
-CONFIG_GROUPS=(services search runtime oss memory hosts edu)
+CONFIG_GROUPS=(services search runtime oss memory omni hosts edu)
 config_group_title() {
   case "$1" in
     services) printf 'Media APIs & endpoints' ;;
@@ -109,6 +110,7 @@ config_group_title() {
     runtime)  printf 'Runtime paths & limits' ;;
     oss)    printf 'OSS storage (serve large media by URL)' ;;
     memory) printf 'Video-memory' ;;
+    omni)   printf 'Omni-memory' ;;
     hosts)  printf 'Blender / FreeCAD hosts' ;;
     edu)    printf 'edu-agent (Node / headless Chromium)' ;;
     *)      printf '%s' "$1" ;;

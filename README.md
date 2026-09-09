@@ -33,19 +33,40 @@ manual skill + MCP setup, dependencies, and Windows/WSL2, see the
 
 ## Capabilities
 
-Each capability is installed independently as a **Skill** plus an optional **MCP server**. Its
-install name is `qwen-mm-plugins-<capability>`.
+Each capability is installed independently as a **Skill** plus an optional **MCP server**, named
+`qwen-mm-plugins-<capability>`. Pick by your agent's main model. We strongly recommend the `core`
+plugin for multimodal models: it lets the main model read images, video and files natively, rather
+than routing them through a separate API or ad-hoc shell commands.
 
-| Capability | Use case | Main requirements | Cookbook |
-|---|---|---|---|
-| `core` | Read images and video; visualize documents, code, data, 3D files, NIfTI volumes, and more | No API key; ffmpeg for audio/video; nibabel for NIfTI; format-specific apps as needed | [Cookbook](cookbooks/core/usage.md) |
-| `api` | Qwen VL/Omni vision, OCR, grounding, ASR, segmentation, and audio-video understanding | DashScope; ffmpeg for local audio/video | [Cookbook](cookbooks/api/usage.md) |
-| `search` | Web search, page extraction, and reverse-image search | Serper, Exa, or Tavily key; image search requires Serper | [Cookbook](cookbooks/search/usage.md) |
-| `video-memory` | Build hierarchical memory for long-video QA | DashScope; ffmpeg/ffprobe for builds | [Cookbook](cookbooks/video-memory/usage.md) |
-| `video-edit` | Image, video, and audio generation with editing workflows | DashScope; ffmpeg + Node/Chromium for full edits | [Cookbook](cookbooks/video-edit/usage.md) |
-| `blender` | Model, texture, light, and render in Blender | Blender; Xvfb on headless Linux | [Cookbook](cookbooks/blender/usage.md) |
-| `freecad` | Parametric CAD, STEP/STL, and FEM workflows | FreeCAD; CalculiX for FEM; Xvfb on headless Linux | [Cookbook](cookbooks/freecad/usage.md) |
-| `edu-agent` | Create Chinese math/science explainer videos and interactive pages | Skill-only; Node/Chromium + ffmpeg; DashScope for narrated video | [Cookbook](cookbooks/edu-agent/usage.md) |
+**General**:
+
+| Capability | Use case | Cookbook |
+|---|---|---|
+| `core` | Reads local images and video frames, and visualizes documents, code, data, 3D models and NIfTI volumes for the agent to inspect. Includes media metadata, cropping, bounding-box annotation and page/frame export. No API key in the default native mode. | [Cookbook](cookbooks/core/usage.md) |
+| `api` | Calls model services to understand images, video and audio: VL vision chat/OCR/grounding, Omni transcription/diarization/captioning/event analysis, dedicated ASR and SAM3 segmentation. Uses DashScope or compatible self-hosted services, configured per model family. | [Cookbook](cookbooks/api/usage.md) |
+| `search` | For any model. Web search, page extraction and reverse-image search, with a Serper, Exa or Tavily key. | [Cookbook](cookbooks/search/usage.md) |
+
+**Qwen VL series model** (e.g. **Qwen3.8-Max**, **Qwen3.7-Plus**):
+
+| Capability | Use case | Cookbook |
+|---|---|---|
+| `video-memory` | Builds a hierarchical memory of a long video, so questions about it are answered from the memory instead of re-watching. Needs a DashScope key and ffmpeg. | [Cookbook](cookbooks/video-memory/usage.md) |
+| `video-edit` | Generates images, video and audio, and runs editing workflows over them. Needs a DashScope key, ffmpeg and Node. | [Cookbook](cookbooks/video-edit/usage.md) |
+| `blender` | Drives a running Blender: modelling, materials, lighting and rendering. Needs Blender installed. | [Cookbook](cookbooks/blender/usage.md) |
+| `freecad` | Drives a running FreeCAD: parametric CAD, STEP/STL and FEM. Needs FreeCAD installed. | [Cookbook](cookbooks/freecad/usage.md) |
+| `edu-agent` | Creates Chinese math and science explainer videos and interactive pages. Skill-only; needs Node and ffmpeg. | [Cookbook](cookbooks/edu-agent/usage.md) |
+
+**Qwen Omni series model** (e.g. **Qwen3.5-Omni-Plus**):
+
+> Most harnesses cannot yet feed audio to the main model natively. For now, audio is handled through
+> the API instead.
+
+| Capability | Use case | Cookbook |
+|---|---|---|
+| `omni-memory` | Builds an audio-visual memory of a long video: who is present, who said what, how they said it, and what it sounded like. The Omni model reads the video together with its audio track. Needs a DashScope key and ffmpeg. | [Cookbook](cookbooks/omni-memory/usage.md) |
+
+Exact versions and optional extras are in the
+[installation guide](docs/en/installation.md#dependencies).
 
 ## Try it
 
