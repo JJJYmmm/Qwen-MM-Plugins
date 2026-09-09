@@ -104,6 +104,21 @@ The call reads `OPENROUTER_API_KEY` automatically. This example uses
 [OpenRouter authentication](https://openrouter.ai/docs/api_reference/authentication) for key setup
 and the [model catalog](https://openrouter.ai/models) for other model IDs and supported media.
 
+For video, pass `videos` and a suitable model, such as
+[Qwen3.8 Max](https://openrouter.ai/qwen/qwen3.8-max-0902):
+
+```json
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "model": "qwen/qwen3.8-max-0902",
+  "videos": ["/absolute/path/clip.mp4"],
+  "text": "Summarize the scene changes in chronological order."
+}
+```
+
+Local sampled frames are sent as ordered images. Direct video URLs and video data URLs require
+a model and provider that support [video input](https://openrouter.ai/docs/guides/overview/multimodal/videos).
+
 ## Tools
 
 ### Vision
@@ -140,10 +155,10 @@ See the [API Skill](../../src/capabilities/api/skill/SKILL.md) and MCP tool sche
 
 Remote URLs are passed to the endpoint for fetching. Local videos use these delivery paths:
 
-- **Vision**: sample local frames, or upload the video to OSS and send a signed URL when OSS is
-  configured and the video fits the model's duration limit. Inline requests support up to 250
-  media items, including images and frames.
-- **Omni**: transcode to fit the inline budget, then use OSS or sampled frames plus audio for
+- **Vision**: send local sampled frames as ordered images, or upload the video to OSS and send a
+  signed URL when OSS is configured and the video fits the model's duration limit. Inline requests
+  support up to 250 media items, including images and frames.
+- **Omni**: transcode to fit the inline budget, then use OSS or ordered images plus audio for
   larger videos.
 
 `dry_run=true` previews a VL or Omni request. For long recordings, use

@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from shared.api_openai import is_url, resolve_openai_endpoint
+from shared.api_openai import expand_video_frames, is_url, resolve_openai_endpoint
 from shared.env import get_env
 
 log = logging.getLogger(__name__)
@@ -172,11 +172,11 @@ def omni_video_part(source: str, *, fps: float = DEFAULT_OMNI_FPS, max_pixels: i
 
 
 def omni_frames_part(frames: list[str]) -> dict:
-    """The image-list video form: ``{"type": "video", "video": [<image>, …]}``.
+    """Build an internal frame list; chat clients expand it to ordered ``image_url`` parts.
 
-    Each entry is an image URL or a base64 ``data:`` URL of one frame; Omni treats the list as a video
-    but — unlike the file form — it carries NO audio, so pair it with ``omni_audio_part`` whenever the
-    source had a sound track (combining modalities in one request needs a Qwen3.5-Omni model).
+    Each entry is an image URL or a base64 ``data:`` URL of one frame. The list carries no audio,
+    so pair it with ``omni_audio_part`` whenever the source had a sound track and the model supports
+    combined image and audio input.
     Frames must be in chronological order; tell the model their timestamps in the text part, since the
     list itself has no time base.
     """
@@ -295,6 +295,8 @@ def call_omni(
     body = {"modalities": ["text"]}
     if extra_body:
         body.update(extra_body)
+
+    messages = expand_video_frames(messages)
 
     retryable = (
         openai.RateLimitError,

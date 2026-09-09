@@ -64,6 +64,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         call_openai_chat,
         encode_image_source,
         encode_video_source,
+        expand_video_frames,
         resolve_openai_endpoint,
         resolve_vl_model,
     )
@@ -104,6 +105,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
             # Preview the first wire request, where the shared client merges optional hints into
             # extra_body. Keep the internal optional_extra_body control out of the payload.
             preview_request = dict(kwargs)
+            preview_request["messages"] = expand_video_frames(messages)
             if optional_extra_body:
                 preview_request["extra_body"] = optional_extra_body
             payload: dict[str, Any] = {"base_url": base_url, "request": preview_request}
@@ -118,10 +120,6 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
                 )
             for msg in payload["request"]["messages"]:
                 for item in msg.get("content", []):
-                    if item.get("type") == "video" and "video" in item:
-                        item["video"] = [
-                            f"<base64 frame {i + 1}/{len(item['video'])}>" for i in range(len(item["video"]))
-                        ]
                     if item.get("type") == "image_url":
                         url = item.get("image_url", {}).get("url", "")
                         if url.startswith("data:"):

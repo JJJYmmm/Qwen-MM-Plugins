@@ -8,7 +8,9 @@ module's attribute is enough, no live network.
 
 import base64
 import io
+from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -212,6 +214,52 @@ def _install_fake_openai(monkeypatch, behavior):
     monkeypatch.setattr(openai, "OpenAI", factory)
     monkeypatch.setattr(sr.time, "sleep", lambda *_: None)
     return holder
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://openrouter.ai/api/v1",
+        "http://localhost:8000/v1",
+        oa.DEFAULT_DASHSCOPE_BASE_URL,
+        "https://api.orcarouter.ai/v1",
+    ],
+)
+def test_clients_send_video_frames_as_ordered_images(monkeypatch, streaming, base_url):
+    frame_urls = [f"https://example.com/frame{i}.jpg" for i in range(4)]
+    other_parts = [
+        {"type": "input_audio", "input_audio": {"data": "YQ==", "format": "wav"}},
+        {"type": "video_url", "video_url": {"url": "https://example.com/clip.mp4"}},
+        {"type": "text", "text": "Describe the videos."},
+    ]
+    messages = [
+        {"role": "system", "content": "Describe media."},
+        {
+            "role": "user",
+            "content": [
+                {"type": "video", "video": frame_urls[:2], "fps": 2},
+                {"type": "video", "video": frame_urls[2:]},
+                *other_parts,
+            ],
+        },
+    ]
+    original = deepcopy(messages)
+    chunk = SimpleNamespace(usage=None, choices=[SimpleNamespace(delta=SimpleNamespace(content="ok"))])
+    holder = _install_fake_openai(monkeypatch, lambda _: [chunk] if streaming else "ok")
+    call = omni.call_omni if streaming else oa.call_openai_chat
+    call(base_url=base_url, api_key="test-key", model="test-model", messages=messages)
+    sent = holder["client"].chat.completions.seen[0]["messages"]
+
+    assert messages == original
+    assert sent[0] == original[0]
+    assert sent[1]["role"] == "user"
+    parts = sent[1]["content"]
+    assert not any(part["type"] == "video" for part in parts)
+    assert [part["image_url"]["url"] for part in parts if part["type"] == "image_url"] == frame_urls
+    assert parts[-3:] == other_parts
+    assert "2 fps" in parts[0]["text"]
+    assert parts[3]["type"] == "text"
 
 
 def test_call_openai_chat_retries_transient_then_succeeds(monkeypatch):
