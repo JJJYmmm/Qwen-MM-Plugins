@@ -66,9 +66,10 @@ Cookbooks and cases now live in [QwenLM/qwen-mm-plugins-hub](https://github.com/
 Changes limited to that repository need a Hub deployment, not a plugin version bump. General
 English guides stay in this repository and are imported when the Hub builds.
 
-After a release or documentation update, follow [Publish and refresh](hub.md#publish-and-refresh)
-to update the website. The Hub reads the branch selected by its `source.config.json`, normally
-plugin `main`. Publish the referenced capability tags before refreshing the Hub's release links.
+After a release or documentation update, the Hub detects changes to the branch selected by
+`source.config.json`, normally plugin `main`, and its capability tags. Automatic publishing waits
+until all tags referenced by the catalog exist. See [Publish and refresh](hub.md#publish-and-refresh)
+for the scheduled fallback, optional immediate dispatch, and PR preview packages.
 Publishing the Hub never creates plugin tags or updates installed plugins.
 
 ## Release cadence

@@ -15,7 +15,7 @@ Hub 当前维护在 **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwe
 | Cookbook、分类、tag、标题、contributor | Hub 的 `content/cookbooks/<cap>/usage.md` |
 | 演示视频、图片、交互 case | Hub 的 `public/cases/<cap>/<case>/` |
 
-Hub 从 `plugin-versions.json` 发现插件，读取真实 MCP registry 和 Skill，再计算 token。不要手改生成的 `data/*.json`、增加第二份插件表，或把 cookbook 复制回本仓库。
+Hub 从 `plugin-versions.json` 发现插件，读取真实 MCP registry 和 Skill，再计算 token。生成的 `data/*.json` 已被 Git 忽略，只存在于本地和构建产物中；Hub 不提交第二份源码或文档。不要手改生成内容、增加第二份插件表，或把 cookbook 复制回本仓库。
 
 ## 唯一工具约定
 
@@ -94,30 +94,56 @@ public/cases/my-plugin/demo/
 
 ## 本地验证
 
-使用 Node 24 和 Python 3.12+。需要新建环境时，在同一父目录创建两个相邻 clone：
+使用 Node 24、Git 和 [uv](https://docs.astral.sh/uv/getting-started/installation/)：
 
 ```bash
-git clone --branch main https://github.com/QwenLM/Qwen-MM-Plugins.git
 git clone https://github.com/QwenLM/qwen-mm-plugins-hub.git
 cd qwen-mm-plugins-hub
 npm ci
-python3 -m venv .venv
-.venv/bin/pip install -e '../Qwen-MM-Plugins[omni-memory]' -r scripts/requirements-export.txt
-.venv/bin/python -m scripts.build_content --source ../Qwen-MM-Plugins
-.venv/bin/python -m unittest discover -s tests -p 'test_*.py'
-npm test
 SITE_BASE_PATH=/qwen-mm-plugins-hub npm run build
+npm test
+npm run dev
 ```
 
-已有 clone 时使用实际路径即可。先提交插件侧修改并保持源 checkout 干净：文档和文件链接绑定到已提交快照，HEAD 必须对应 Hub `source.config.json` 指定的分支。`npm run dev` 用于本地预览；根域名发布时不设置 `SITE_BASE_PATH`。仅改前端可直接使用已有生成数据，无需运行 Python。
+`dev` 和 `build` 都会先自动生成内容。首次运行会将配置的源码 clone 到已忽略的 `.sources/upstream`，由 `uv` 准备 Python 3.12 和导出依赖；后续复用该 checkout。使用 `npm run content:sync` 拉取配置分支和 tag 的最新状态，使用 `npm run content` 仅重新生成、不拉取。`npm test` 消费已生成内容并保持离线，新 clone 应先生成内容或构建。根域名构建（包括 PR 预览包）不设置 `SITE_BASE_PATH`。
+
+预览自己的插件修改时，先 commit 并保持 checkout 干净，再显式指定路径和分支；Hub 不会修改通过 `HUB_SOURCE_DIR` 指定的 checkout：
+
+```bash
+HUB_SOURCE_DIR=../Qwen-MM-Plugins HUB_SOURCE_REF=my-branch npm run dev
+```
+
+HEAD 必须对应指定分支。CI 通过 `HUB_SOURCE_COMMIT` 固定到实际检出的 SHA，因此也支持 detached PR head；源码链接始终绑定该 commit。
+
+也可以使用已有 Python 环境代替 `uv`，安装依赖后设置 `HUB_PYTHON`。以下源码 checkout 应保持干净并对应配置分支：
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -e '../Qwen-MM-Plugins[omni-memory]' -r scripts/requirements-export.txt
+HUB_PYTHON="$PWD/.venv/bin/python" HUB_SOURCE_DIR=../Qwen-MM-Plugins npm run build
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py'
+npm test
+```
 
 ## 发布与刷新
 
-1. 先将插件侧修改 push 或合并到 Hub [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json) 指定的远程分支，当前为 `main`，再触发 Hub 构建；只有本地 commit 或未合并的 PR 不够。新增插件时同时准备好 Hub cookbook，确保下一次构建能拿到两边内容。
-2. 将 cookbook 和 case 文件 push 或合并到 Hub `main`，该 push 会触发 [Build and deploy plugin directory](https://github.com/QwenLM/qwen-mm-plugins-hub/actions/workflows/pages.yml)。如果只改了插件源码、description 或 `docs/en/`，在 Hub `main` 上通过 **Run workflow** 手动运行该工作流。只向 Qwen-MM-Plugins push 不会自动触发它。
-3. 等构建和部署通过，再检查[公网 Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/) 的插件、cookbook 和 Docs 页面。构建会统一刷新目录、cookbook、英文文档和 token 估计；失败时线上内容不变，修复错误后重新运行。
+1. 将插件侧修改合并到 Hub [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json) 指定的远程分支，当前为 `main`。新增插件时同时准备好 Hub cookbook，确保下一次构建能拿到两边内容。只有本地 commit 或未合并的 PR 不会更新公网 Hub。
+2. 将 cookbook 和 case 文件 push 或合并到 Hub `main`，该 push 会触发 [Build and deploy plugin directory](https://github.com/QwenLM/qwen-mm-plugins-hub/actions/workflows/pages.yml)。仅上游发生变化时，Hub 每 30 分钟检查所选分支和能力 tag，无需跨仓库 secret；仅当这些输入或 Hub commit 与上次成功部署不同才构建。在 Hub `main` 上 **Run workflow** 可强制重建，但目录引用的 release tag 尚未全部发布时仍会等待。
+3. 等构建和部署通过，再检查[公网 Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/) 的插件、cookbook 和 Docs 页面。构建统一刷新目录、cookbook、英文文档和 token 估计；失败不改变线上内容，下次定时检查会重新尝试尚未部署的变化。重试前先修复构建错误。
+
+定时检查是兜底，不保证精确时效：GitHub 可能延迟运行，公开仓库 [60 天无活动后会停用定时工作流](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow?tool=cli)，届时需重新启用。
+
+如需即时刷新，可在 **Qwen-MM-Plugins** 的仓库 Actions secrets 中配置 `HUB_DISPATCH_TOKEN`：使用只授权 **QwenLM/qwen-mm-plugins-hub**、具有 **Actions: write** 权限的 fine-grained token，并遵循组织审批要求。插件侧 `hub-refresh.yml` 在 `main` 或能力 tag push 后触发 Hub 的 `pages.yml`；未配置 secret 时正常跳过，仍由定时检查兜底。不要将 token 提交到任一仓库。普通 `GITHUB_TOKEN` 仅限当前仓库，不能承担这里的跨仓库访问。
 
 英文指南继续维护在本仓库，不另建 Hub docs 正文。每份 `docs/en/**/*.md` 都要有 H1 标题和唯一的路由：文件名下划线转成连字符，嵌套目录也用连字符连接。英文指南间的相对链接在 Hub 内跳转。
+
+## PR 构建消息与预览包
+
+相关工作流和辅助脚本合并到两个仓库的默认分支后，插件 PR 会运行 **Hub documentation check**，使用精确 PR head 和 Hub `main` 构建并测试。此任务只有只读 token、没有 secrets，不调用模型服务，也不部署网站。新增插件需要先在 Hub `main` 准备好 cookbook，否则检查会失败。
+
+完成后，**Hub PR comment** 创建或更新同一条 `github-actions[bot]` 评论，包含结果、commit、工作流日志以及成功时的预览包。旧任务不能覆盖新 PR head 的结果。评论任务只执行默认分支中的受信任代码，校验来源工作流和当前 PR head，只读取 artifact 元数据，不读取 PR 文件或包内容。Fork PR 使用相同隔离方式；GitHub 可能要求维护者先批准其不受信任的构建。
+
+预览包使用 GitHub Actions artifact，保留 7 天并受仓库保留策略约束。登录 GitHub 下载并解压后，在解压目录运行 `python3 -m http.server 8000`，打开 `http://localhost:8000`。只打开你信任的 PR 预览：其中 HTML 和 JavaScript 来自不受信任的 PR。本流程不提供公网预览 URL，也不增加托管服务。
 
 ## 分支与发布
 

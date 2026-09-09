@@ -10,7 +10,7 @@ Adding a plugin involves two repositories:
    plugin's cookbook and public case files. The Hub generates the plugin page, tool reference,
    Skill preview, and token estimates; do not maintain another tool catalog there.
 
-The Hub currently reads this repository's `support_hub` branch. Its own content lives on Hub
+The Hub reads this repository's `main` branch. Its own content lives on Hub
 `main`; the [publishing steps](hub.md#publish-and-refresh) explain how to update both.
 
 Every published plugin includes `skill/SKILL.md`. An MCP server is optional: start from

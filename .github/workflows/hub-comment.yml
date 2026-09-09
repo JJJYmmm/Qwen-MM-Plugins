@@ -1,0 +1,31 @@
+name: Hub PR comment
+
+on:
+  workflow_run:
+    workflows: [Hub documentation check]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: hub-comment-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Never check out the PR or download/execute its artifacts in this job.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Update the bot's existing PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/hub_pr_comment.py

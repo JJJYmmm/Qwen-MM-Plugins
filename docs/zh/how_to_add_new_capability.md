@@ -7,7 +7,7 @@
 1. 在 **Qwen-MM-Plugins** 中实现并注册 `src/capabilities/<cap>/`，包括 Skill、说明、manifest、测试，以及需要时的 MCP server。
 2. 在 **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)** 中添加 cookbook 和公开 case 文件。插件页面、工具定义、Skill 预览和 token 估计由 Hub 自动生成，无需再维护一份工具目录。
 
-Hub 当前读取本仓库的 `support_hub` 分支，Hub 自身的内容在其 `main` 分支维护。两边的同步顺序见 [发布与刷新](hub.md#发布与刷新)。
+Hub 读取本仓库的 `main` 分支，Hub 自身的内容在其 `main` 分支维护。两边的同步顺序见 [发布与刷新](hub.md#发布与刷新)。
 
 每个发布插件都包含 `skill/SKILL.md`，MCP server 可选。有 server 时从 [`example`](../../src/capabilities/example/) 开始；纯 Skill 插件参考 [`edu-agent`](../../src/capabilities/edu-agent/) 的打包结构。只保留自己的插件需要的模板文件；`example` 本身不发布。
 

@@ -18,8 +18,9 @@ Keep each kind of content in its owning repository:
 | Demo videos, images, interactive cases | `public/cases/<cap>/<case>/` in the Hub |
 
 The Hub discovers plugins from `plugin-versions.json`, reads their actual MCP registries and
-Skills, and computes token estimates. Do not hand-edit generated `data/*.json`, maintain another
-plugin list, or duplicate cookbooks in this repository.
+Skills, and computes token estimates. Generated `data/*.json` is ignored by Git and exists only
+locally or in build artifacts; the Hub does not commit a second copy of source or guides. Do not
+hand-edit it, maintain another plugin list, or duplicate cookbooks in this repository.
 
 ## Author descriptions once
 
@@ -110,46 +111,97 @@ files. Review recordings for credentials, personal data, and sharing rights befo
 
 ## Validate locally
 
-Use Node 24 and Python 3.12+. From a parent directory, create sibling checkouts if needed:
+Use Node 24, Git, and [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```bash
-git clone --branch main https://github.com/QwenLM/Qwen-MM-Plugins.git
 git clone https://github.com/QwenLM/qwen-mm-plugins-hub.git
 cd qwen-mm-plugins-hub
 npm ci
-python3 -m venv .venv
-.venv/bin/pip install -e '../Qwen-MM-Plugins[omni-memory]' -r scripts/requirements-export.txt
-.venv/bin/python -m scripts.build_content --source ../Qwen-MM-Plugins
-.venv/bin/python -m unittest discover -s tests -p 'test_*.py'
-npm test
 SITE_BASE_PATH=/qwen-mm-plugins-hub npm run build
+npm test
+npm run dev
 ```
 
-For existing clones, use their paths instead. Commit the plugin changes first and keep the
-source checkout clean: documentation and file links refer to the committed snapshot. Its HEAD
-must match the branch in the Hub's `source.config.json`. Use `npm run dev` for local preview;
-omit `SITE_BASE_PATH` for a root-domain production build. Frontend-only edits can use the already
-generated data without Python.
+Both `dev` and `build` regenerate content first. The first run clones the configured source into
+ignored `.sources/upstream`; `uv` provides Python 3.12 and exporter dependencies. Later runs reuse
+that checkout. Run `npm run content:sync` to fetch the latest configured branch and tags, or
+`npm run content` to regenerate without fetching. `npm test` uses the generated files and remains
+offline, so generate content before testing a fresh clone. Omit `SITE_BASE_PATH` for root-domain
+builds, including PR preview packages.
+
+To preview your plugin changes, commit them first and keep the checkout clean. Set your checkout
+path and branch explicitly; the Hub never modifies a checkout supplied through `HUB_SOURCE_DIR`:
+
+```bash
+HUB_SOURCE_DIR=../Qwen-MM-Plugins HUB_SOURCE_REF=my-branch npm run dev
+```
+
+The checkout's HEAD must match that branch. CI instead sets `HUB_SOURCE_COMMIT` to the exact
+checked-out SHA, allowing detached PR heads. Source links always pin that commit.
+
+If you prefer an existing Python environment over `uv`, install the dependencies and point
+`HUB_PYTHON` at it. Use a clean checkout of the selected source branch:
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -e '../Qwen-MM-Plugins[omni-memory]' -r scripts/requirements-export.txt
+HUB_PYTHON="$PWD/.venv/bin/python" HUB_SOURCE_DIR=../Qwen-MM-Plugins npm run build
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py'
+npm test
+```
 
 ## Publish and refresh
 
-1. Push or merge the plugin-side changes into the remote branch selected in the Hub's
+1. Merge the plugin-side changes into the remote branch selected in the Hub's
    [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json),
-   currently `main`, before triggering the Hub build. A local commit or an unmerged PR
-   is not enough. For a new plugin, prepare its Hub cookbook alongside that change so the next
-   Hub build has both halves.
+   currently `main`. For a new plugin, prepare its Hub cookbook alongside that change so the
+   next build has both halves. A local commit or an unmerged PR does not update the public Hub.
 2. Push or merge the cookbook and case files into Hub `main`. That push runs
    [Build and deploy plugin directory](https://github.com/QwenLM/qwen-mm-plugins-hub/actions/workflows/pages.yml).
-   If only plugin source, descriptions, or `docs/en/` changed, run that workflow manually on Hub
-   `main` using **Run workflow**. A push to Qwen-MM-Plugins alone does not trigger it.
+   For upstream-only changes, the Hub checks the selected branch and capability tags every
+   30 minutes, without a cross-repository secret. It builds only when those inputs or the Hub
+   commit differ from the last successful deployment. **Run workflow** on Hub `main` forces a
+   rebuild, but still waits if the catalog references release tags that are not published yet.
 3. Wait for the build and deployment to pass, then check the plugin, cookbook, and Docs pages on
    [the public Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/). Builds regenerate the catalog,
    cookbooks, English docs, and token estimates together. Failed builds leave the published site
-   unchanged; fix the reported issue and rerun.
+   unchanged; the next scheduled check retries changed inputs. Fix build errors before retrying.
+
+The schedule is a fallback, not a precise delivery deadline: GitHub can delay scheduled runs and
+[disables them after 60 days of repository inactivity](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow?tool=cli)
+in public repositories. Re-enable the workflow when necessary.
+
+For immediate refreshes, optionally add a repository Actions secret named `HUB_DISPATCH_TOKEN`
+to **Qwen-MM-Plugins**. Use a fine-grained token limited to **QwenLM/qwen-mm-plugins-hub** with
+**Actions: write** permission, subject to organization approval. The plugin-side
+`hub-refresh.yml` dispatches Hub `pages.yml` after `main` and capability-tag pushes. Without the
+secret it skips dispatch successfully and the scheduled fallback still works. Never put the
+token in either repository. The ordinary `GITHUB_TOKEN` is scoped to its own repository and
+cannot supply this cross-repository access.
 
 Keep English guides in this repository, not a second Hub docs folder. Each `docs/en/**/*.md`
 needs an H1 title and a unique route: underscores become hyphens, and nested path segments are
 joined with hyphens. Relative links between imported English guides stay inside the Hub.
+
+## PR build comments and preview packages
+
+Once the workflows and their helpers are merged into both repositories' default branches,
+plugin PRs run **Hub documentation check** against the exact PR head and Hub `main`. The check
+builds and tests the site with a read-only token and no secrets; it does not call model services
+or deploy a website. New plugins need their cookbook available in Hub `main` for this check.
+
+After completion, **Hub PR comment** creates or updates one `github-actions[bot]` comment with
+the result, commit, workflow logs, and successful preview package. Older runs cannot overwrite
+the result for a newer PR head. The comment job runs only trusted default-branch code, verifies
+the originating workflow and current PR head, and reads artifact metadata only—not PR files or
+artifact contents. Fork PRs use the same separation; GitHub may require a maintainer to approve
+their untrusted build before it runs.
+
+Preview packages are GitHub Actions artifacts retained for seven days, subject to repository
+retention policy. Sign in to GitHub to download one, extract it, then run
+`python3 -m http.server 8000` inside the extracted directory and open `http://localhost:8000`.
+Only open previews from PRs you trust: their HTML and JavaScript are untrusted PR output.
+There is no public preview URL or additional hosting service in this workflow.
 
 ## Branch and release
 
