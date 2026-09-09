@@ -3,12 +3,8 @@
 **English** · [中文](../zh/hub.md)
 
 The Hub currently lives in **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)**
-and is published at [Qwen MM Plugins Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/).
+and is published at [Qwen MM Plugins Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/).
 Start with [Add a new plugin](how_to_add_new_capability.md) to implement and register a capability.
-
-The public URL stays unchanged during the repository migration. Before deploying from the
-official repository, an administrator must enable **Settings → Pages → Source: GitHub Actions**.
-After the first successful deployment, update public links to the URL reported by the workflow.
 
 Keep each kind of content in its owning repository:
 
@@ -147,7 +143,7 @@ generated data without Python.
    If only plugin source, descriptions, or `docs/en/` changed, run that workflow manually on Hub
    `main` using **Run workflow**. A push to Qwen-MM-Plugins alone does not trigger it.
 3. Wait for the build and deployment to pass, then check the plugin, cookbook, and Docs pages on
-   [the public Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/). Builds regenerate the catalog,
+   [the public Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/). Builds regenerate the catalog,
    cookbooks, English docs, and token estimates together. Failed builds leave the published site
    unchanged; fix the reported issue and rerun.
 

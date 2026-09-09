@@ -4,9 +4,9 @@
 
 Native multimodal plugins for Qwen models. Make any agent harness multimodal-native.
 
-[Explore the Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/) ·
-[Installation](https://jjjymmm.github.io/qwen-mm-plugins-hub/docs/) ·
-[Add a plugin](https://jjjymmm.github.io/qwen-mm-plugins-hub/docs/how-to-add-new-capability/)
+[Explore the Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/) ·
+[Installation](https://qwenlm.github.io/qwen-mm-plugins-hub/docs/) ·
+[Add a plugin](https://qwenlm.github.io/qwen-mm-plugins-hub/docs/how-to-add-new-capability/)
 
 Browse plugins by capability, preview their Skills and tool definitions, and try the cookbook
 examples with embedded videos and interactive cases. The Hub also hosts the English documentation.
@@ -49,19 +49,19 @@ than routing them through a separate API or ad-hoc shell commands.
 
 | Capability | Use case | Cookbook |
 |---|---|---|
-| `core` | For VL/Omni agentic models. Reads images and video natively, and visualizes documents, code, data, 3D files and NIfTI volumes. All on your machine, no API key. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
-| `api` | For any model, including text-only ones. Calls the multimodal model APIs with a DashScope key or local endpoint: VL `vision_chat` / `ocr` / `grounding`, Omni `omni_av_*` / `omni_asr*` / `omni_music_caption`, plus `transcribe_audio` and `segmentation`. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/api/cookbook/) |
-| `search` | For any model. Web search, page extraction and reverse-image search, with a Serper, Exa or Tavily key. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/search/cookbook/) |
+| `core` | For VL/Omni agentic models. Reads images and video natively, and visualizes documents, code, data, 3D files and NIfTI volumes. All on your machine, no API key. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
+| `api` | For any model, including text-only ones. Calls the multimodal model APIs with a DashScope key or local endpoint: VL `vision_chat` / `ocr` / `grounding`, Omni `omni_av_*` / `omni_asr*` / `omni_music_caption`, plus `transcribe_audio` and `segmentation`. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/api/cookbook/) |
+| `search` | For any model. Web search, page extraction and reverse-image search, with a Serper, Exa or Tavily key. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/search/cookbook/) |
 
 **Qwen VL series model** (e.g. **Qwen3.8-Max**, **Qwen3.7-Plus**):
 
 | Capability | Use case | Cookbook |
 |---|---|---|
-| `video-memory` | Builds a hierarchical memory of a long video, so questions about it are answered from the memory instead of re-watching. Needs a DashScope key and ffmpeg. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/video-memory/cookbook/) |
-| `video-edit` | Generates images, video and audio, and runs editing workflows over them. Needs a DashScope key, ffmpeg and Node. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/video-edit/cookbook/) |
-| `blender` | Drives a running Blender: modelling, materials, lighting and rendering. Needs Blender installed. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/blender/cookbook/) |
-| `freecad` | Drives a running FreeCAD: parametric CAD, STEP/STL and FEM. Needs FreeCAD installed. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/freecad/cookbook/) |
-| `edu-agent` | Creates Chinese math and science explainer videos and interactive pages. Skill-only; needs Node and ffmpeg. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/edu-agent/cookbook/) |
+| `video-memory` | Builds a hierarchical memory of a long video, so questions about it are answered from the memory instead of re-watching. Needs a DashScope key and ffmpeg. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/video-memory/cookbook/) |
+| `video-edit` | Generates images, video and audio, and runs editing workflows over them. Needs a DashScope key, ffmpeg and Node. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/video-edit/cookbook/) |
+| `blender` | Drives a running Blender: modelling, materials, lighting and rendering. Needs Blender installed. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/blender/cookbook/) |
+| `freecad` | Drives a running FreeCAD: parametric CAD, STEP/STL and FEM. Needs FreeCAD installed. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/freecad/cookbook/) |
+| `edu-agent` | Creates Chinese math and science explainer videos and interactive pages. Skill-only; needs Node and ffmpeg. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/edu-agent/cookbook/) |
 
 **Qwen Omni series model** (e.g. **Qwen3.5-Omni-Plus**):
 
@@ -70,7 +70,7 @@ than routing them through a separate API or ad-hoc shell commands.
 
 | Capability | Use case | Cookbook |
 |---|---|---|
-| `omni-memory` | Builds an audio-visual memory of a long video: who is present, who said what, how they said it, and what it sounded like. The Omni model reads the video together with its audio track. Needs a DashScope key and ffmpeg. | [Cookbook](https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/omni-memory/cookbook/) |
+| `omni-memory` | Builds an audio-visual memory of a long video: who is present, who said what, how they said it, and what it sounded like. The Omni model reads the video together with its audio track. Needs a DashScope key and ffmpeg. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/omni-memory/cookbook/) |
 
 Exact versions and optional extras are in the
 [installation guide](docs/en/installation.md#dependencies).

@@ -138,7 +138,7 @@ The [Hub authoring guide](hub.md#cookbook-and-cases) provides the Markdown templ
 metadata, and media-link conventions. A missing cookbook fails the content build.
 
 Add a short entry to this repository's English and Chinese READMEs, linking its cookbook to
-`https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/<yourname>/cookbook/`. Do not copy cookbook
+`https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/<yourname>/cookbook/`. Do not copy cookbook
 Markdown or case media back into this repository. General guides remain in `docs/en/` and are
 imported into the Hub automatically on its next build.
 

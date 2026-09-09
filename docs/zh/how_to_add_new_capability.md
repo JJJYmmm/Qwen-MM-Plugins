@@ -106,7 +106,7 @@ python3 src/capabilities/example/qwen_mm_plugins_example --check-system
 
 在 [QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub) 创建 `content/cookbooks/<yourname>/usage.md`，演示文件放在 `public/cases/<yourname>/<case>/assert/`；可选的交互页面入口是 `<case>/index.html`。[Hub 维护指南](hub.md#cookbook-与-case) 提供 Markdown 模板、contributor 配置和媒体链接约定。缺少 cookbook 时构建会失败。
 
-在本仓库中英文 README 各添加简短入口，cookbook 链接使用 `https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/<yourname>/cookbook/`。不要把 cookbook 正文或 case 媒体再复制回本仓库。通用英文文档仍在 `docs/en/` 维护，由下一次 Hub 构建自动导入。
+在本仓库中英文 README 各添加简短入口，cookbook 链接使用 `https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/<yourname>/cookbook/`。不要把 cookbook 正文或 case 媒体再复制回本仓库。通用英文文档仍在 `docs/en/` 维护，由下一次 Hub 构建自动导入。
 
 ## 检查与发布
 
