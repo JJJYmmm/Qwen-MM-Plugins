@@ -76,6 +76,8 @@ _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 _OPTIONAL_FIELD_REJECTION_STATUS = frozenset({400, 422})
 
 _API_KEY_ENV_BY_HOST: dict[str, str] = {
+    "dashscope.aliyuncs.com": "DASHSCOPE_API_KEY",
+    "dashscope-intl.aliyuncs.com": "DASHSCOPE_API_KEY",
     "api.orcarouter.ai": "ORCAROUTER_API_KEY",
 }
 
