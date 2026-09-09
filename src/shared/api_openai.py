@@ -87,11 +87,11 @@ def resolve_openai_endpoint(arguments: dict[str, Any]) -> tuple[str, str]:
 
     URL precedence: explicit argument → DASHSCOPE_BASE_URL → default. An explicit
     api_key wins; otherwise use the host's API key environment variable. Unlisted hosts
-    use DASHSCOPE_API_KEY. Missing keys fall back to "EMPTY" for local servers.
+    and missing keys fall back to "EMPTY" for local servers.
     """
     base_url = arguments.get("base_url") or get_env("DASHSCOPE_BASE_URL") or DEFAULT_DASHSCOPE_BASE_URL
-    key_env = _API_KEY_ENV_BY_HOST.get(urlsplit(base_url).hostname or "", "DASHSCOPE_API_KEY")
-    api_key = arguments.get("api_key") or get_env(key_env) or "EMPTY"
+    key_env = _API_KEY_ENV_BY_HOST.get(urlsplit(base_url).hostname or "")
+    api_key = arguments.get("api_key") or (get_env(key_env) if key_env else None) or "EMPTY"
     return base_url, api_key
 
 
@@ -187,11 +187,6 @@ def call_openai_chat(
     from openai import OpenAI
 
     from shared.retry import retry_call
-
-    # A missing key against DashScope just 401s with "No API-key provided"; give an actionable
-    # message. Local/self-hosted servers ignore auth, so only guard the DashScope endpoint.
-    if api_key in ("", "EMPTY") and "dashscope" in base_url:
-        raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
 
     retryable = (
         openai.RateLimitError,

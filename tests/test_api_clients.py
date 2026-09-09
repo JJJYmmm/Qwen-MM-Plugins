@@ -130,10 +130,13 @@ def test_model_resolvers_use_explicit_env_then_builtin(monkeypatch):
     "base_url,orca_key,explicit_key,expected_key",
     [
         (None, "orca", None, "dashscope"),
+        ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "orca", None, "dashscope"),
         ("https://api.orcarouter.ai/v1", "orca", None, "orca"),
         ("https://api.orcarouter.ai/v1", None, None, "EMPTY"),
         ("https://api.orcarouter.ai/v1", "orca", "explicit", "explicit"),
-        ("https://api.orcarouter.ai.example/v1", "orca", None, "dashscope"),
+        ("https://api.orcarouter.ai.example/v1", "orca", None, "EMPTY"),
+        ("http://localhost:8000/v1", "orca", None, "EMPTY"),
+        ("http://localhost:8000/v1", "orca", "custom", "custom"),
     ],
 )
 def test_endpoint_selects_key_by_host(monkeypatch, base_url, orca_key, explicit_key, expected_key):
@@ -143,16 +146,6 @@ def test_endpoint_selects_key_by_host(monkeypatch, base_url, orca_key, explicit_
     expected = (base_url or oa.DEFAULT_DASHSCOPE_BASE_URL, expected_key)
     assert oa.resolve_openai_endpoint(arguments) == expected
     assert omni.resolve_omni_endpoint(arguments) == expected
-
-
-def test_call_openai_chat_missing_key_guard():
-    with pytest.raises(RuntimeError, match="no API key"):
-        oa.call_openai_chat(
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-            api_key="EMPTY",
-            model="m",
-            messages=[],
-        )
 
 
 class _FakeCompletions:

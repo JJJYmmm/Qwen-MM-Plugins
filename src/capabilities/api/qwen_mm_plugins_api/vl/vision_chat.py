@@ -26,7 +26,7 @@ class VisionChatArgs(BaseModel):
         description="Video URLs or local file paths. Local files are auto-extracted into frames.",
     )
     base_url: Optional[str] = Field(default=None, description="API base URL (defaults to DASHSCOPE_BASE_URL)")
-    api_key: Optional[str] = Field(default=None, description="API key (defaults to DASHSCOPE_API_KEY)")
+    api_key: Optional[str] = Field(default=None, description="API key override; otherwise selected by endpoint")
     max_tokens: int = Field(default=2048, description="Maximum tokens in response (default: 2048)")
     temperature: Optional[float] = Field(default=None, description="Sampling temperature")
     dry_run: bool = Field(default=False, description="If true, return the request payload without calling the endpoint")
@@ -46,7 +46,7 @@ class VisionChatArgs(BaseModel):
 TOOL: dict[str, Any] = {
     "name": "vision_chat",
     "description": (
-        "Chat with a vision-language model about images and videos via DashScope. "
+        "Chat with a vision-language model about images and videos via an OpenAI-compatible endpoint. "
         "Local videos are sampled into inline frames, so per request keep ≤ 250 items total "
         "(frames + images) and fps = frames / duration within [0.1, 10] — set video_max_frames to the "
         "video's length; for videos over ~40 min use read_video instead. "
