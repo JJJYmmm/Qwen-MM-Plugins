@@ -1,6 +1,6 @@
 # Cookbook — Qwen-MM-Plugins Video Edit
 
-`qwen-mm-plugins-video-edit` pairs a video-editing **skill** with DashScope **generation** tools —
+`qwen-mm-plugins-video-edit` pairs a video-editing **skill** with DashScope and MiniMax **generation** tools —
 image, TTS, digital human, and text/image→video. The model can generate missing assets (title cards,
 voiceover, B-roll, transition stills) and stitch them together with the user's real footage into a
 finished edit: vlogs, montages, intros, recaps, style replications, subtitled and voiced-over cuts.
@@ -11,18 +11,49 @@ Perception (actually *watching* the footage) comes from the sibling
 
 ---
 
-## Generation tools (DashScope)
+## Generation tools
 
 | Tool | Model | Use it for | Modes / notes |
 |------|-------|------------|---------------|
 | `qwen_image` | Qwen-Image | Images: generate, edit, translate text in image | `text_to_image` · `image_edit` (1-3 input images) · `image_translate` (layout-preserving). Sync. |
 | `qwen_tts` | Qwen3-TTS-Flash | Voiceover / narration | 10 languages, 44 system voices (`Cherry`, `Serena`, `Ethan`, …). ~512 tokens per call — split long scripts at sentence boundaries. |
+| `minimax_tts` | MiniMax Speech 2.8 HD | Voiceover / narration | MP3 URL by default; optional voice controls, audio formats, local saving, and subtitles. Requires `MINIMAX_API_KEY`. |
 | `wan_s2v` | Wan2.2-S2V | Digital-human lip-sync video from one portrait + audio | `detect` (always run first — checks the portrait) then `generate`. Audio ≤ 20 s; real humans and cartoon characters. |
 | `wan_t2v` | Wan 2.7 | Text→video, or animate from a first (and last) frame | `text_to_video` · `first_frame` · `first_last_frame`. 2-15 s, up to 1080p. Sync — blocks until ready. |
 | `happyhorse` | HappyHorse 1.0 | Video generation with reference fusion, and text-driven video editing | `text_to_video` · `image_to_video` · `reference_to_video` (fuse 1-9 reference images, cited as `[Image 1]`…) · `video_edit` (edit an existing ≤15 s clip by instruction). Async, 1-5 min typical. |
 
-Generated asset URLs expire in 24 h — pass `output_dir` to download immediately. All tools accept a
-`seed` for reproducibility; fix it while iterating prompts.
+Generated asset URLs expire in 24 h — pass `output_dir` to download immediately. Where a tool exposes
+`seed`, fix it while iterating prompts.
+
+### MiniMax voiceover
+
+```python
+minimax_tts(
+    text="Welcome to the video.",
+    voice="English_expressive_narrator",
+    language_type="English",
+    output_dir="./assets",
+    subtitle_enable=True,
+)
+```
+
+Returns an audio URL, the saved MP3 path, and a subtitle URL. Omit `output_dir` for URLs only.
+`model` defaults to `speech-2.8-hd`, and `region` to `global`; set `region="cn"` for a China-region account.
+Region selects the API endpoint, independently of the spoken language.
+
+Advanced settings are optional; partial objects keep the remaining defaults. For example,
+`voice_setting={"speed": 1.2}` adjusts speech speed, and `audio_setting={"format": "wav"}` selects WAV.
+
+| Option | Default |
+|--------|---------|
+| `voice_setting` | `speed=1`, `vol=1`, `pitch=0`; no explicit emotion. Voice ID comes from `voice`. |
+| `audio_setting` | MP3, 32 kHz, 128 kbps, mono. Also supports WAV, FLAC, and PCM. |
+| `pronunciation_dict` | No pronunciation overrides. |
+| `voice_modify` | No voice effects. |
+| `output_format` | `url`; choose `hex` to decode audio into `output_dir` or a temporary directory. |
+| `stream` | `False`; this tool only supports non-streaming responses. |
+
+See [MiniMax's API reference](https://platform.minimax.io/docs/api-reference/speech-t2a-http) for voice effects and pronunciation options.
 
 ## The editing skill
 
@@ -62,8 +93,8 @@ uv run --extra video-edit qwen-mm-plugins-video-edit
 
 ## Prerequisites
 
-The **generation** tools call remote APIs — `uvx` installs their Python deps and they need no system
-tools beyond `DASHSCOPE_API_KEY`. The **editing** side runs locally:
+The **generation** tools call remote APIs — `uvx` installs their Python deps. Set `DASHSCOPE_API_KEY`
+for DashScope tools or `MINIMAX_API_KEY` for MiniMax. The **editing** side runs locally:
 
 ```bash
 # ffmpeg + ffprobe — every local edit (cuts, frame ops, loudness / black-frame gates)
@@ -110,7 +141,8 @@ bash scripts/check_env.sh
 
 | Variable | Description |
 |----------|-------------|
-| `DASHSCOPE_API_KEY` | Required — all generation tools (`qwen_image`, `qwen_tts`, `wan_s2v`, `wan_t2v`, `happyhorse`) call DashScope. |
+| `DASHSCOPE_API_KEY` | Required for `qwen_image`, `qwen_tts`, `wan_s2v`, `wan_t2v`, and `happyhorse`. |
+| `MINIMAX_API_KEY` | Required for `minimax_tts` only. |
 | `DASHSCOPE_BASE_URL` | Optional — override the DashScope base URL (proxies/gateways). |
 
 > Set these via env vars, `~/.qwen-mm-plugins/config`, or the guided installer **`bash install.sh`** (`bash install.sh verify` checks what's set).
