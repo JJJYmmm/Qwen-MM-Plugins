@@ -44,16 +44,9 @@ Region selects the API endpoint, independently of the spoken language.
 Advanced settings are optional; partial objects keep the remaining defaults. For example,
 `voice_setting={"speed": 1.2}` adjusts speech speed, and `audio_setting={"format": "wav"}` selects WAV.
 
-| Option | Default |
-|--------|---------|
-| `voice_setting` | `speed=1`, `vol=1`, `pitch=0`; no explicit emotion. Voice ID comes from `voice`. |
-| `audio_setting` | MP3, 32 kHz, 128 kbps, mono. Also supports WAV, FLAC, and PCM. |
-| `pronunciation_dict` | No pronunciation overrides. |
-| `voice_modify` | No voice effects. |
-| `output_format` | `url`; choose `hex` to decode audio into `output_dir` or a temporary directory. |
-| `stream` | `False`; this tool only supports non-streaming responses. |
-
-See [MiniMax's API reference](https://platform.minimax.io/docs/api-reference/speech-t2a-http) for voice effects and pronunciation options.
+`pronunciation_dict` and `voice_modify` enable pronunciation overrides and effects; both are off by default.
+Use `output_format="hex"` to save decoded audio to `output_dir` or a temporary directory.
+Only non-streaming responses are supported (`stream=False`). See [MiniMax's API reference](https://platform.minimax.io/docs/api-reference/speech-t2a-http) for the available settings.
 
 ## The editing skill
 
