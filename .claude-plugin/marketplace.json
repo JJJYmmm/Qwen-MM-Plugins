@@ -75,7 +75,7 @@
         "source": "git-subdir",
         "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
         "path": "src/capabilities/edu-agent",
-        "ref": "qwen-mm-plugins-edu-agent-v1.0.3"
+        "ref": "qwen-mm-plugins-edu-agent-v1.1.0"
       },
       "description": "Create narrated Mandarin math and science tutorial videos or interactive explainers from problem statements and images."
     },
