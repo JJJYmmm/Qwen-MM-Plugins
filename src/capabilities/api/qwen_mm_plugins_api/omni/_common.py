@@ -36,10 +36,8 @@ from typing import Any
 
 from shared import oss
 from shared.api_omni import (
-    _VIDEO_EXTS,
     DEFAULT_OMNI_FPS,
     DEFAULT_OMNI_MAX_PIXELS,
-    DEFAULT_OMNI_MODEL,
     OMNI_MAX_B64_BYTES,
     OMNI_MAX_B64_FRAMES,
     OMNI_MAX_UPLOAD_BYTES,
@@ -47,6 +45,7 @@ from shared.api_omni import (
     b64_len,
     call_omni,
     call_omni_json,
+    has_video_extension,
     has_video_stream,
     jpeg_data_url,
     omni_audio_part,
@@ -54,6 +53,7 @@ from shared.api_omni import (
     omni_video_max_sec,
     omni_video_part,
     resolve_omni_endpoint,
+    resolve_omni_model,
 )
 from shared.api_openai import is_url
 from shared.content import require_dep, require_file, text_error
@@ -94,10 +94,6 @@ class _InlineBudgetExceeded(RuntimeError):
     Distinct from a plain RuntimeError so _local_video_parts can tell "too long to inline" (switch to
     OSS or frames+audio) apart from "ffmpeg is broken" (fall back to the original file).
     """
-
-
-def _looks_like_video(path: str) -> bool:
-    return os.path.splitext(path.split("?", 1)[0])[1].lower() in _VIDEO_EXTS
 
 
 def _temp_file(suffix: str, *, prefix: str) -> str:
@@ -512,13 +508,7 @@ def _dry_run_blocks(file_path: str, prompt: str, mode: str, fps: float, max_pixe
 
     Media kind is decided by extension here (no ffprobe), so dry_run works offline without ffmpeg.
     """
-    kind = (
-        "video"
-        if (mode == "auto" and _looks_like_video(file_path))
-        or (mode == "audio" and is_url(file_path) and _looks_like_video(file_path))
-        else ("audio" if mode == "audio" else "video" if _looks_like_video(file_path) else "audio")
-    )
-    if kind == "video":
+    if has_video_extension(file_path) and (mode != "audio" or is_url(file_path)):
         media = {
             "type": "video_url",
             "source": os.path.basename(file_path),
@@ -572,7 +562,7 @@ def run_omni(
 
     fps = arguments.get("fps") or default_fps
     max_pixels = arguments.get("max_pixels") or default_max_pixels
-    model = arguments.get("model") or DEFAULT_OMNI_MODEL
+    model = resolve_omni_model(arguments.get("model"))
     base_url, api_key = resolve_omni_endpoint(arguments)
 
     if arguments.get("dry_run"):

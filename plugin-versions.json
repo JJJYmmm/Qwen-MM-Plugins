@@ -1,14 +1,15 @@
 {
-  "distribution_version": "1.0.2",
+  "distribution_version": "1.0.9",
   "tag_format": "qwen-mm-plugins-{cap}-v{version}",
   "plugins": {
-    "api": "1.0.1",
-    "blender": "1.0.1",
-    "core": "1.0.1",
-    "edu-agent": "1.0.1",
-    "freecad": "1.0.1",
-    "search": "1.0.2",
-    "video-edit": "1.0.1",
-    "video-memory": "1.0.1"
+    "api": "1.0.5",
+    "blender": "1.0.2",
+    "core": "1.0.5",
+    "edu-agent": "1.0.2",
+    "freecad": "1.0.2",
+    "omni-memory": "1.0.0",
+    "search": "1.0.4",
+    "video-edit": "1.0.2",
+    "video-memory": "1.0.3"
   }
 }

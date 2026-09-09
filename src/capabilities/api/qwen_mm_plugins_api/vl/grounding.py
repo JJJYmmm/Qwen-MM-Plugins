@@ -17,7 +17,7 @@ class GroundingArgs(BaseModel):
     prompt: str = Field(description="What to detect (e.g., 'all cats', 'the red car', 'every person')")
     model: Optional[str] = Field(
         default=None,
-        description="Model name (default: 'qwen3.7-plus'). Always uses the default model.",
+        description="Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.",
     )
     return_img: bool = Field(default=False, description="Return annotated image with bounding boxes drawn")
     api_key: Optional[str] = Field(default=None, description="API key (defaults to DASHSCOPE_API_KEY)")
@@ -103,12 +103,12 @@ def parse_grounding(text: str, img_w: int, img_h: int) -> list[dict[str, Any]]:
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
-    from shared.api_openai import DEFAULT_MODEL, call_openai_chat, resolve_openai_endpoint
+    from shared.api_openai import call_openai_chat, resolve_openai_endpoint, resolve_vl_model
     from shared.content import require_dep, require_file
 
     image_path = arguments.get("image_path", "")
     prompt = arguments.get("prompt", "")
-    model = arguments.get("model") or DEFAULT_MODEL
+    model = resolve_vl_model(arguments.get("model"))
     should_draw = arguments.get("return_img", False)
     base_url, api_key = resolve_openai_endpoint(arguments)
 
@@ -119,11 +119,10 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if err := require_dep("openai"):
         return err
 
-    from PIL import Image
-
     from shared.api_openai import encode_image_source
+    from shared.image import open_image
 
-    img = Image.open(image_path)
+    img = open_image(image_path)
     orig_w, orig_h = img.size
 
     grounding_prompt = (
@@ -137,7 +136,8 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "role": "user",
             "content": [
-                encode_image_source(image_path),
+                # Send the same pixels used for box conversion; endpoints differ in EXIF handling.
+                encode_image_source(img),
                 {"type": "text", "text": grounding_prompt},
             ],
         }
@@ -150,8 +150,10 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
             model=model,
             messages=messages,
             max_tokens=2048,
-            # Grounding is a perception task, no need to think
-            extra_body={"enable_thinking": False},
+            # Grounding is a perception task, no need to think. The field is DashScope's, and
+            # detection works without it, so it is passed as a droppable hint: an endpoint that
+            # rejects it still grounds, it just thinks first.
+            optional_extra_body={"enable_thinking": False},
         )
         raw_text = response.choices[0].message.content or ""
         detections = parse_grounding(raw_text, orig_w, orig_h)

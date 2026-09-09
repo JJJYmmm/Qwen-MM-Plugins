@@ -80,9 +80,10 @@ claude plugin install qwen-mm-plugins-<你的能力>@qwen-mm-plugins
    ```toml
    where = [..., "src/capabilities/<yourname>"]
    ```
-5. 在 `plugin-versions.json` 中加入初始版本，并在 `.claude-plugin/marketplace.json` 中加入
-   固定到对应 tag 的 `git-subdir` entry。从现有能力复制三套 harness manifest；有 server 的
-   能力还需 `.mcp.json`。运行 `scripts/check_manifests.py`，再按[插件发布](releasing.md)打首个 tag。
+5. 在 `plugin-versions.json` 中加入初始版本，并在规范的 `.claude-plugin/marketplace.json`
+   （CodeBuddy 与 WorkBuddy 也读取该文件）中加入固定到对应 tag 的 `git-subdir` entry。从现有
+   能力复制三套 harness manifest；有 server 的能力还需 `.mcp.json`。运行
+   `scripts/check_manifests.py`，再按[插件发布](releasing.md)打首个 tag。
 
 `__main__.py` 从 `src/capabilities/example/` **原样复制**——它从目录名推断 import 名，没有任何 per-server 字面量。
 纯 skill 能力不写 `mcpServers`、也没有 `.mcp.json`，但仍保留三套 harness manifest。
@@ -97,5 +98,12 @@ claude plugin install qwen-mm-plugins-<你的能力>@qwen-mm-plugins
 - `shared.video` —— 抽帧/视频信息 + 时间戳解析（`get_video_info`、`extract_frames_by_seeking`、`compute_dynamic_fps`、`parse_time`）
 - `shared.cache` —— 派生产物缓存（`cache_dir`、`cached_path`）
 - `shared.syscmd` —— 定位外部 CLI(含 PATH 恢复)（`which_tool`、`find_tool`）
+- `shared.isolated_worker` —— 当原生库初始化、进程级全局状态或硬超时可能拖垮 MCP
+  服务时，在干净解释器中运行 JSON 可序列化 callable（`run_isolated`）
 - `shared.api_openai` —— OpenAI 兼容 chat 客户端（`call_openai_chat`、`resolve_openai_endpoint`）
 - `shared.api_dashscope` —— DashScope 原生 REST 异步生成任务（`submit_dashscope_async`、`poll_dashscope_task`、`save_url_to_dir`、`retry_call`）
+
+仅当调用可能死锁或导致解释器崩溃、持有非线程安全的进程级全局状态，或必须在硬超时后终止时，
+才使用隔离 worker。普通阻塞 I/O 应继续走 handler 线程；已经隔离在外部 CLI 中的工作也不需要再套
+一层 Python worker。worker 的参数和结果必须可 JSON 序列化。该隔离保护 MCP 进程及其 stdio
+传输，但它不是安全沙箱，也不提供 CPU、内存或权限边界。

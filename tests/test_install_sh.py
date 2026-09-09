@@ -15,6 +15,11 @@ from shared.env import CONFIG_FIELDS
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _release_tag(cap: str) -> str:
+    index = json.loads((ROOT / "plugin-versions.json").read_text(encoding="utf-8"))
+    return index["tag_format"].format(cap=cap, version=index["plugins"][cap])
+
+
 def _bash(script: str, **env_overrides: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "NO_COLOR": "1", **env_overrides}
     return subprocess.run(
@@ -41,6 +46,15 @@ def test_config_spec_lists_search_backend_selector_and_keys():
     assert any(row.startswith("EXA_API_KEY|1|search||") for row in rows)
 
 
+def test_config_spec_lists_api_model_defaults():
+    result = _bash('printf "%s\\n" "${CONFIG_SPEC[@]}"')
+    assert result.returncode == 0, result.stderr
+    rows = result.stdout.splitlines()
+    assert any(row.startswith("QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|") for row in rows)
+    assert any(row.startswith("QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|") for row in rows)
+    assert any(row.startswith("QWEN_MM_NATIVE_MODE|0|runtime|1|") for row in rows)
+
+
 def test_config_spec_mirrors_shared_catalog():
     result = _bash('printf "%s\\n" "${CONFIG_SPEC[@]}"')
     assert result.returncode == 0, result.stderr
@@ -50,6 +64,7 @@ def test_config_spec_mirrors_shared_catalog():
         "Search providers": "search",
         "Runtime paths & limits": "runtime",
         "Video-memory": "memory",
+        "Omni-memory": "omni",
         "OSS storage (serve large media by URL)": "oss",
         "Blender / FreeCAD hosts": "hosts",
         "edu-agent (Node / headless Chromium)": "edu",
@@ -210,6 +225,42 @@ def test_rewrite_plugin_sources_all_skips_skill_only_manifests(tmp_path):
     assert sources["qwen-mm-plugins-search"] == "./src/capabilities/search"
 
 
+def test_local_restore_cli_restores_all_published_refs(tmp_path):
+    checkout = _make_local_checkout(tmp_path)
+    shutil.copy2(ROOT / "install.sh", checkout)
+    localized = subprocess.run(
+        [
+            "python3",
+            str(checkout / "scripts/rewrite_plugin_sources.py"),
+            "--repo",
+            str(checkout),
+            "--refresh",
+            "all",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert localized.returncode == 0, localized.stderr
+
+    restored = subprocess.run(
+        ["bash", "install.sh", "local", "--restore"],
+        cwd=checkout,
+        env={**os.environ, "HOME": str(tmp_path / "home"), "NO_COLOR": "1"},
+        capture_output=True,
+        text=True,
+    )
+    assert restored.returncode == 0, restored.stderr
+    assert "restored published plugin refs" in restored.stdout
+
+    marketplace = json.loads((checkout / ".claude-plugin/marketplace.json").read_text())
+    sources = {item["name"]: item["source"] for item in marketplace["plugins"]}
+    assert sources["qwen-mm-plugins-core"]["ref"] == "qwen-mm-plugins-core-v1.0.1"
+    assert sources["qwen-mm-plugins-search"]["ref"] == "qwen-mm-plugins-search-v1.0.1"
+    manifest = (checkout / "src/capabilities/core/.mcp.json").read_text()
+    assert "@qwen-mm-plugins-core-v1.0.1" in manifest
+    assert "--refresh" not in manifest
+
+
 def test_local_checkout_root_comes_from_install_script_not_cwd(tmp_path):
     result = subprocess.run(
         ["bash", "-c", f"source {ROOT / 'install.sh'} --help >/dev/null; local_checkout_root"],
@@ -235,10 +286,62 @@ def test_local_install_dry_run_does_not_rewrite_manifests(tmp_path):
     assert manifest.read_text() == original
 
 
+@pytest.mark.parametrize("action", ["do_install", "do_update", "do_uninstall"])
+def test_missing_harness_stops_before_plugin_selection(action):
+    script = rf"""
+screen() {{ :; }}
+hr() {{ :; }}
+pick_count=0
+menu_pick() {{
+  pick_count=$((pick_count + 1))
+  if [ "$pick_count" -eq 1 ]; then PICK_I=0; PICK=openclaw
+  else PICK_I=-1; PICK=''
+  fi
+}}
+have() {{ return 1; }}
+choose_caps() {{ printf 'UNEXPECTED capability selection\n'; }}
+choose_caps_local() {{ printf 'UNEXPECTED capability selection\n'; }}
+choose_caps_update() {{ printf 'UNEXPECTED capability selection\n'; }}
+spin() {{ printf 'UNEXPECTED installed-plugin detection\n'; }}
+pause() {{ printf 'PAUSED\n'; }}
+{action}
+"""
+    result = _bash(script)
+    assert result.returncode == 0, result.stderr
+    assert "openclaw is not available — 'openclaw' is not installed or not on PATH" in result.stdout
+    assert result.stdout.count("PAUSED") == 1
+    assert "UNEXPECTED" not in result.stdout
+
+
+def test_verify_separates_capabilities_and_summarizes_results():
+    script = r"""
+screen() { :; }
+hr() { :; }
+spin() { printf -v "$2" 'core search edu-agent'; }
+load_caps() { MP_ITEMS=(core search edu-agent); MP_SEL=(1 1 1); }
+multi_pick() { MP_STATUS=ok; }
+ensure_uv() { return 0; }
+uvx_cap() { printf 'checked %s\n' "$1"; [ "$1" != search ]; }
+pause() { :; }
+do_verify
+"""
+    result = _bash(script)
+    assert result.returncode == 1
+    for cap in ("core", "search", "edu-agent"):
+        assert f"── qwen-mm-plugins-{cap} " in result.stdout
+    assert "checked core" in result.stdout
+    assert "checked search" in result.stdout
+    assert "Verify summary" in result.stdout
+    assert "passed       1" in result.stdout
+    assert "failed       1" in result.stdout
+    assert "skipped      1 (skill-only)" in result.stdout
+
+
 @pytest.mark.parametrize(
     ("harness", "expected"),
     [
         ("claude", "claude plugin install qwen-mm-plugins-core@qwen-mm-plugins"),
+        ("codebuddy", "codebuddy plugin install qwen-mm-plugins-core@qwen-mm-plugins"),
         ("codex", "codex plugin add qwen-mm-plugins-core@qwen-mm-plugins"),
         ("qoder", "qodercli plugins install qwen-mm-plugins-core@qwen-mm-plugins"),
         ("openclaw", "openclaw plugins install qwen-mm-plugins-core --marketplace"),
@@ -258,6 +361,61 @@ def test_local_install_uses_each_harness_native_command(tmp_path, harness, expec
     assert str(checkout) in result.stdout
 
 
+def test_harness_catalog_includes_codebuddy_but_not_ui_only_desktop_apps():
+    result = _bash('printf "%s\n%s\n" "$MP_HARNESSES" "$CFG_HARNESSES"')
+    assert result.returncode == 0, result.stderr
+    marketplace, config = result.stdout.splitlines()
+    assert "codebuddy" in marketplace.split()
+    for desktop_app in ("workbuddy", "qoderwork", "qwenwork"):
+        assert desktop_app not in marketplace.split()
+        assert desktop_app not in config.split()
+
+
+def test_codebuddy_rejects_broken_marketplace_ref_urls():
+    result = _bash("REPO_REF=qwen-mm-plugins-core-v1.0.1; install_for codebuddy qwen-mm-plugins-core")
+    assert result.returncode == 1
+    assert "tested codebuddy client cannot install Git marketplace #ref URLs reliably" in result.stdout
+
+
+def test_codebuddy_marketplace_parser_distinguishes_local_and_remote():
+    local_listing = """[
+  {
+    "name": "qwen-mm-plugins",
+    "type": "directory",
+    "description": "Marketplace from /tmp/checkout with spaces"
+  }
+]"""
+    remote_listing = """[
+  {
+    "name": "qwen-mm-plugins",
+    "type": "git",
+    "description": "Marketplace from https://example.test/repo.git"
+  }
+]"""
+    result = _bash(
+        'printf "%s\n" "$LOCAL_LISTING" | codebuddy_marketplace_root_from_list qwen-mm-plugins; '
+        'printf "%s\n" "$REMOTE_LISTING" | codebuddy_marketplace_root_from_list qwen-mm-plugins',
+        LOCAL_LISTING=local_listing,
+        REMOTE_LISTING=remote_listing,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["/tmp/checkout with spaces", "remote"]
+
+
+def test_codebuddy_install_checks_inventory_when_cli_falsely_returns_zero(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    cli = fake_bin / "codebuddy"
+    cli.write_text("#!/usr/bin/env bash\nexit 0\n")
+    cli.chmod(0o755)
+    result = _bash(
+        "confirm() { return 0; }; install_for codebuddy qwen-mm-plugins-core",
+        PATH=f"{fake_bin}:{os.environ['PATH']}",
+    )
+    assert result.returncode == 1
+    assert "CodeBuddy did not install qwen-mm-plugins-core@qwen-mm-plugins" in result.stdout
+
+
 @pytest.mark.parametrize(
     ("harness", "expected"),
     [
@@ -266,6 +424,13 @@ def test_local_install_uses_each_harness_native_command(tmp_path, harness, expec
             (
                 "claude plugin marketplace update qwen-mm-plugins",
                 "claude plugin update qwen-mm-plugins-core@qwen-mm-plugins",
+            ),
+        ),
+        (
+            "codebuddy",
+            (
+                "codebuddy plugin marketplace update qwen-mm-plugins",
+                "codebuddy plugin update qwen-mm-plugins-core@qwen-mm-plugins",
             ),
         ),
         (
@@ -289,14 +454,14 @@ def test_local_install_uses_each_harness_native_command(tmp_path, harness, expec
                 "git ls-remote --exit-code",
                 "qwen extensions uninstall qwen-mm-plugins-core",
                 "qwen extensions install",
-                "--ref=qwen-mm-plugins-core-v1.0.1",
+                f"--ref={_release_tag('core')}",
             ),
         ),
         (
             "gemini",
             (
                 "gemini mcp add -s user qwen-mm-plugins-core uvx --from",
-                "fetch --depth 1 origin qwen-mm-plugins-core-v1.0.1",
+                f"fetch --depth 1 origin {_release_tag('core')}",
                 "gemini skills install",
             ),
         ),
@@ -331,12 +496,12 @@ def test_qwen_update_restores_previous_ref_when_new_install_fails(tmp_path):
 confirm() { return 0; }
 run_cmd() {
   printf '$ %s\n' "$*"
-  case "$*" in *--ref=qwen-mm-plugins-core-v1.0.1*) return 1 ;; *) return 0 ;; esac
+  case "$*" in *--ref="$EXPECTED_CORE_TAG"*) return 1 ;; *) return 0 ;; esac
 }
 update_for qwen-code qwen-mm-plugins-core
 test "$?" -eq 1
 """
-    result = _bash(script, HOME=str(tmp_path))
+    result = _bash(script, HOME=str(tmp_path), EXPECTED_CORE_TAG=_release_tag("core"))
     assert result.returncode == 0, result.stderr
     assert "restoring qwen-mm-plugins-core from its previous ref qwen-mm-plugins-core-v1.0.0" in result.stdout
     assert "--ref=qwen-mm-plugins-core-v1.0.0" in result.stdout
@@ -345,7 +510,7 @@ test "$?" -eq 1
 def test_cap_spec_defaults_to_capability_stable_tag():
     result = _bash("REPO_REF=; cap_spec search")
     assert result.returncode == 0, result.stderr
-    assert result.stdout.endswith("@qwen-mm-plugins-search-v1.0.2")
+    assert result.stdout.endswith(f"@{_release_tag('search')}")
 
 
 def test_explicit_ref_overrides_package_and_marketplace():
@@ -361,7 +526,7 @@ def test_explicit_ref_overrides_package_and_marketplace():
 def test_gemini_skill_checkout_uses_same_stable_tag():
     result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skill gemini search")
     assert result.returncode == 0, result.stderr
-    assert "fetch --depth 1 origin qwen-mm-plugins-search-v1.0.2" in result.stdout
+    assert f"fetch --depth 1 origin {_release_tag('search')}" in result.stdout
     assert "--path src/capabilities/search/skill" in result.stdout
 
 
@@ -369,6 +534,7 @@ def test_gemini_skill_checkout_uses_same_stable_tag():
     ("harness", "expected"),
     [
         ("claude", "/reload-plugins"),
+        ("codebuddy", "/reload-plugins"),
         ("codex", "start a new task"),
         ("qoder", "/plugins reload"),
         ("openclaw", "openclaw gateway restart"),
@@ -385,7 +551,7 @@ def test_post_update_hint_explains_how_to_activate_updated_components(harness, e
 def test_manual_update_prints_same_tag_for_skill_and_mcp_without_claiming_detection():
     result = _bash("show_manual update qwen-mm-plugins-search")
     assert result.returncode == 0, result.stderr
-    tag = "qwen-mm-plugins-search-v1.0.2"
+    tag = _release_tag("search")
     repo = "https://github.com/QwenLM/Qwen-MM-Plugins.git"
     assert f"/tree/{tag}/src/capabilities/search/skill" in result.stdout
     assert f"qwen-mm-plugins[search] @ git+{repo}@{tag}" in result.stdout
@@ -398,7 +564,7 @@ def test_capability_rows_never_wrap_at_narrow_terminal_widths(width):
     result = _bash(f"term_cols() {{ printf {width}; }}; load_caps core; _multi_rows 0")
     assert result.returncode == 0, result.stderr
     lines = [line.replace("\x1b[2K", "") for line in result.stdout.splitlines()]
-    assert len(lines) == 8
+    assert len(lines) == 9
     assert all(len(line) < width for line in lines), result.stdout
 
 

@@ -4,6 +4,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install.sh | bash   # guided menu
 #   bash install.sh [install|update|local|configure|verify|uninstall]  # single interactive action
+#   bash install.sh local --restore  # restore release refs after local-checkout testing
 #   bash install.sh --verify [caps]   # non-interactive: check system deps of installed (or listed) caps
 #
 # What it does: installs the plugin via each harness's NATIVE marketplace (it does not
@@ -26,14 +27,15 @@ QMP_DRY=0
 LOCAL_REPO_ROOT=''
 
 # ── capability catalog — the ONE place capabilities are declared; every menu iterates this ──
-CAP_ITEMS=(core api search video-memory video-edit blender freecad edu-agent)
+CAP_ITEMS=(core api search video-memory omni-memory video-edit blender freecad edu-agent)
 # Latest stable plugin versions, in exactly the same order as CAP_ITEMS. Keep this release index in
 # sync with plugin-versions.json; scripts/check_manifests.py and tests/test_install_sh.py enforce it.
-CAP_VERSIONS=(1.0.1 1.0.1 1.0.2 1.0.1 1.0.1 1.0.1 1.0.1 1.0.1)
-CAP_DESC=("read/visualize any local file — images, video, docs, 3D"
-          "cloud media APIs by model family: VL (vision_chat/ocr/grounding), Omni A/V, ASR, segmentation"
+CAP_VERSIONS=(1.0.5 1.0.5 1.0.4 1.0.3 1.0.0 1.0.2 1.0.2 1.0.2 1.0.2)
+CAP_DESC=("read/visualize any local file, inspect media metadata, crop/annotate, export pages/frames"
+          "media understanding via VL/Omni model services, ASR, and SAM3 segmentation"
           "web search/extraction (Serper, Exa, Tavily) + Serper reverse-image search"
           "hierarchical graph memory for long-video QA"
+          "audio-visual memory for long video: who said what, how, and what it sounded like"
           "video-edit + image/video/audio generation"
           "drive a running Blender: 3D modeling / materials / render (thin client)"
           "drive a running FreeCAD: parametric CAD / STEP·STL / FEM (thin client)"
@@ -47,10 +49,11 @@ is_skill_only() { case "$CAP_SKILL_ONLY" in *" $1 "*) return 0 ;; *) return 1 ;;
 #   MARKETPLACE harnesses install a bundled skill+MCP plugin via their own `plugin install` verb.
 #   CONFIG harnesses have no plugin marketplace, so we register the MCP server (+ skill) via each
 #   harness's native verb (see install_for). Harnesses that need a hand-edited config + a checkout-copied
-#   skill (opencode, QwenPaw, pi) stay docs-only (see docs/en/installation.md), not this menu.
+# Harnesses using a native UI or direct Skill/MCP registration stay docs-only (see
+# docs/en/manual_harnesses.md), not this menu.
 # Menus, status, and detection iterate ALL_HARNESSES; install_for/_detect_mask/do_uninstall case per one.
-MP_HARNESSES="claude codex qoder openclaw"          # native plugin marketplace (skill+MCP bundled)
-CFG_HARNESSES="qwen-code gemini"                    # native-verb (extensions install / mcp add + skills install)
+MP_HARNESSES="claude codebuddy codex qoder openclaw" # native plugin marketplace (skill+MCP bundled)
+CFG_HARNESSES="qwen-code gemini"                     # native-verb installs
 ALL_HARNESSES="$MP_HARNESSES $CFG_HARNESSES"
 
 # ── config-field catalog — the ONE place user-settable config vars are declared; do_configure
@@ -62,8 +65,10 @@ ALL_HARNESSES="$MP_HARNESSES $CFG_HARNESSES"
 # (QWEN_MM_AUTOLAUNCH/…).
 # bash-3.2 safe (no assoc arrays).
 CONFIG_SPEC=(
-  "DASHSCOPE_API_KEY|1|services||vision, OCR, grounding, ASR, generation, memory builds"
+  "DASHSCOPE_API_KEY|1|services||vision, OCR, grounding, text-only image captions, ASR, generation, memory builds"
   "DASHSCOPE_BASE_URL|0|services|DashScope compat URL|override the DashScope OpenAI-compatible base URL"
+  "QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|default VL model for vision_chat, OCR, grounding, and text-only image captions"
+  "QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|default Omni model for audio/video understanding tools and omni-memory"
   "SAM3_SERVER_URL|0|services||segmentation SAM3 server URL"
   "ASR_SERVER_URLS|0|services||self-hosted ASR fallback URLs (comma-separated)"
   "QWEN_MM_SEARCH_BACKEND|0|search|auto|text search backend (auto: serper > tavily > exa; or choose one)"
@@ -73,6 +78,7 @@ CONFIG_SPEC=(
   "QWEN_MM_CACHE|0|runtime|OS cache dir|cache dir for derived render artifacts"
   "QWEN_MM_FFMPEG_TIMEOUT|0|runtime|120|ffmpeg/ffprobe timeout seconds"
   "QWEN_MM_CHAT_TIMEOUT|0|runtime|tool-specific (600; Omni 1800)|OpenAI-compatible chat request timeout seconds"
+  "QWEN_MM_NATIVE_MODE|0|runtime|1|1 returns MCP images; 0 sends images to the VL endpoint and returns captions"
   "QWEN_MM_MAX_TOTAL_FRAMES|0|runtime|600|max frames sampled from a video"
   "OSS_AK|1|oss||OSS access key id"
   "OSS_SK|1|oss||OSS access key secret"
@@ -83,6 +89,7 @@ CONFIG_SPEC=(
   "GRAPH_MEMORY_PATH|0|memory||graph_memory.json path (overrides a passed video path)"
   "EMBEDDINGS_PATH|0|memory||embeddings.npz path"
   "CUTOFF_SEC|0|memory||time cutoff (seconds) for retrieval"
+  "MEM_LOCAL_DIR|0|omni|video directory|optional shared root for namespace memories; defaults beside the input video"
   "BLENDER_BINARY|0|hosts||path to the Blender executable"
   "BLENDER_HOST|0|hosts|localhost|Blender addon host"
   "BLENDER_PORT|0|hosts|9876|Blender addon port"
@@ -93,7 +100,7 @@ CONFIG_SPEC=(
   "NODE_PATH|0|edu||Node.js module resolution path"
   "PUPPETEER_EXECUTABLE_PATH|0|edu||headless Chromium executable for Puppeteer"
 )
-CONFIG_GROUPS=(services search runtime oss memory hosts edu)
+CONFIG_GROUPS=(services search runtime oss memory omni hosts edu)
 config_group_title() {
   case "$1" in
     services) printf 'Media APIs & endpoints' ;;
@@ -101,6 +108,7 @@ config_group_title() {
     runtime)  printf 'Runtime paths & limits' ;;
     oss)    printf 'OSS storage (serve large media by URL)' ;;
     memory) printf 'Video-memory' ;;
+    omni)   printf 'Omni-memory' ;;
     hosts)  printf 'Blender / FreeCAD hosts' ;;
     edu)    printf 'edu-agent (Node / headless Chromium)' ;;
     *)      printf '%s' "$1" ;;
@@ -120,15 +128,17 @@ if [ -d "$HOME/.nvm/versions/node" ]; then
 fi
 export PATH
 
-# Non-interactive forms (--verify / --help) run headless (CI, curl|bash -s -- --verify) and need no
-# terminal; every other invocation is an interactive TUI that reads keys from the tty (fd 3).
+# Non-interactive forms (--verify / --help / local --restore) run headless and need no terminal;
+# every other invocation is an interactive TUI that reads keys from the tty (fd 3).
 NONINTERACTIVE=0
-case "${1:-}" in --verify|-h|--help) NONINTERACTIVE=1; QMP_NO_TUI=1 ;; esac
+case "${1:-}:${2:-}" in
+  --verify:*|-h:*|--help:*|local:--restore) NONINTERACTIVE=1; QMP_NO_TUI=1 ;;
+esac
 # ── an interactive terminal, even under `curl | bash` (stdin is the pipe → read from /dev/tty) ──
 if [ "$NONINTERACTIVE" = 1 ]; then
   exec 3</dev/null                                   # headless: no prompts, no terminal required
 elif ! { exec 3</dev/tty; } 2>/dev/null; then
-  printf 'This installer is interactive — run it in a terminal (or use --verify headless):\n' >&2
+  printf 'This installer is interactive — run it in a terminal (or use a documented headless command):\n' >&2
   printf '  curl -fsSLO https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install.sh && bash install.sh\n' >&2
   exit 1
 fi
@@ -160,8 +170,21 @@ trap '_restore_tty; exit 130' INT
 trap '_restore_tty; exit 143' TERM
 
 have()  { command -v "$1" >/dev/null 2>&1; }
-# Friendly harness name → its CLI binary. Only qoder differs (the executable is `qodercli`).
-harness_bin() { case "$1" in qoder) printf 'qodercli' ;; qwen-code) printf 'qwen' ;; *) printf '%s' "$1" ;; esac; }
+# Friendly harness name → its CLI binary.
+harness_bin() {
+  case "$1" in
+    qoder) printf 'qodercli' ;;
+    qwen-code) printf 'qwen' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+require_harness() {
+  local h=$1 bin; bin=$(harness_bin "$h")
+  have "$bin" && return 0
+  warn "$h is not available — '$bin' is not installed or not on PATH"
+  pause
+  return 1
+}
 hr()    { printf '\n%b▸ %s%b\n' "$CC$CB" "$1" "$C0"; }
 ok()    { printf '  %b✓%b %s\n' "$CG" "$C0" "$1"; }
 warn()  { printf '  %b!%b %s\n' "$CY" "$C0" "$1"; }
@@ -253,6 +276,17 @@ box_row() {  # box_row <colored-content>
   printf '  %b│%b %s%*s %b│%b\n' "$CC" "$C0" "$c" "$pad" '' "$CC" "$C0"
 }
 box_close() { printf '  %b╰%s╯%b\n' "$CC" "$(repeat '─' "$(( _BOX_W + 2 ))")" "$C0"; }
+
+# A width-safe divider between capability command outputs. Keep it visually aligned with result
+# boxes so several verbose --check-system reports remain easy to scan.
+cap_divider() {
+  local title=$1 cols width dashes
+  cols=$(term_cols); width=$(( cols - 2 ))
+  [ "$width" -gt 74 ] && width=74; [ "$width" -lt 18 ] && width=18
+  title=$(_fit "$title" "$(( width - 7 ))")
+  dashes=$(( width - ${#title} - 4 ))
+  printf '\n  %b── %b%s%b %b%s%b\n' "$CC" "$CB" "$title" "$C0" "$CD" "$(repeat '─' "$dashes")" "$C0"
+}
 
 # Centered splash. The logo block is centered as a unit (its two words keep a common left edge via one
 # shared pad); the rule is derived from the logo width, not hardcoded; both subtitles center on their
@@ -527,6 +561,21 @@ claude_marketplace_root_from_list() {
   '
 }
 
+codebuddy_marketplace_root_from_list() {
+  local name=$1
+  awk -v wanted="$name" '
+    $0 ~ "\"name\"[[:space:]]*:[[:space:]]*\"" wanted "\"" { found=1; next }
+    found && /"type"[[:space:]]*:/ {
+      if ($0 !~ /"directory"/) { print "remote"; exit }
+      local_source=1
+      next
+    }
+    found && local_source && /"description"[[:space:]]*:/ {
+      sub(/^.*Marketplace from /, ""); sub(/".*$/, ""); print; exit
+    }
+  '
+}
+
 qoder_marketplace_root_from_list() {
   local name=$1
   awk -v wanted="$name" '
@@ -556,7 +605,7 @@ codex_marketplace_source_from_json() {
 }
 
 # configured_marketplace_source <harness> → local root, "remote", or empty when unknown/missing.
-# Used only as a safety check before a stable update: Claude/Codex/Qoder can all retain the local
+# Used only as a safety check before a stable update: Claude/CodeBuddy/Codex/Qoder can retain a local
 # marketplace configured by `install.sh local`, in which case their native update verb keeps using
 # working-tree code rather than the published tags shown in this installer's release index.
 configured_marketplace_source() {
@@ -566,6 +615,9 @@ configured_marketplace_source() {
     claude)
       out=$("$bin" plugin marketplace list 2>/dev/null) || true
       printf '%s\n' "$out" | claude_marketplace_root_from_list "$MARKETPLACE" ;;
+    codebuddy)
+      out=$("$bin" plugin marketplace list 2>/dev/null) || true
+      printf '%s\n' "$out" | codebuddy_marketplace_root_from_list "$MARKETPLACE" ;;
     codex)
       out=$("$bin" plugin marketplace list --json 2>/dev/null) || true
       printf '%s\n' "$out" | codex_marketplace_source_from_json "$MARKETPLACE" ;;
@@ -575,11 +627,23 @@ configured_marketplace_source() {
   esac
 }
 
-# install.sh local and scripts/dev-plugin.sh share this one rewriter. It switches the selected
-# catalog entries to checkout-relative paths, points their MCP package specs at file://<repo>, and
-# forces uvx to refresh so a reconnect always observes the current checkout.
+# Run the stdlib-only source rewriter with Python when available, or isolated uv as a fallback.
+rewrite_plugin_sources() {
+  local root=$1 mode=$2 py=python3
+  shift 2
+  if ! have python3; then py=uv; fi
+  if [ "$py" = python3 ]; then
+    python3 "$root/scripts/rewrite_plugin_sources.py" --repo "$root" "$mode" "$@"
+  else
+    uv run --no-project --isolated --offline python \
+      "$root/scripts/rewrite_plugin_sources.py" --repo "$root" "$mode" "$@"
+  fi
+}
+
+# Switch selected catalog entries to checkout-relative paths, point MCP package specs at
+# file://<repo>, and force uvx to refresh so a reconnect observes the current checkout.
 localize_plugin_sources() {
-  local plugin cap root py=python3
+  local plugin cap root
   local -a caps=()
   root=${LOCAL_REPO_ROOT:-${REPO_URL#file://}}
   root=$(cd "$root" 2>/dev/null && pwd -P) || return 1
@@ -588,13 +652,7 @@ localize_plugin_sources() {
     caps+=("$cap")
   done
   [ ${#caps[@]} -gt 0 ] || return 0
-  if ! have python3; then py=uv; fi
-  if [ "$py" = python3 ]; then
-    python3 "$root/scripts/rewrite_plugin_sources.py" --repo "$root" --refresh "${caps[@]}"
-  else
-    uv run --no-project --isolated --offline python \
-      "$root/scripts/rewrite_plugin_sources.py" --repo "$root" --refresh "${caps[@]}"
-  fi
+  rewrite_plugin_sources "$root" --refresh "${caps[@]}"
 }
 
 # OpenClaw deliberately rejects remote marketplace manifests whose entries use git/git-subdir
@@ -687,10 +745,35 @@ install_gemini_skill() {  # install_gemini_skill <gemini-bin> <cap>
   return "$rc"
 }
 
+# CodeBuddy can report success after a failed plugin operation. Verify its inventory instead.
+codebuddy_plugins_state() {  # codebuddy_plugins_state <bin> <present|absent> <plugin...>
+  local bin=$1 wanted=$2 out p found failed=0; shift 2
+  out=$("$bin" plugin list 2>/dev/null) || true
+  for p in "$@"; do
+    found=0; printf '%s\n' "$out" | grep -qF -- "${p}@${MARKETPLACE}" && found=1
+    if [ "$wanted" = present ] && [ "$found" = 0 ]; then
+      warn "CodeBuddy did not install ${p}@${MARKETPLACE}"
+      failed=1
+    elif [ "$wanted" = absent ] && [ "$found" = 1 ]; then
+      warn "CodeBuddy still lists ${p}@${MARKETPLACE} after uninstall"
+      failed=1
+    fi
+  done
+  [ "$failed" -eq 0 ]
+}
+
 install_for() {  # install_for <harness> <plugin...>
   local h=$1; shift
   local bin; bin=$(harness_bin "$h")
   local cap failed=0 prompt="Run the $h install commands now (otherwise just print them)?"
+  case "$h" in
+    codebuddy)
+      [ -z "$REPO_REF" ] || {
+        err "the tested $h client cannot install Git marketplace #ref URLs reliably"
+        warn "check out $REPO_REF in a dedicated clone and run 'bash install.sh local' instead"
+        return 1
+      } ;;
+  esac
   is_local_repo "$REPO_URL" && prompt="Install the selected plugins from this checkout into $h now?"
   QMP_DRY=0; confirm "$prompt" y || QMP_DRY=1
   if is_local_repo "$REPO_URL" && [ "$QMP_DRY" = 0 ] && [ "$h" != gemini ]; then
@@ -714,6 +797,28 @@ install_for() {  # install_for <harness> <plugin...>
           run_cmd "$bin" plugin marketplace update "$MARKETPLACE" || return
       fi
       for p in "$@"; do run_cmd "$bin" plugin install "${p}@${MARKETPLACE}" || failed=1; done ;;
+    codebuddy)
+      # `marketplace add` is idempotent but does not switch an existing marketplace between a Git
+      # source and a checkout. Inspect the current source and remove it before such a switch.
+      local current_source desired_source
+      current_source=$(configured_marketplace_source "$h")
+      if is_local_repo "$REPO_URL"; then
+        desired_source=$(cd "${REPO_URL#file://}" 2>/dev/null && pwd -P) || return
+        if [ -n "$current_source" ] && [ "$current_source" != "$desired_source" ]; then
+          warn "switching $MARKETPLACE from $current_source to this checkout"
+          run_cmd "$bin" plugin marketplace remove "$MARKETPLACE" || return
+        fi
+        run_cmd "$bin" plugin marketplace add "$desired_source" || return
+      else
+        if [ -n "$current_source" ] && [ "$current_source" != remote ]; then
+          warn "switching $MARKETPLACE from $current_source to the release catalog"
+          run_cmd "$bin" plugin marketplace remove "$MARKETPLACE" || return
+        fi
+        run_cmd "$bin" plugin marketplace add "${REPO_URL#git+}" || return
+        run_cmd "$bin" plugin marketplace update "$MARKETPLACE" || return
+      fi
+      for p in "$@"; do run_cmd "$bin" plugin install "${p}@${MARKETPLACE}" || failed=1; done
+      if [ "$QMP_DRY" = 0 ]; then codebuddy_plugins_state "$bin" present "$@" || failed=1; fi ;;
     codex)
       # add is idempotent, but on an ALREADY-added marketplace it does NOT refresh the git snapshot,
       # so newly-published capabilities would be missing and their `plugin add` would fail. `upgrade`
@@ -795,7 +900,7 @@ update_for() {
     return 1
   }
   case "$h" in
-    claude|codex|qoder)
+    claude|codebuddy|codex|qoder)
       source=$(configured_marketplace_source "$h")
       if [ -n "$source" ] && [ "$source" != remote ] && is_local_repo "$source"; then
         err "$h currently uses the local marketplace at $source"
@@ -808,6 +913,10 @@ update_for() {
     claude)
       run_cmd "$bin" plugin marketplace update "$MARKETPLACE" || return
       for p in "$@"; do run_cmd "$bin" plugin update "${p}@${MARKETPLACE}" || failed=1; done ;;
+    codebuddy)
+      run_cmd "$bin" plugin marketplace update "$MARKETPLACE" || return
+      for p in "$@"; do run_cmd "$bin" plugin update "${p}@${MARKETPLACE}" || failed=1; done
+      if [ "$QMP_DRY" = 0 ]; then codebuddy_plugins_state "$bin" present "$@" || failed=1; fi ;;
     codex)
       run_cmd "$bin" plugin marketplace upgrade "$MARKETPLACE" || return
       for p in "$@"; do run_cmd "$bin" plugin add "${p}@${MARKETPLACE}" || failed=1; done ;;
@@ -866,6 +975,7 @@ update_for() {
 post_update_hint() {
   case "$1" in
     claude)    warn "already-open Claude Code session: run /reload-plugins (or restart it)" ;;
+    codebuddy) warn "already-open CodeBuddy session: run /reload-plugins (or restart it)" ;;
     codex)     warn "already-open Codex task: start a new task (or restart Codex) to load the updated plugin" ;;
     qoder)     warn "already-open Qoder session: run /plugins reload (or restart it)" ;;
     openclaw)  warn "OpenClaw normally restarts a managed Gateway; otherwise run: openclaw gateway restart" ;;
@@ -877,7 +987,7 @@ post_update_hint() {
 # _detect_mask <harness> → echoes a 0/1 mask (installed?), one char per MP_ITEMS entry.
 # ONE `list` call per harness (the node CLIs are slow to spawn, so we avoid one call per capability),
 # matched against the captured output. Verified per harness on this repo:
-#   - claude / qodercli `list` show installed plugins as "<name>@<marketplace>"
+#   - claude / codebuddy / qodercli `list` show installed plugins as "<name>@<marketplace>"
 #   - codex `plugin list` lists EVERY marketplace plugin with a status column → installed iff the row isn't "not installed"
 #   - openclaw `plugins list` shows installed marketplace plugins by BARE name under a "global:" source root
 # Output is captured before matching so codex's non-zero exit (101) can't trip pipefail; any
@@ -901,10 +1011,10 @@ _detect_mask_cfg() {
 }
 _detect_mask() {
   local h=$1 bin out i id; bin=$(harness_bin "$h")
-  have "$bin" || { printf '%0*d' "${#MP_ITEMS[@]}" 0; return; }
   case "$h" in qwen-code|gemini) _detect_mask_cfg "$h"; return ;; esac
+  have "$bin" || { printf '%0*d' "${#MP_ITEMS[@]}" 0; return; }
   case "$h" in
-    claude|codex) out=$("$bin" plugin  list 2>/dev/null) || true ;;
+    claude|codebuddy|codex) out=$("$bin" plugin list 2>/dev/null) || true ;;
     qoder|openclaw) out=$("$bin" plugins list 2>/dev/null) || true ;;
     *) printf '%0*d' "${#MP_ITEMS[@]}" 0; return ;;
   esac
@@ -1212,11 +1322,8 @@ do_install() {
     [ "$PICK_I" -lt 0 ] && return 0                 # esc/q at top level → back to menu
     case "$PICK" in "other"*) show_manual install; return 0 ;; esac
     harness=$PICK
-    if is_local_repo "$REPO_URL" && ! have "$(harness_bin "$harness")"; then
-      warn "$(harness_bin "$harness") not found"
-      continue
-    fi
-    ensure_uv || return 0
+    require_harness "$harness" || continue
+    ensure_uv || { pause; return 0; }
     screen; hr "Install → $harness"
     if is_local_repo "$REPO_URL"; then
       choose_caps_local "$harness"
@@ -1228,7 +1335,9 @@ do_install() {
       cancel) return 0 ;;                           # q → back to menu
     esac
     [ -n "$SELECTED_PLUGINS" ] && break
-    warn "nothing selected."; return 0
+    warn "nothing selected."
+    pause
+    return 0
   done
   screen; hr "Install → $harness"
   if ! install_for "$harness" $SELECTED_PLUGINS; then
@@ -1245,7 +1354,7 @@ do_install() {
       cap=${p#qwen-mm-plugins-}
       is_skill_only "$cap" && continue
       [ "$checked" = 0 ] && { hr "System check — pre-build uvx env & check system tools"; checked=1; }
-      printf '\n  %b— qwen-mm-plugins-%s —%b\n' "$CB" "$cap" "$C0"
+      cap_divider "qwen-mm-plugins-$cap"
       uvx_cap "$cap" -- --check-system || check_failed=1
     done
     if [ "$check_failed" = 1 ]; then
@@ -1276,6 +1385,19 @@ do_local_install() {
   REPO_URL=$root
   REPO_REF=''
   do_install
+}
+
+do_local_restore() {
+  local root
+  root=$(local_checkout_root) || {
+    err "local restore must run from a cloned Qwen-MM-Plugins checkout"
+    return 1
+  }
+  rewrite_plugin_sources "$root" --restore all || {
+    err "could not restore published plugin refs"
+    return 1
+  }
+  ok "restored published plugin refs in $root"
 }
 
 do_manual_update() {
@@ -1314,10 +1436,7 @@ do_update() {
     [ "$PICK_I" -lt 0 ] && return 0
     case "$PICK" in "other"*) do_manual_update; return $? ;; esac
     harness=$PICK; bin=$(harness_bin "$harness")
-    if ! have "$bin"; then
-      warn "$bin not found"
-      continue
-    fi
+    require_harness "$harness" || continue
     screen; hr "Update → $harness"
     choose_caps_update "$harness"
     case "$MP_STATUS" in
@@ -1326,6 +1445,7 @@ do_update() {
     esac
     [ -n "$SELECTED_PLUGINS" ] && break
     warn "nothing installed or selected in $harness."
+    pause
     return 0
   done
 
@@ -1344,7 +1464,7 @@ do_update() {
         cap=${p#qwen-mm-plugins-}
         is_skill_only "$cap" && continue
         [ "$checked" = 0 ] && { hr "System check — pre-build updated MCP envs"; checked=1; }
-        printf '\n  %b— qwen-mm-plugins-%s —%b\n' "$CB" "$cap" "$C0"
+        cap_divider "qwen-mm-plugins-$cap"
         uvx_cap "$cap" -- --check-system || check_failed=1
       done
     else
@@ -1371,7 +1491,11 @@ show_manual() {  # show_manual <install|update|uninstall> [plugin...]
     hr "Manual uninstall / other harness"
     cat <<EOF
 
-  Marketplace installs — use that harness's native verb, e.g.:
+  Desktop-app UI installs:
+    WorkBuddy — open Plugins, select the installed plugin, then choose Manage → Uninstall.
+    QoderWork / QwenWork — remove both the Skill and MCP/Connector entries in the app.
+
+  CLI marketplace installs — use that harness's native verb, e.g.:
     claude   plugin  uninstall qwen-mm-plugins-core@qwen-mm-plugins
     qodercli plugins uninstall qwen-mm-plugins-core@qwen-mm-plugins
 
@@ -1383,6 +1507,10 @@ EOF
     hr "Manual update / other harness"
     browse_repo=${REPO_URL#git+}; browse_repo=${browse_repo%.git}
     cat <<EOF
+
+  Desktop-app UI installs:
+    WorkBuddy — open Plugins and update the installed plugin there.
+    QoderWork / QwenWork — ask a new task to update both Skill and MCP to the current release.
 
   A manual skill copy/symlink and a separately configured MCP server have no shared install
   receipt. This installer cannot safely infer their current versions or edit unknown harness paths.
@@ -1412,14 +1540,21 @@ EOF
     hr "Manual install / other harness"
     cat <<EOF
 
-  A) Plugin marketplace (any Claude-compatible harness — swap the verb per harness):
+  A) Desktop-app UI:
+     WorkBuddy — open Plugins, click +, and add this marketplace address:
+       https://github.com/QwenLM/Qwen-MM-Plugins.git
+     Install the desired qwen-mm-plugins-* entries from that page.
+     QoderWork / QwenWork — start a task, provide the repository URL above, and ask it to install
+     the desired complete Skill + MCP bundle and verify its tools.
+
+  B) CLI plugin marketplace (swap the verb for a compatible harness):
     <harness> plugin marketplace add $(marketplace_source)
     <harness> plugin install       qwen-mm-plugins-core@qwen-mm-plugins
 
      OpenClaw exception: its remote-marketplace policy rejects git-subdir entries. This installer
      maintains $OPENCLAW_MARKETPLACE_DIR and passes that local checkout to OpenClaw instead.
 
-  B) Claude Code — skill + MCP server separately:
+  C) Claude Code — skill + MCP server separately:
     # 1) MCP server (uvx installs deps on first run)
     claude mcp add qwen-mm-plugins-core -- \\
       uvx --from "$(cap_spec core)" qwen-mm-plugins-core
@@ -1428,8 +1563,9 @@ EOF
     ln -s /path/to/Qwen-MM-Plugins/src/capabilities/core/skill \\
       ~/.claude/skills/qwen-mm-plugins-core
 
-  C) Config-file harnesses (opencode · pi · QwenPaw) — register the MCP server + skill in the
-     harness's own config; exact per-harness blocks are in docs/en/installation.md. pi in brief:
+  D) Config-file harnesses (DeepSeek Harness · opencode · pi · QwenPaw) — register the MCP server +
+     skill in the harness's own config; exact blocks are in docs/en/manual_harnesses.md. DSH has no
+     native Skill/MCP install verb and uses its profile Cordis patch. pi in brief:
     cp -r /path/to/Qwen-MM-Plugins/src/capabilities/core/skill ~/.pi/agent/skills/qwen-mm-plugins-core
     pi install npm:pi-mcp-adapter      # pi's MCP goes through this adapter; skill-only caps need just the copy
 
@@ -1518,7 +1654,7 @@ do_verify() {
   if [ -n "${DASHSCOPE_API_KEY:-}" ]; then ok "DASHSCOPE_API_KEY found in environment"
   elif has_key_in_file; then ok "DASHSCOPE_API_KEY found in config file"
   else warn "DASHSCOPE_API_KEY not set — run Configure"; fi
-  local i any=0 installed
+  local i any=0 installed passed=0 failed=0 skipped=0
   spin "detecting installed capabilities..." installed -- detect_installed
   load_caps "" entry
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do            # preselect whatever is already installed
@@ -1527,21 +1663,31 @@ do_verify() {
   multi_pick "Self-test which capabilities (each fetched via uvx, checks system tools + config)"
   [ "$MP_STATUS" != ok ] && return 0
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do [ "${MP_SEL[$i]}" = 1 ] && any=1; done
-  [ "$any" = 0 ] && { printf '  (nothing selected)\n'; return 0; }
-  ensure_uv || return 0
+  [ "$any" = 0 ] && { printf '  (nothing selected)\n'; pause; return 0; }
+  ensure_uv || { pause; return 0; }
   QMP_DRY=0
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
     [ "${MP_SEL[$i]}" = 1 ] || continue
+    cap_divider "qwen-mm-plugins-${MP_ITEMS[$i]}"
     if is_skill_only "${MP_ITEMS[$i]}"; then
-      printf '\n  %b— qwen-mm-plugins-%s [skill-only] —%b\n' "$CB" "${MP_ITEMS[$i]}" "$C0"
-      printf '  %bskill-only — no MCP server to self-test; runtime deps (Node/npx, headless Chromium + its OS libs, ffmpeg, DASHSCOPE_API_KEY) are prepared manually — see its SKILL.md.%b\n' "$CD" "$C0"
+      printf '  %bskill-only — no MCP server to check; verify its runtime requirements from SKILL.md.%b\n' "$CD" "$C0"
+      skipped=$((skipped + 1))
       continue
     fi
-    printf '\n  %b— qwen-mm-plugins-%s [%s] —%b\n' "$CB" "${MP_ITEMS[$i]}" "${MP_ITEMS[$i]}" "$C0"
-    uvx_cap "${MP_ITEMS[$i]}" -- --check-system        # fetches (pre-builds) the uvx env + reports system tools
+    if uvx_cap "${MP_ITEMS[$i]}" -- --check-system; then
+      passed=$((passed + 1))
+    else
+      failed=$((failed + 1))
+    fi
   done
+  printf '\n'; box_open "Verify summary"
+  [ "$passed" -gt 0 ] && box_row "${CG}✓${C0} passed       $passed"
+  [ "$failed" -gt 0 ] && box_row "${CR}✗${C0} failed       $failed"
+  [ "$skipped" -gt 0 ] && box_row "${CD}· skipped      $skipped ${CD}(skill-only)${C0}"
+  box_close
   # Verify is a report — hold it on screen until a key is pressed (the menu reclears on return).
   pause
+  [ "$failed" = 0 ]
 }
 
 # run_caps_noninteractive [caps...] — headless self-test: no prompts, no TTY (CI / curl|bash). No caps
@@ -1568,10 +1714,11 @@ run_caps_noninteractive() {
 do_uninstall() {
   screen; hr "Uninstall"
   menu_pick "Remove from which harness" $ALL_HARNESSES "other (manual / another harness)"
-  [ "$PICK_I" -lt 0 ] && { warn "cancelled."; return 0; }
+  [ "$PICK_I" -lt 0 ] && return 0
   case "$PICK" in "other"*) show_manual uninstall; return 0 ;; esac
   local h=$PICK bin i mask=""
   bin=$(harness_bin "$h")
+  require_harness "$h" || return 0
   screen; hr "Uninstall → $h"
 
   # detect installed; NOT-installed rows are locked ([-] not installed) so you only pick real ones
@@ -1582,7 +1729,7 @@ do_uninstall() {
     if [ "${mask:i:1}" = 1 ]; then any=1
     else MP_DIS[$i]=1; MP_DESC[$i]="not installed"; fi
   done
-  [ "$any" = 0 ] && { warn "nothing installed in ${h}."; return 0; }
+  [ "$any" = 0 ] && { warn "nothing installed in ${h}."; pause; return 0; }
 
   multi_pick "Uninstall which capabilities from $h (space=select · a=all)"
   [ "$MP_STATUS" != ok ] && return 0
@@ -1591,7 +1738,7 @@ do_uninstall() {
     if [ "${MP_SEL[$i]}" = 1 ]; then picks="$picks ${MP_ITEMS[$i]}"
     elif [ "${mask:i:1}" = 1 ]; then remains=1; fi   # installed but not selected → stays
   done
-  [ -z "$picks" ] && { warn "nothing selected."; return 0; }
+  [ -z "$picks" ] && { warn "nothing selected."; pause; return 0; }
 
   screen; hr "Uninstall → $h"
   QMP_DRY=0; confirm "Run the uninstall commands now (otherwise just print)?" y || QMP_DRY=1
@@ -1600,6 +1747,8 @@ do_uninstall() {
     plugin_rc=0
     case "$h" in
       claude)   run_cmd "$bin" plugin  uninstall "qwen-mm-plugins-${p}@${MARKETPLACE}" || plugin_rc=1 ;;
+      codebuddy) run_cmd "$bin" plugin uninstall "qwen-mm-plugins-${p}@${MARKETPLACE}" || plugin_rc=1
+                 if [ "$QMP_DRY" = 0 ]; then codebuddy_plugins_state "$bin" absent "qwen-mm-plugins-${p}" || plugin_rc=1; fi ;;
       codex)    run_cmd "$bin" plugin  remove    "qwen-mm-plugins-${p}@${MARKETPLACE}" || plugin_rc=1 ;;
       qoder)    run_cmd "$bin" plugins uninstall "qwen-mm-plugins-${p}@${MARKETPLACE}" || plugin_rc=1 ;;
       openclaw) run_cmd "$bin" plugins uninstall "qwen-mm-plugins-${p}" --force || plugin_rc=1 ;;  # --force: openclaw prompts otherwise
@@ -1612,8 +1761,8 @@ do_uninstall() {
     esac
     if [ "$plugin_rc" = 0 ]; then removed="$removed $p"; else failed=1; fi
   done
-  # claude tracks the marketplace separately; drop it only when nothing is left installed
-  if [ "$h" = claude ] && [ "$remains" = 0 ] && [ "$failed" = 0 ]; then
+  # Claude and CodeBuddy track the marketplace separately; drop it when nothing remains.
+  if { [ "$h" = claude ] || [ "$h" = codebuddy ]; } && [ "$remains" = 0 ] && [ "$failed" = 0 ]; then
     run_cmd "$bin" plugin marketplace remove "$MARKETPLACE" || failed=1
   fi
 
@@ -1625,6 +1774,7 @@ do_uninstall() {
 
   if [ "$failed" = 1 ]; then
     err "uninstall incomplete — one or more commands failed"
+    pause
     return 1
   fi
 
@@ -1658,11 +1808,22 @@ menu() {
 case "${1:-}" in
   install)   do_install ;;
   update)    do_update ;;
-  local)     do_local_install ;;
+  local)
+    shift
+    case "${1:-}" in
+      '') do_local_install ;;
+      --restore)
+        shift
+        [ "$#" -eq 0 ] || { err "usage: install.sh local [--restore]"; exit 2; }
+        do_local_restore
+        ;;
+      *) err "usage: install.sh local [--restore]"; exit 2 ;;
+    esac
+    ;;
   configure) do_configure ;;
   verify)    do_verify ;;
   uninstall) do_uninstall ;;
   --verify)  shift; run_caps_noninteractive "$@" ;;
-  -h|--help) banner; printf '\n  Usage: install.sh [install|update|local|configure|verify|uninstall]   (no arg = interactive menu)\n         install.sh update            # update installed plugins to current stable tags\n         install.sh local             # install plugins from this checkout\n         install.sh --verify [caps]   # non-interactive: check installed (or listed) caps\n\n  Default: each plugin uses its latest immutable stable tag.\n  Rollback: QMP_REF=qwen-mm-plugins-<cap>-v<version> (select that cap only).\n\n' ;;
+  -h|--help) banner; printf '\n  Usage: install.sh [install|update|local|configure|verify|uninstall]   (no arg = interactive menu)\n         install.sh update            # update installed plugins to current stable tags\n         install.sh local             # install plugins from this checkout\n         install.sh local --restore   # restore published refs after local testing\n         install.sh --verify [caps]   # non-interactive: check installed (or listed) caps\n\n  Default: each plugin uses its latest immutable stable tag.\n  Rollback: QMP_REF=qwen-mm-plugins-<cap>-v<version> (select that cap only).\n\n' ;;
   *)         menu ;;
 esac

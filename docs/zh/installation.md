@@ -9,14 +9,18 @@
 | 安装正式版本 | `bash install.sh install` | 各能力最新的已发布 tag |
 | 更新已有安装 | `bash install.sh update` | 当前发布目录 |
 | 测试未发布代码 | `bash install.sh local` | 当前 checkout，包括未提交修改 |
-| 回退单个能力 | `QMP_REF=<tag> bash install.sh install` | 指定的不可变 tag |
+| 回退单个能力 | 见[回退](#回退) | 指定的不可变 tag |
 
 正式安装不会跟随 `main`。测试分支时，先 checkout 该分支，再使用 `local`。
 
 ## 引导式安装器
 
-安装器支持 Claude Code、Codex、Qoder、OpenClaw、Qwen Code 和 Gemini CLI。它调用各 harness
-的原生安装机制，并将共享配置保存在 `~/.qwen-mm-plugins/config`。
+安装器支持 Claude Code、CodeBuddy、Codex、Qoder、OpenClaw、Qwen Code 和 Gemini CLI。
+它调用各 harness 的原生安装机制，并将共享配置保存在
+`~/.qwen-mm-plugins/config`。
+
+这里的 `Qoder` 和 `Qwen Code` 不包括独立桌面应用 QoderWork 与 QwenWork；后两者请使用
+[应用内安装](manual_harnesses.md)。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install.sh | bash
@@ -39,6 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 | Harness | 让更新生效 |
 |---|---|
 | Claude Code | 执行 `/reload-plugins`，或重启 |
+| CodeBuddy | 执行 `/reload-plugins`，或重启 |
 | Codex | 新建 task，或重启 |
 | Qoder | 执行 `/plugins reload`，或重启 |
 | OpenClaw | 托管 Gateway 通常自动重启；否则执行 `openclaw gateway restart` |
@@ -47,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 
 ### 回退
 
-只选择 tag 对应的能力：
+对于支持远程 tag 的引导式 harness，只选择 tag 对应的能力：
 
 ```bash
 QMP_REF=qwen-mm-plugins-search-v1.0.1 bash install.sh install
@@ -68,15 +73,15 @@ local 模式会把所选插件的 manifest 和 MCP 包来源指向当前 checkou
 开发期间，受 Git 管理的 manifest 会保留绝对本地路径。退出 local 模式时恢复正式来源：
 
 ```bash
-scripts/dev-plugin.sh all --revert
+bash install.sh local --restore
 ```
 
 直接运行源码和定向调试方式见[本地开发](local_development.md)。
 
 ## 手动安装 Skill + MCP
 
-opencode、pi、QwenPaw 或其他没有兼容 marketplace 的 harness 使用此方式。对于包含 MCP 的能力，
-以下三处名称必须一致：
+DeepSeek Harness、Hermes Agent、opencode、pi、QwenPaw 或其他没有兼容 marketplace 的
+harness 使用此方式。对于包含 MCP 的能力，以下三处名称必须一致：
 
 - Skill：`src/capabilities/<cap>/skill`
 - 包 extra：`qwen-mm-plugins[<cap>]`
@@ -95,7 +100,7 @@ uvx --from \
 运行最新安装器，选择 **Update → other (manual / another harness)**，再把两处都更新到脚本打印的
 同一 tag。使用软链接时，每个能力/tag 应使用独立 checkout，因为不同能力 tag 可能指向不同 commit。
 
-各手动 harness 的配置示例见[手动配置其他 Harness](manual_harnesses.md)。
+其他 harness 的应用内步骤和具体配置示例见[其他 Harness 安装](manual_harnesses.md)。
 
 ## Windows（WSL2）
 
@@ -119,7 +124,7 @@ wsl --install -d Ubuntu
 
 | 变量 | 用途 |
 |---|---|
-| `DASHSCOPE_API_KEY` | 云端媒体 API、内容生成和 video-memory 构建 |
+| `DASHSCOPE_API_KEY` | 云端媒体 API、纯文本模型的图片描述、内容生成和记忆构建（video-memory、omni-memory） |
 | `SERPER_API_KEY` | Serper 网页搜索/抽取，以及所有反向图像搜索 |
 | `TAVILY_API_KEY` | Tavily 网页搜索和页面抽取 |
 | `EXA_API_KEY` | Exa 网页搜索和页面抽取 |

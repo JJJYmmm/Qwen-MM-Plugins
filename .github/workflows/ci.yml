@@ -41,6 +41,7 @@ jobs:
           --with "pydantic>=2"
           --with "pillow<12"
           --with "numpy<3"
+          --with "nibabel>=5,<6"
           --with requests
           --with openai
           python -m pytest -q -m "not reachability"
@@ -52,7 +53,7 @@ jobs:
       - name: Check Bash syntax
         shell: bash
         run: |
-          bash -n install.sh scripts/dev-install.sh scripts/dev-plugin.sh
+          bash -n install.sh
           bash -n src/capabilities/video-memory/skill/script/build_memory/build_memory.sh
           bash -n src/capabilities/video-edit/skill/scripts/*.sh
 

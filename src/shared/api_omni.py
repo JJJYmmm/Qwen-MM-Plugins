@@ -26,6 +26,7 @@ import mimetypes
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from shared.api_openai import is_url, resolve_openai_endpoint
 from shared.env import get_env
@@ -36,6 +37,15 @@ DEFAULT_OMNI_MODEL = "qwen3.5-omni-plus"
 DEFAULT_MAX_RETRIES = 4
 DEFAULT_RETRY_BACKOFF = 1.0
 DEFAULT_OMNI_TIMEOUT = 1800  # streaming A/V completions can run long; overridable via QWEN_MM_CHAT_TIMEOUT
+
+
+def resolve_omni_model(model: str | None = None) -> str:
+    """Resolve the Omni model at call time.
+
+    Precedence: explicit argument → QWEN_MM_API_OMNI_MODEL → DEFAULT_OMNI_MODEL.
+    """
+    return model or get_env("QWEN_MM_API_OMNI_MODEL") or DEFAULT_OMNI_MODEL
+
 
 # Default video sampling knobs (must sit at the content-part TOP level to take effect — see
 # omni_video_part). 200704 px ≈ 448², matching the reference omni client.
@@ -110,6 +120,16 @@ def _omni_timeout() -> int:
 
 
 # ── Content-part builders ────────────────────────────────────────────────────────────────────────
+def _source_suffix(source: str) -> str:
+    """Read the suffix from a local filename or a URL path, excluding host/query/fragment."""
+    return Path(urlsplit(source).path if is_url(source) else source).suffix.lower()
+
+
+def has_video_extension(source: str) -> bool:
+    """Classify a media path without probing it, including URLs used in dry-run previews."""
+    return _source_suffix(source) in _VIDEO_EXTS
+
+
 def b64_len(n_bytes: int) -> int:
     """Length of the base64 encoding of ``n_bytes`` raw bytes (4 chars per 3 bytes, padded)."""
     return 4 * ((n_bytes + 2) // 3)
@@ -181,7 +201,7 @@ def omni_audio_part(source: str, *, audio_format: str | None = None) -> dict:
     ("Incorrect padding"), so ``QWEN_MM_AUDIO_RAW_B64=1`` sends the encoded bytes directly. Both
     forms go through the same local-file size guard.
     """
-    fmt = (audio_format or Path(source).suffix.lstrip(".") or "wav").lower()
+    fmt = (audio_format or _source_suffix(source).lstrip(".") or "wav").lower()
     if is_url(source):
         data = source
     elif (get_env("QWEN_MM_AUDIO_RAW_B64") or "").lower() in ("1", "true", "yes", "on"):
@@ -214,7 +234,7 @@ def inline_b64_bytes(messages: list[dict[str, Any]]) -> int:
 def has_video_stream(path: str) -> bool:
     """True if ``path`` carries a real (non-cover-art) video stream. URLs fall back to extension."""
     if is_url(path):
-        return Path(path.split("?", 1)[0]).suffix.lower() in _VIDEO_EXTS
+        return has_video_extension(path)
     try:
         from shared.video import probe_media
 
@@ -226,7 +246,7 @@ def has_video_stream(path: str) -> bool:
             return True
         return False
     except Exception:  # noqa: BLE001 — ffprobe missing/unreadable: fall back to the extension
-        return Path(path).suffix.lower() in _VIDEO_EXTS
+        return has_video_extension(path)
 
 
 def text_msg(role: str, text: str) -> dict:
@@ -239,7 +259,7 @@ def call_omni(
     *,
     base_url: str,
     api_key: str,
-    model: str = DEFAULT_OMNI_MODEL,
+    model: str | None = None,
     messages: list[dict[str, Any]],
     max_tokens: int = 65536,
     temperature: float = 0.7,
@@ -248,6 +268,7 @@ def call_omni(
 ) -> tuple[str, Any]:
     """Call the Omni model (streaming) and return ``(text, usage)``.
 
+    An omitted ``model`` resolves from QWEN_MM_API_OMNI_MODEL, then DEFAULT_OMNI_MODEL.
     Enforces the required ``stream=True`` + ``modalities=["text"]`` + ``stream_options`` protocol,
     accumulates the streamed text deltas, and retries transient failures (typed openai errors,
     retryable HTTP statuses, and an empty completion) via ``shared.retry.retry_call``.
@@ -260,6 +281,8 @@ def call_omni(
     from openai import OpenAI
 
     from shared.retry import retry_call
+
+    model = resolve_omni_model(model)
 
     if api_key in ("", "EMPTY") and "dashscope" in base_url:
         raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
@@ -368,13 +391,14 @@ def call_omni_json(
     *,
     base_url: str,
     api_key: str,
-    model: str = DEFAULT_OMNI_MODEL,
+    model: str | None = None,
     messages: list[dict[str, Any]],
     max_tokens: int = 4096,
     temperature: float = 0.3,
     max_retries: int = DEFAULT_MAX_RETRIES,
 ) -> Any:
-    """``call_omni`` + robust JSON parse, with ONE LLM-repair round if the first reply won't parse."""
+    """``call_omni`` + robust JSON parse, sharing its model resolution across any repair call."""
+    model = resolve_omni_model(model)
     text, _ = call_omni(
         base_url=base_url,
         api_key=api_key,

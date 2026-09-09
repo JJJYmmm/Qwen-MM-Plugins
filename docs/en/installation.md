@@ -9,15 +9,18 @@
 | Install a release | `bash install.sh install` | Latest released tag for each capability |
 | Update an existing install | `bash install.sh update` | Current release catalog |
 | Test unpublished code | `bash install.sh local` | Current checkout, including uncommitted changes |
-| Roll back one capability | `QMP_REF=<tag> bash install.sh install` | Exact immutable tag |
+| Roll back one capability | See [Roll back](#roll-back) | Exact immutable tag |
 
 Released installs never follow `main`. To test a branch, check it out and use `local`.
 
 ## Guided installer
 
-The installer supports Claude Code, Codex, Qoder, OpenClaw, Qwen Code, and Gemini CLI. It invokes
-each harness's native install mechanism and stores shared configuration in
+The installer supports Claude Code, CodeBuddy, Codex, Qoder, OpenClaw, Qwen Code, and Gemini CLI. It
+invokes each harness's native installation mechanism and stores shared configuration in
 `~/.qwen-mm-plugins/config`.
+
+`Qoder` and `Qwen Code` here do not include the separate QoderWork and QwenWork desktop apps. Use
+their [in-app setup](manual_harnesses.md#qoderwork-and-qwenwork-in-app-task) instead.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install.sh | bash
@@ -41,6 +44,7 @@ still need a reload:
 | Harness | Activate the update |
 |---|---|
 | Claude Code | `/reload-plugins`, or restart |
+| CodeBuddy | `/reload-plugins`, or restart |
 | Codex | Start a new task, or restart |
 | Qoder | `/plugins reload`, or restart |
 | OpenClaw | Managed Gateways normally restart automatically; otherwise `openclaw gateway restart` |
@@ -49,7 +53,7 @@ still need a reload:
 
 ### Roll back
 
-Select only the capability named by the tag:
+For guided harnesses that accept a remote tag, select only the capability named by the tag:
 
 ```bash
 QMP_REF=qwen-mm-plugins-search-v1.0.1 bash install.sh install
@@ -71,15 +75,15 @@ Local mode points the selected plugin manifests and MCP package specs at this ch
 is used for development. Restore release sources when leaving local mode:
 
 ```bash
-scripts/dev-plugin.sh all --revert
+bash install.sh local --restore
 ```
 
 See [Local development](local_development.md) for direct source execution and targeted debugging.
 
 ## Manual Skill + MCP installation
 
-Use this path for opencode, pi, QwenPaw, or another harness without a compatible marketplace. For
-an MCP capability, keep these three values aligned:
+Use this path for DeepSeek Harness, Hermes Agent, opencode, pi, QwenPaw, or another harness without
+a compatible marketplace. For an MCP capability, keep these three values aligned:
 
 - Skill: `src/capabilities/<cap>/skill`
 - package extra: `qwen-mm-plugins[<cap>]`
@@ -100,8 +104,8 @@ detect or notify you about a mismatched update. Run the current installer, choos
 For a linked Skill, use a dedicated checkout per capability/tag because independent tags may point
 to different commits.
 
-Exact configuration examples for each manual harness are in
-[Manual harness setup](manual_harnesses.md).
+In-app steps and exact configuration examples for the other harnesses are in
+[Other harness setup](manual_harnesses.md).
 
 ## Windows (WSL2)
 
@@ -127,7 +131,7 @@ These are the settings most users need for cloud capabilities. The
 
 | Variable | Used by |
 |---|---|
-| `DASHSCOPE_API_KEY` | Cloud media APIs, generation, and video-memory builds |
+| `DASHSCOPE_API_KEY` | Cloud media APIs, text-only image captions, generation, and memory builds (video-memory, omni-memory) |
 | `SERPER_API_KEY` | Serper web search/extraction and all reverse-image search |
 | `TAVILY_API_KEY` | Tavily web search and extraction |
 | `EXA_API_KEY` | Exa web search and extraction |

@@ -19,8 +19,10 @@ Live reachability (does the real API answer?) lives in test_api_reachability.py.
 """
 
 import base64
+import io
 import json
 import os
+import sys
 import types
 
 import pytest
@@ -50,6 +52,12 @@ from qwen_mm_plugins_search.tools import (  # noqa: E402
 
 def _is_error(blocks) -> bool:
     return bool(blocks) and blocks[0].get("type") == "text" and blocks[0]["text"].startswith("Error:")
+
+
+@pytest.mark.parametrize("module", [vision_chat, ocr, grounding])
+def test_vl_model_schema_documents_env_override(module):
+    description = module.TOOL["args"].model_fields["model"].description
+    assert "QWEN_MM_API_VL_MODEL" in description
 
 
 def _chat_response(content: str):
@@ -237,16 +245,58 @@ def test_asr_missing_file_guard():
     assert _is_error(blocks) and "file not found" in blocks[0]["text"]
 
 
+def test_asr_dashscope_uses_platform_file_uri(tmp_path, monkeypatch):
+    from shared.paths import path_to_file_uri
+
+    source = tmp_path / "音频 # 100%.wav"
+    source.write_bytes(b"audio")
+    captured = {}
+
+    def fake_call(**kwargs):
+        captured.update(kwargs)
+        return types.SimpleNamespace(
+            status_code=200,
+            output={"choices": [{"message": {"content": [{"text": "transcript"}]}}]},
+        )
+
+    dashscope = types.ModuleType("dashscope")
+    dashscope.MultiModalConversation = types.SimpleNamespace(call=fake_call)
+    monkeypatch.setitem(sys.modules, "dashscope", dashscope)
+
+    assert asr._transcribe_dashscope(str(source), "qwen3-asr-flash", "key") == ["transcript"]
+    audio = captured["messages"][0]["content"][0]["audio"]
+    assert audio == path_to_file_uri(source)
+    assert " " not in audio
+    assert "#" not in audio
+
+
 def test_vision_chat_dry_run_builds_request_without_network(sample_image):
-    blocks = vision_chat.handle({"images": [sample_image], "text": "hello", "dry_run": True})
+    blocks = vision_chat.handle(
+        {
+            "images": [sample_image],
+            "text": "hello",
+            "dry_run": True,
+            "vl_high_resolution_images": True,
+        }
+    )
     assert len(blocks) == 1 and blocks[0]["type"] == "text"
     payload = json.loads(blocks[0]["text"])
+    assert payload["request"]["extra_body"] == {"vl_high_resolution_images": True}
+    assert "optional_extra_body" not in payload["request"]
     content = payload["request"]["messages"][0]["content"]
     # image part first, text part last; base64 image redacted (not the raw data URL)
     assert content[-1] == {"type": "text", "text": "hello"}
     img_part = content[0]
     assert img_part["type"] == "image_url"
     assert img_part["image_url"]["url"].startswith("<base64 image")
+
+
+def test_vision_chat_model_precedence(monkeypatch):
+    monkeypatch.setenv("QWEN_MM_API_VL_MODEL", "env-vl")
+    env_payload = json.loads(vision_chat.handle({"dry_run": True})[0]["text"])
+    explicit_payload = json.loads(vision_chat.handle({"model": "explicit-vl", "dry_run": True})[0]["text"])
+    assert env_payload["request"]["model"] == "env-vl"
+    assert explicit_payload["request"]["model"] == "explicit-vl"
 
 
 def test_encode_video_source_uploads_to_oss_when_configured(monkeypatch):
@@ -357,18 +407,91 @@ def test_ocr_returns_model_text(monkeypatch, sample_image):
     assert blocks == [{"type": "text", "text": "EXTRACTED TEXT"}]
 
 
+def test_vision_chat_passes_high_resolution_as_optional_hint(monkeypatch, sample_image):
+    pytest.importorskip("openai")
+    request = {}
+
+    def fake_call(**kwargs):
+        request.update(kwargs)
+        return types.SimpleNamespace(model_dump=lambda: {"choices": []})
+
+    monkeypatch.setattr(oa, "call_openai_chat", fake_call)
+    blocks = vision_chat.handle(
+        {
+            "images": [sample_image],
+            "text": "hello",
+            "vl_high_resolution_images": True,
+        }
+    )
+
+    assert not _is_error(blocks)
+    assert request["optional_extra_body"] == {"vl_high_resolution_images": True}
+    assert "extra_body" not in request
+
+
 def test_grounding_maps_boxes_and_draws(monkeypatch, sample_image):
     pytest.importorskip("openai")
     # sample_image is 96×64; a right-half box in 0-1000 coords → pixels [48,0,96,64]
     model_json = '[{"label": "blue", "bbox_2d": [500, 0, 1000, 1000]}]'
-    monkeypatch.setattr(oa, "call_openai_chat", lambda **kw: _chat_response(model_json))
+    request = {}
+
+    def fake_call(**kwargs):
+        request.update(kwargs)
+        return _chat_response(model_json)
+
+    monkeypatch.setattr(oa, "call_openai_chat", fake_call)
 
     blocks = grounding.handle({"image_path": sample_image, "prompt": "regions", "return_img": True})
     result = json.loads(blocks[0]["text"])
+    assert request["optional_extra_body"] == {"enable_thinking": False}
+    assert "extra_body" not in request
     assert result["image_size"] == {"width": 96, "height": 64}
     assert result["detections"][0]["bbox_pixel"] == [48, 0, 96, 64]
     # return_img=True with a detection → an image block is appended
     assert any(b["type"] == "image" for b in blocks)
+
+
+def test_grounding_request_and_crop_share_display_coordinates(monkeypatch, rotated_image, tmp_path):
+    from PIL import Image
+
+    from qwen_mm_plugins_core.producers import crop
+
+    box = [500, 0, 1000, 300]
+
+    def fake_call(**kwargs):
+        # Inspect the actual uploaded pixels, without applying EXIF in the fake endpoint.
+        url = kwargs["messages"][0]["content"][0]["image_url"]["url"]
+        with Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1]))) as sent:
+            assert sent.size == (120, 320)
+            assert sent.getexif().get(274, 1) == 1
+            assert sent.crop((60, 0, 120, 96)).convert("L").getextrema()[1] > 128
+        return _chat_response(json.dumps([{"label": "white square", "bbox_2d": box}]))
+
+    monkeypatch.setattr(oa, "call_openai_chat", fake_call)
+    blocks = grounding.handle({"image_path": rotated_image, "prompt": "white square", "return_img": True})
+    assert not _is_error(blocks)
+    result = json.loads(blocks[0]["text"])
+    assert result["image_size"] == {"width": 120, "height": 320}
+    detection = result["detections"][0]
+    assert detection["bbox_pixel"] == [60, 0, 120, 96]
+    out = tmp_path / "grounded-crop.png"
+    crop.handle({"image_path": rotated_image, "box": detection["bbox_normalized"], "output_path": str(out)})
+    with Image.open(out) as cropped:
+        assert cropped.size == (60, 96)
+        assert cropped.convert("L").getextrema()[1] > 128
+
+
+def test_image_search_crops_display_coordinates(rotated_image):
+    from PIL import Image
+
+    path = image_search._crop_bbox(rotated_image, [500, 0, 1000, 300])
+    try:
+        with Image.open(path) as cropped:
+            assert cropped.size == (60, 96)
+            assert cropped.convert("L").getextrema()[1] > 128
+            assert cropped.getexif().get(274, 1) == 1
+    finally:
+        os.unlink(path)
 
 
 def test_web_search_formats_serper_docs(monkeypatch):

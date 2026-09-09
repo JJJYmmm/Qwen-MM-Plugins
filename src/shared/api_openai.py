@@ -11,15 +11,28 @@ import base64
 import logging
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from shared.env import DEFAULT_DASHSCOPE_BASE_URL, get_env
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "qwen3.7-plus"
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_BACKOFF = 1.0
+
+
+def resolve_vl_model(model: str | None = None) -> str:
+    """Resolve the VL model at call time.
+
+    Precedence: explicit argument → QWEN_MM_API_VL_MODEL → DEFAULT_MODEL.
+    """
+    return model or get_env("QWEN_MM_API_VL_MODEL") or DEFAULT_MODEL
+
+
 # Request timeout (seconds) for a chat call — generous for long vision prompts, but bounded so a
 # hung connection can't pin a tool call for an hour. Overridable via QWEN_MM_CHAT_TIMEOUT.
 DEFAULT_CHAT_TIMEOUT = 600
@@ -57,6 +70,9 @@ def _chat_timeout() -> int:
 
 # HTTP statuses worth retrying for OpenAI-compatible endpoints.
 _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+# Request-validation statuses that may mean a best-effort provider hint is unsupported. They are
+# handled outside the transient retry loop so the request changes before it is sent again.
+_OPTIONAL_FIELD_REJECTION_STATUS = frozenset({400, 422})
 
 
 def resolve_openai_endpoint(arguments: dict[str, Any]) -> tuple[str, str]:
@@ -74,8 +90,13 @@ def is_url(value: str) -> bool:
     return value.startswith(("http://", "https://", "data:"))
 
 
-def encode_image_source(source: str) -> dict[str, Any]:
-    """OpenAI-style image content part: a URL/data-URL passthrough, or a local file base64'd."""
+def encode_image_source(source: str | Image) -> dict[str, Any]:
+    """Encode a path, URL, or prepared PIL image. Prepared images retain their exact dimensions."""
+    if not isinstance(source, str):
+        from shared.image import encode_image
+
+        _, encoded, mime_type = encode_image(source)
+        return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}
     if is_url(source):
         return {"type": "image_url", "image_url": {"url": source}}
     path = Path(source)
@@ -140,6 +161,7 @@ def call_openai_chat(
     base_url: str,
     api_key: str,
     max_retries: int = DEFAULT_MAX_RETRIES,
+    optional_extra_body: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> Any:
     """Call OpenAI-compatible chat completions, retrying transient failures.
@@ -147,6 +169,10 @@ def call_openai_chat(
     Retries on the SDK's typed transient errors (rate limit, timeout,
     connection, 5xx) and on retryable HTTP status codes, rather than matching
     substrings of the error message.
+
+    ``optional_extra_body`` carries droppable provider hints. A 400/422 response retries once
+    without them; transient failures retry the unchanged request. The base ``extra_body`` is never
+    dropped and wins on key conflicts.
     """
     import openai
     from openai import OpenAI
@@ -170,13 +196,31 @@ def call_openai_chat(
             isinstance(e, openai.APIStatusError) and getattr(e, "status_code", None) in _RETRYABLE_STATUS
         )
 
+    base_extra_body = kwargs.get("extra_body") or {}
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=_chat_timeout())
-    return retry_call(
-        lambda: client.chat.completions.create(**kwargs),
-        attempts=max_retries,
-        base_backoff=DEFAULT_RETRY_BACKOFF,
-        mode="linear",
-        should_retry=_is_transient,
-        on_exhausted="raise",
-        log=log,
-    )
+
+    def _create(hints: dict[str, Any] | None) -> Any:
+        call_kwargs = dict(kwargs)
+        if hints:
+            call_kwargs["extra_body"] = {**hints, **base_extra_body}
+        return retry_call(
+            lambda: client.chat.completions.create(**call_kwargs),
+            attempts=max_retries,
+            base_backoff=DEFAULT_RETRY_BACKOFF,
+            mode="linear",
+            should_retry=_is_transient,
+            on_exhausted="raise",
+            log=log,
+        )
+
+    try:
+        return _create(optional_extra_body)
+    except openai.APIStatusError as e:
+        if not optional_extra_body or getattr(e, "status_code", None) not in _OPTIONAL_FIELD_REJECTION_STATUS:
+            raise
+        log.warning(
+            "endpoint rejected optional request field(s) %s with HTTP %s; retrying without them",
+            ", ".join(sorted(optional_extra_body)),
+            e.status_code,
+        )
+        return _create(None)
