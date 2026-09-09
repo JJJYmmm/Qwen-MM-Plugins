@@ -7,7 +7,7 @@ from typing import Annotated, Any, Optional
 from pydantic import BaseModel, Field
 
 from shared.content import default_output_path, require_dep, require_file, text_error
-from shared.image import norm_to_pixel
+from shared.image import norm_to_pixel, open_image
 
 
 class CropArgs(BaseModel):
@@ -54,11 +54,9 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if nx1 >= nx2 or ny1 >= ny2:
         return text_error(f"invalid box — x1 must be < x2 and y1 must be < y2, got [{nx1}, {ny1}, {nx2}, {ny2}]")
 
-    from PIL import Image
-
     from qwen_mm_plugins_core.renderers import labeled_image
 
-    img = Image.open(image_path)
+    img = open_image(image_path)
     img_w, img_h = img.size
     x1, y1, x2, y2 = norm_to_pixel([nx1, ny1, nx2, ny2], img_w, img_h)
     x1, x2 = max(0, min(x1, img_w)), max(0, min(x2, img_w))

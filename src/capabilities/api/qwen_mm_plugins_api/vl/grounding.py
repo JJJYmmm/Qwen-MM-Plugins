@@ -119,11 +119,10 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if err := require_dep("openai"):
         return err
 
-    from PIL import Image
-
     from shared.api_openai import encode_image_source
+    from shared.image import open_image
 
-    img = Image.open(image_path)
+    img = open_image(image_path)
     orig_w, orig_h = img.size
 
     grounding_prompt = (
@@ -137,7 +136,8 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "role": "user",
             "content": [
-                encode_image_source(image_path),
+                # Send the same pixels used for box conversion; endpoints differ in EXIF handling.
+                encode_image_source(img),
                 {"type": "text", "text": grounding_prompt},
             ],
         }

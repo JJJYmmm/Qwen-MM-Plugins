@@ -6,6 +6,10 @@ lazy `import openai`/`import requests` inside each function: monkeypatching the 
 module's attribute is enough, no live network.
 """
 
+import base64
+import io
+from pathlib import Path
+
 import httpx
 import pytest
 
@@ -13,6 +17,26 @@ import shared.api_dashscope as dsc
 import shared.api_omni as omni
 import shared.api_openai as oa
 import shared.retry as sr
+
+
+@pytest.mark.parametrize("mode", ["RGB", "RGBA"])
+def test_encode_prepared_image_preserves_dimensions_and_alpha(mode):
+    from PIL import Image
+
+    image = Image.new(mode, (37, 29), (0, 0, 0, 84) if mode == "RGBA" else (0, 0, 0))
+    part = oa.encode_image_source(image)
+    data = part["image_url"]["url"].split(",", 1)[1]
+    with Image.open(io.BytesIO(base64.b64decode(data))) as encoded:
+        assert encoded.size == image.size
+        assert encoded.getpixel((0, 0)) == image.getpixel((0, 0))
+
+
+def test_encode_image_source_preserves_file_bytes_and_remote_urls(sample_image):
+    part = oa.encode_image_source(sample_image)
+    assert base64.b64decode(part["image_url"]["url"].split(",", 1)[1]) == Path(sample_image).read_bytes()
+    remote = "https://example.com/photo.jpg?signature=abc#view"
+    assert oa.encode_image_source(remote)["image_url"]["url"] == remote
+
 
 # ── api_dashscope.retry_call ─────────────────────────────────────────
 
