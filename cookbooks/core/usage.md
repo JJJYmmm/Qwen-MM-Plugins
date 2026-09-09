@@ -58,7 +58,7 @@ figure for closer inspection.
 
 The following Codex trace locates cakes, annotates the image, identifies a photographed place, and
 cross-checks the result on the web. It is shared with the
-[API](../api/usage.md#shared-case-local-views-cloud-grounding-and-web-verification) and
+[API](../api/usage.md#vl-examples) and
 [Search](../search/usage.md#shared-case-local-views-cloud-grounding-and-web-verification)
 cookbooks because the workflow crosses all three capabilities:
 
