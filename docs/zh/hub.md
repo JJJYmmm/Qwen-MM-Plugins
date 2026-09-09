@@ -97,7 +97,7 @@ public/cases/my-plugin/demo/
 使用 Node 24 和 Python 3.12+。需要新建环境时，在同一父目录创建两个相邻 clone：
 
 ```bash
-git clone --branch support_hub https://github.com/QwenLM/Qwen-MM-Plugins.git
+git clone --branch main https://github.com/QwenLM/Qwen-MM-Plugins.git
 git clone https://github.com/QwenLM/qwen-mm-plugins-hub.git
 cd qwen-mm-plugins-hub
 npm ci
@@ -113,7 +113,7 @@ SITE_BASE_PATH=/qwen-mm-plugins-hub npm run build
 
 ## 发布与刷新
 
-1. 先将插件側修改 push 或合并到 Hub [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json) 指定的远程分支，当前为 `support_hub`，再触发 Hub 构建；只有本地 commit 或未合并的 PR 不够。新增插件时同时准备好 Hub cookbook，确保下一次构建能拿到两边内容。
+1. 先将插件侧修改 push 或合并到 Hub [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json) 指定的远程分支，当前为 `main`，再触发 Hub 构建；只有本地 commit 或未合并的 PR 不够。新增插件时同时准备好 Hub cookbook，确保下一次构建能拿到两边内容。
 2. 将 cookbook 和 case 文件 push 或合并到 Hub `main`，该 push 会触发 [Build and deploy plugin directory](https://github.com/QwenLM/qwen-mm-plugins-hub/actions/workflows/pages.yml)。如果只改了插件源码、description 或 `docs/en/`，在 Hub `main` 上通过 **Run workflow** 手动运行该工作流。只向 Qwen-MM-Plugins push 不会自动触发它。
 3. 等构建和部署通过，再检查[公网 Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/) 的插件、cookbook 和 Docs 页面。构建会统一刷新目录、cookbook、英文文档和 token 估计；失败时线上内容不变，修复错误后重新运行。
 
@@ -121,6 +121,6 @@ SITE_BASE_PATH=/qwen-mm-plugins-hub npm run build
 
 ## 分支与发布
 
-页面显示所选源码分支，源码链接固定到对应 commit。发布 `support_hub` 文档不会合并插件 `main` 或发布 tag；默认安装器仍使用正式发布版本，可能与预览不同。分支代码按[本地开发流程](local_development.md)测试，不要使用尚未发布的 release tag 安装。
+页面显示所选源码分支，源码链接固定到对应 commit。发布 Hub 不会合并插件分支或发布 tag；默认安装器使用正式发布版本，可能与文档展示的开发快照不同。分支代码按[本地开发流程](local_development.md)测试，不要使用尚未发布的 release tag 安装。
 
-准备好的修改合入插件 `main` 后，把 Hub `source.config.json` 的 `ref` 改为 `main` 再构建。插件分发仍遵循独立的[发布流程](releasing.md)；仅修改 cookbook 和 case 时，只需发布 Hub。
+Hub 的 `source.config.json` 保持指向插件 `main`。准备版本发布时，先按独立的[发布流程](releasing.md)发布所引用的能力 tag，再刷新 Hub 的发布链接；仅修改 cookbook 和 case 时，只需发布 Hub。

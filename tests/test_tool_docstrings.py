@@ -1,5 +1,6 @@
 """One docstring convention drives the MCP wire schema and Hub export."""
 
+import asyncio
 import importlib
 import inspect
 import json
@@ -98,14 +99,13 @@ def test_missing_docstring_fails_registration():
         spec(lambda arguments: [])
 
 
-@pytest.mark.asyncio
-async def test_fastmcp_advertises_the_same_docstring_descriptions():
+def test_fastmcp_advertises_the_same_docstring_descriptions():
     from mcp.server.fastmcp import FastMCP
 
     tool = spec()
     server = FastMCP("test-docstrings")
     server.add_tool(fw._make_wrapper(tool), name=tool.name, description=tool.description, structured_output=False)
-    wire = (await server.list_tools())[0]
+    wire = asyncio.run(server.list_tools())[0]
     assert wire.description == tool.description
     assert (
         wire.inputSchema["properties"]["text"]["description"] == tool.input_schema["properties"]["text"]["description"]

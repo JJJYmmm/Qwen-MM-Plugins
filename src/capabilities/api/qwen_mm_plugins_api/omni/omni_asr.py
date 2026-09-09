@@ -39,7 +39,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         file_path: Absolute path to a local audio/video file, or an http(s)/OSS URL.
         language: Spoken-language hint (zh, en, ja, …). Auto-detected if omitted.
         model: Omni model id override. Defaults to QWEN_MM_API_OMNI_MODEL, then qwen3.5-omni-plus.
-        api_key: DashScope API key (defaults to DASHSCOPE_API_KEY).
+        api_key: API key override; otherwise selected by endpoint.
         base_url: OpenAI-compatible base URL override.
         dry_run: Return the request that would be sent, without calling the API.
     """

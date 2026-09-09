@@ -67,8 +67,9 @@ Changes limited to that repository need a Hub deployment, not a plugin version b
 English guides stay in this repository and are imported when the Hub builds.
 
 After a release or documentation update, follow [Publish and refresh](hub.md#publish-and-refresh)
-to update the website. The Hub currently reads `support_hub`; a release on `main` does not change
-that selection. Publishing a Hub preview never creates plugin tags or updates installed plugins.
+to update the website. The Hub reads the branch selected by its `source.config.json`, normally
+plugin `main`. Publish the referenced capability tags before refreshing the Hub's release links.
+Publishing the Hub never creates plugin tags or updates installed plugins.
 
 ## Release cadence
 

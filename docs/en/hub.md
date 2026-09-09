@@ -113,7 +113,7 @@ files. Review recordings for credentials, personal data, and sharing rights befo
 Use Node 24 and Python 3.12+. From a parent directory, create sibling checkouts if needed:
 
 ```bash
-git clone --branch support_hub https://github.com/QwenLM/Qwen-MM-Plugins.git
+git clone --branch main https://github.com/QwenLM/Qwen-MM-Plugins.git
 git clone https://github.com/QwenLM/qwen-mm-plugins-hub.git
 cd qwen-mm-plugins-hub
 npm ci
@@ -135,7 +135,7 @@ generated data without Python.
 
 1. Push or merge the plugin-side changes into the remote branch selected in the Hub's
    [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json),
-   currently `support_hub`, before triggering the Hub build. A local commit or an unmerged PR
+   currently `main`, before triggering the Hub build. A local commit or an unmerged PR
    is not enough. For a new plugin, prepare its Hub cookbook alongside that change so the next
    Hub build has both halves.
 2. Push or merge the cookbook and case files into Hub `main`. That push runs
@@ -154,10 +154,10 @@ joined with hyphens. Relative links between imported English guides stay inside 
 ## Branch and release
 
 The page displays the configured source branch and pins source links to its commit. Publishing
-`support_hub` documentation does not merge plugin `main` or publish release tags. The default
-installer still uses published releases, which may differ from the preview. Test branch code
+the Hub does not merge plugin branches or publish release tags. The default installer uses
+published releases, which may differ from the documented development snapshot. Test branch code
 through the [local-development workflow](local_development.md), not an unpublished release tag.
 
-After the prepared changes merge into plugin `main`, set `ref` to `main` in the Hub's
-`source.config.json` and rebuild. Plugin distribution still follows the independent
-[release process](releasing.md); cookbook and case-only edits need only a Hub deployment.
+Keep the Hub's `source.config.json` pointed at plugin `main`. When preparing a release, publish
+the referenced capability tags through the independent [release process](releasing.md) before
+refreshing the Hub's release links. Cookbook and case-only edits need only a Hub deployment.

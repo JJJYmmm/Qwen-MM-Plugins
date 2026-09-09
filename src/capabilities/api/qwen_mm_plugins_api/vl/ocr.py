@@ -29,7 +29,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         prompt: Custom OCR instruction. Default extracts all visible text. Override to focus on
             specific regions or languages.
         model: Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.
-        api_key: API key (defaults to DASHSCOPE_API_KEY)
+        api_key: API key override; otherwise selected by endpoint.
         base_url: API base URL (defaults to DASHSCOPE_BASE_URL)
     """
     from shared.api_openai import call_openai_chat, resolve_openai_endpoint, resolve_vl_model

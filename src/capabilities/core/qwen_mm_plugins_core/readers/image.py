@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from shared.env import DEFAULT_BUDGET, IMAGE_BUDGET_TOKENS, IMAGE_MIN_PIXELS
-from shared.image import budget_to_pixels, process_image
+from shared.image import budget_to_pixels, open_image, process_image
 
 
 class ReadImageArgs(BaseModel):
@@ -37,11 +37,9 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if err := require_dep("PIL", "pillow"):
         return err
 
-    from PIL import Image
-
     max_pixels = budget_to_pixels(budget, IMAGE_BUDGET_TOKENS)
 
-    img = Image.open(image_path)
+    img = open_image(image_path)
     orig_w, orig_h = img.size
     _, b64, target_w, target_h, mime = process_image(img, IMAGE_MIN_PIXELS, max_pixels)
 

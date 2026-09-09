@@ -89,6 +89,7 @@ It reports OK/MISSING/WARN per item with install hints. Summary:
 | project-local GSAP (designed deliverables) | seek-safe motion in render | `npm install gsap && mkdir -p assets && cp node_modules/gsap/dist/gsap.min.js assets/gsap.min.js` |
 | MCP perception + generation tools | seeing media / generating assets | perception (`read_video`/`read_image`/`vision_chat`/...) ships with the **`qwen-mm-plugins-core`** plugin — install it alongside this one; generation ships with this plugin's own server. Verify in the live agent tool list — a schema file on disk is not availability. Perception missing ⇒ degraded mode in `mcps/core-perception.md` § Failure Handling |
 | `DASHSCOPE_API_KEY` (optional) | DashScope-backed MCP tools | set in the MCP server's environment, not passed as a parameter |
+| `MINIMAX_API_KEY` (optional) | `minimax_tts` MCP tool | set via environment or `~/.qwen-mm-plugins/config`; only needed for MiniMax |
 
 Minimal bootstrap for designed renders:
 
