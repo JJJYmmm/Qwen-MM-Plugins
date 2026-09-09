@@ -105,7 +105,7 @@ npm test
 npm run dev
 ```
 
-`dev` 和 `build` 都会先自动生成内容。首次运行会将配置的源码 clone 到已忽略的 `.sources/upstream`，由 `uv` 准备 Python 3.12 和导出依赖；后续复用该 checkout。使用 `npm run content:sync` 拉取配置分支和 tag 的最新状态，使用 `npm run content` 仅重新生成、不拉取。`npm test` 消费已生成内容并保持离线，新 clone 应先生成内容或构建。根域名构建（包括 PR 预览包）不设置 `SITE_BASE_PATH`。
+`dev` 和 `build` 都会先自动生成内容。首次运行会将配置的源码 clone 到已忽略的 `.sources/upstream`，由 `uv` 准备 Python 3.12 和导出依赖；后续复用该 checkout。使用 `npm run content:sync` 拉取配置分支和 tag 的最新状态，使用 `npm run content` 仅重新生成、不拉取。`npm test` 消费已生成内容并保持离线，新 clone 应先生成内容或构建。根域名构建（包括隔离的 PR 构建检查）不设置 `SITE_BASE_PATH`。
 
 预览自己的插件修改时，先 commit 并保持 checkout 干净，再显式指定路径和分支；Hub 不会修改通过 `HUB_SOURCE_DIR` 指定的 checkout：
 
@@ -137,13 +137,11 @@ npm test
 
 英文指南继续维护在本仓库，不另建 Hub docs 正文。每份 `docs/en/**/*.md` 都要有 H1 标题和唯一的路由：文件名下划线转成连字符，嵌套目录也用连字符连接。英文指南间的相对链接在 Hub 内跳转。
 
-## PR 构建消息与预览包
+## PR 构建检查
 
 相关工作流和辅助脚本合并到两个仓库的默认分支后，插件 PR 会运行 **Hub documentation check**，使用精确 PR head 和 Hub `main` 构建并测试。此任务只有只读 token、没有 secrets，不调用模型服务，也不部署网站。新增插件需要先在 Hub `main` 准备好 cookbook，否则检查会失败。
 
-完成后，**Hub PR comment** 创建或更新同一条 `github-actions[bot]` 评论，包含结果、commit、工作流日志以及成功时的预览包。旧任务不能覆盖新 PR head 的结果。评论任务只执行默认分支中的受信任代码，校验来源工作流和当前 PR head，只读取 artifact 元数据，不读取 PR 文件或包内容。Fork PR 使用相同隔离方式；GitHub 可能要求维护者先批准其不受信任的构建。
-
-预览包使用 GitHub Actions artifact，保留 7 天并受仓库保留策略约束。登录 GitHub 下载并解压后，在解压目录运行 `python3 -m http.server 8000`，打开 `http://localhost:8000`。只打开你信任的 PR 预览：其中 HTML 和 JavaScript 来自不受信任的 PR。本流程不提供公网预览 URL，也不增加托管服务。
+直接在 PR 的 **Checks** 页签查看结果和日志，不使用评论机器人、预览包或额外预览托管。工作流摘要链接到[正式 Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/)，不是当前 PR 的预览；PR 修改需要合并且自动部署成功后才会显示。Fork PR 使用相同的只读检查；GitHub 可能要求维护者先批准构建。
 
 ## 分支与发布
 

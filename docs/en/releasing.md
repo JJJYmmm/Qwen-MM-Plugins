@@ -69,7 +69,7 @@ English guides stay in this repository and are imported when the Hub builds.
 After a release or documentation update, the Hub detects changes to the branch selected by
 `source.config.json`, normally plugin `main`, and its capability tags. Automatic publishing waits
 until all tags referenced by the catalog exist. See [Publish and refresh](hub.md#publish-and-refresh)
-for the scheduled fallback, optional immediate dispatch, and PR preview packages.
+for the scheduled fallback, optional immediate dispatch, and PR build checks.
 Publishing the Hub never creates plugin tags or updates installed plugins.
 
 ## Release cadence

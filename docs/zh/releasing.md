@@ -59,7 +59,7 @@ Marketplace entry 与 MCP `uvx --from` 固定到同一个插件 tag；`main` 只
 
 Cookbook 和 case 已迁入 [QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)。只修改该仓库时需要部署 Hub，不需要提升插件版本。通用英文文档仍在本仓库维护，由 Hub 构建时导入。
 
-发布插件或修改文档后，Hub 自动检测 `source.config.json` 选定分支（通常为插件 `main`）及能力 tag 的变化；目录引用的 tag 全部存在后才自动发布。定时兜底、可选的即时触发和 PR 预览包见[发布与刷新](hub.md#发布与刷新)。发布 Hub 不会创建插件 tag，也不会更新已安装插件。
+发布插件或修改文档后，Hub 自动检测 `source.config.json` 选定分支（通常为插件 `main`）及能力 tag 的变化；目录引用的 tag 全部存在后才自动发布。定时兜底、可选的即时触发和 PR 构建检查见[发布与刷新](hub.md#发布与刷新)。发布 Hub 不会创建插件 tag，也不会更新已安装插件。
 
 ## 发布周期
 

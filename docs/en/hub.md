@@ -127,7 +127,7 @@ ignored `.sources/upstream`; `uv` provides Python 3.12 and exporter dependencies
 that checkout. Run `npm run content:sync` to fetch the latest configured branch and tags, or
 `npm run content` to regenerate without fetching. `npm test` uses the generated files and remains
 offline, so generate content before testing a fresh clone. Omit `SITE_BASE_PATH` for root-domain
-builds, including PR preview packages.
+builds, including the isolated PR build check.
 
 To preview your plugin changes, commit them first and keep the checkout clean. Set your checkout
 path and branch explicitly; the Hub never modifies a checkout supplied through `HUB_SOURCE_DIR`:
@@ -183,25 +183,18 @@ Keep English guides in this repository, not a second Hub docs folder. Each `docs
 needs an H1 title and a unique route: underscores become hyphens, and nested path segments are
 joined with hyphens. Relative links between imported English guides stay inside the Hub.
 
-## PR build comments and preview packages
+## PR build checks
 
 Once the workflows and their helpers are merged into both repositories' default branches,
 plugin PRs run **Hub documentation check** against the exact PR head and Hub `main`. The check
 builds and tests the site with a read-only token and no secrets; it does not call model services
 or deploy a website. New plugins need their cookbook available in Hub `main` for this check.
 
-After completion, **Hub PR comment** creates or updates one `github-actions[bot]` comment with
-the result, commit, workflow logs, and successful preview package. Older runs cannot overwrite
-the result for a newer PR head. The comment job runs only trusted default-branch code, verifies
-the originating workflow and current PR head, and reads artifact metadata only—not PR files or
-artifact contents. Fork PRs use the same separation; GitHub may require a maintainer to approve
-their untrusted build before it runs.
-
-Preview packages are GitHub Actions artifacts retained for seven days, subject to repository
-retention policy. Sign in to GitHub to download one, extract it, then run
-`python3 -m http.server 8000` inside the extracted directory and open `http://localhost:8000`.
-Only open previews from PRs you trust: their HTML and JavaScript are untrusted PR output.
-There is no public preview URL or additional hosting service in this workflow.
+Read the result and logs directly in the PR's **Checks** tab. There is no comment bot, preview
+package, or preview hosting service. The workflow summary links to
+[the published Hub](https://qwenlm.github.io/qwen-mm-plugins-hub/), not a preview of the PR.
+PR changes appear there only after merge and a successful automatic deployment. Fork PRs use
+the same read-only check; GitHub may require a maintainer to approve their build before it runs.
 
 ## Branch and release
 
