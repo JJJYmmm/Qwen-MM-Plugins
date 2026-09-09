@@ -6,7 +6,7 @@ Adding a plugin involves two repositories:
 
 1. In **Qwen-MM-Plugins**, implement and register `src/capabilities/<cap>/`, including its Skill,
    descriptions, manifests, tests, and optional MCP server.
-2. In **[JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub)**, add the
+2. In **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)**, add the
    plugin's cookbook and public case files. The Hub generates the plugin page, tool reference,
    Skill preview, and token estimates; do not maintain another tool catalog there.
 
@@ -131,7 +131,7 @@ A skill-only capability omits `mcpServers` and `.mcp.json`, but keeps the three 
 
 ## Add the Hub cookbook
 
-In [JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub), create
+In [QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub), create
 `content/cookbooks/<yourname>/usage.md` and put demo files under
 `public/cases/<yourname>/<case>/assert/`. An optional interactive case starts at `<case>/index.html`.
 The [Hub authoring guide](hub.md#cookbook-and-cases) provides the Markdown template, contributor

@@ -5,7 +5,7 @@
 新增插件涉及两个仓库：
 
 1. 在 **Qwen-MM-Plugins** 中实现并注册 `src/capabilities/<cap>/`，包括 Skill、说明、manifest、测试，以及需要时的 MCP server。
-2. 在 **[JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub)** 中添加 cookbook 和公开 case 文件。插件页面、工具定义、Skill 预览和 token 估计由 Hub 自动生成，无需再维护一份工具目录。
+2. 在 **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)** 中添加 cookbook 和公开 case 文件。插件页面、工具定义、Skill 预览和 token 估计由 Hub 自动生成，无需再维护一份工具目录。
 
 Hub 当前读取本仓库的 `support_hub` 分支，Hub 自身的内容在其 `main` 分支维护。两边的同步顺序见 [发布与刷新](hub.md#发布与刷新)。
 
@@ -104,7 +104,7 @@ python3 src/capabilities/example/qwen_mm_plugins_example --check-system
 
 ## 添加 Hub cookbook
 
-在 [JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub) 创建 `content/cookbooks/<yourname>/usage.md`，演示文件放在 `public/cases/<yourname>/<case>/assert/`；可选的交互页面入口是 `<case>/index.html`。[Hub 维护指南](hub.md#cookbook-与-case) 提供 Markdown 模板、contributor 配置和媒体链接约定。缺少 cookbook 时构建会失败。
+在 [QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub) 创建 `content/cookbooks/<yourname>/usage.md`，演示文件放在 `public/cases/<yourname>/<case>/assert/`；可选的交互页面入口是 `<case>/index.html`。[Hub 维护指南](hub.md#cookbook-与-case) 提供 Markdown 模板、contributor 配置和媒体链接约定。缺少 cookbook 时构建会失败。
 
 在本仓库中英文 README 各添加简短入口，cookbook 链接使用 `https://jjjymmm.github.io/qwen-mm-plugins-hub/plugins/<yourname>/cookbook/`。不要把 cookbook 正文或 case 媒体再复制回本仓库。通用英文文档仍在 `docs/en/` 维护，由下一次 Hub 构建自动导入。
 

@@ -62,7 +62,7 @@ require releases for every affected capability.
 
 ## Hub documentation
 
-Cookbooks and cases now live in [JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub).
+Cookbooks and cases now live in [QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub).
 Changes limited to that repository need a Hub deployment, not a plugin version bump. General
 English guides stay in this repository and are imported when the Hub builds.
 

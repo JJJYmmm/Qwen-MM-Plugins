@@ -2,7 +2,9 @@
 
 [English](../en/hub.md) · **中文**
 
-Hub 当前维护在 **[JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub)**，发布地址是 [Qwen MM Plugins Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/)。实现和注册能力从[添加新插件](how_to_add_new_capability.md)开始。
+Hub 当前维护在 **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)**，发布地址是 [Qwen MM Plugins Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/)。实现和注册能力从[添加新插件](how_to_add_new_capability.md)开始。
+
+仓库迁移期间，公开网址暂时不变。从官方仓库部署前，需要管理员启用 **Settings → Pages → Source: GitHub Actions**。首次部署成功后，再将公开链接更新为工作流返回的网址。
 
 按内容归属维护：
 
@@ -98,7 +100,7 @@ public/cases/my-plugin/demo/
 
 ```bash
 git clone --branch support_hub https://github.com/QwenLM/Qwen-MM-Plugins.git
-git clone https://github.com/JJJYmmm/qwen-mm-plugins-hub.git
+git clone https://github.com/QwenLM/qwen-mm-plugins-hub.git
 cd qwen-mm-plugins-hub
 npm ci
 python3 -m venv .venv
@@ -113,8 +115,8 @@ SITE_BASE_PATH=/qwen-mm-plugins-hub npm run build
 
 ## 发布与刷新
 
-1. 先将插件側修改 push 或合并到 Hub [`source.config.json`](https://github.com/JJJYmmm/qwen-mm-plugins-hub/blob/main/source.config.json) 指定的远程分支，当前为 `support_hub`，再触发 Hub 构建；只有本地 commit 或未合并的 PR 不够。新增插件时同时准备好 Hub cookbook，确保下一次构建能拿到两边内容。
-2. 将 cookbook 和 case 文件 push 或合并到 Hub `main`，该 push 会触发 [Build and deploy plugin directory](https://github.com/JJJYmmm/qwen-mm-plugins-hub/actions/workflows/pages.yml)。如果只改了插件源码、description 或 `docs/en/`，在 Hub `main` 上通过 **Run workflow** 手动运行该工作流。只向 Qwen-MM-Plugins push 不会自动触发它。
+1. 先将插件側修改 push 或合并到 Hub [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json) 指定的远程分支，当前为 `support_hub`，再触发 Hub 构建；只有本地 commit 或未合并的 PR 不够。新增插件时同时准备好 Hub cookbook，确保下一次构建能拿到两边内容。
+2. 将 cookbook 和 case 文件 push 或合并到 Hub `main`，该 push 会触发 [Build and deploy plugin directory](https://github.com/QwenLM/qwen-mm-plugins-hub/actions/workflows/pages.yml)。如果只改了插件源码、description 或 `docs/en/`，在 Hub `main` 上通过 **Run workflow** 手动运行该工作流。只向 Qwen-MM-Plugins push 不会自动触发它。
 3. 等构建和部署通过，再检查[公网 Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/) 的插件、cookbook 和 Docs 页面。构建会统一刷新目录、cookbook、英文文档和 token 估计；失败时线上内容不变，修复错误后重新运行。
 
 英文指南继续维护在本仓库，不另建 Hub docs 正文。每份 `docs/en/**/*.md` 都要有 H1 标题和唯一的路由：文件名下划线转成连字符，嵌套目录也用连字符连接。英文指南间的相对链接在 Hub 内跳转。

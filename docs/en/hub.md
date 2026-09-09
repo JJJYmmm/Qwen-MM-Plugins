@@ -2,9 +2,13 @@
 
 **English** · [中文](../zh/hub.md)
 
-The Hub currently lives in **[JJJYmmm/qwen-mm-plugins-hub](https://github.com/JJJYmmm/qwen-mm-plugins-hub)**
+The Hub currently lives in **[QwenLM/qwen-mm-plugins-hub](https://github.com/QwenLM/qwen-mm-plugins-hub)**
 and is published at [Qwen MM Plugins Hub](https://jjjymmm.github.io/qwen-mm-plugins-hub/).
 Start with [Add a new plugin](how_to_add_new_capability.md) to implement and register a capability.
+
+The public URL stays unchanged during the repository migration. Before deploying from the
+official repository, an administrator must enable **Settings → Pages → Source: GitHub Actions**.
+After the first successful deployment, update public links to the URL reported by the workflow.
 
 Keep each kind of content in its owning repository:
 
@@ -114,7 +118,7 @@ Use Node 24 and Python 3.12+. From a parent directory, create sibling checkouts 
 
 ```bash
 git clone --branch support_hub https://github.com/QwenLM/Qwen-MM-Plugins.git
-git clone https://github.com/JJJYmmm/qwen-mm-plugins-hub.git
+git clone https://github.com/QwenLM/qwen-mm-plugins-hub.git
 cd qwen-mm-plugins-hub
 npm ci
 python3 -m venv .venv
@@ -134,12 +138,12 @@ generated data without Python.
 ## Publish and refresh
 
 1. Push or merge the plugin-side changes into the remote branch selected in the Hub's
-   [`source.config.json`](https://github.com/JJJYmmm/qwen-mm-plugins-hub/blob/main/source.config.json),
+   [`source.config.json`](https://github.com/QwenLM/qwen-mm-plugins-hub/blob/main/source.config.json),
    currently `support_hub`, before triggering the Hub build. A local commit or an unmerged PR
    is not enough. For a new plugin, prepare its Hub cookbook alongside that change so the next
    Hub build has both halves.
 2. Push or merge the cookbook and case files into Hub `main`. That push runs
-   [Build and deploy plugin directory](https://github.com/JJJYmmm/qwen-mm-plugins-hub/actions/workflows/pages.yml).
+   [Build and deploy plugin directory](https://github.com/QwenLM/qwen-mm-plugins-hub/actions/workflows/pages.yml).
    If only plugin source, descriptions, or `docs/en/` changed, run that workflow manually on Hub
    `main` using **Run workflow**. A push to Qwen-MM-Plugins alone does not trigger it.
 3. Wait for the build and deployment to pass, then check the plugin, cookbook, and Docs pages on
