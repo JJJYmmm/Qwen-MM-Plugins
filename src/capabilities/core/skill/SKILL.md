@@ -7,7 +7,7 @@ description: Read and visualize any file — images, video, documents, code, dat
 
 You have `qwen-mm-plugins-core` MCP tools available. Use them to read and visualize supported local files, inspect media metadata, crop/annotate images, and save document pages or video frames. Prefer these MCP tools over manual scripting.
 
-In the default native mode, these tools return text and images for the agent to inspect without a model API call. With `QWEN_MM_NATIVE_MODE=0`, the shared caption fallback sends image results to the configured VL endpoint and requires `DASHSCOPE_API_KEY`.
+In the default native mode, these tools return text and images for the agent to inspect without a model API call. With `QWEN_MM_NATIVE_MODE=0`, the shared caption fallback sends image results to the configured VL endpoint and returns text captions.
 
 Check the `qwen-mm-plugins-core` tools in your tool list for full schemas and parameters.
 

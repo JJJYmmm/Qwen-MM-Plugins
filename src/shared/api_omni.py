@@ -284,9 +284,6 @@ def call_omni(
 
     model = resolve_omni_model(model)
 
-    if api_key in ("", "EMPTY") and "dashscope" in base_url:
-        raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
-
     inline = inline_b64_bytes(messages)
     if inline > OMNI_MAX_B64_BYTES:
         raise PayloadTooLargeError(
