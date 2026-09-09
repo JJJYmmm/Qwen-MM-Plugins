@@ -259,7 +259,6 @@ def test_visualize_missing_file():
 
 
 def test_draw_bbox_accepts_reversed_corners(sample_image, tmp_path):
-    # The caller may name the corners in the other order; the box it describes is still drawn.
     from PIL import Image
 
     from qwen_mm_plugins_core.producers import draw_bbox
@@ -273,10 +272,10 @@ def test_draw_bbox_accepts_reversed_corners(sample_image, tmp_path):
         }
     )
     assert not _is_error(content)
-    annotated = Image.open(out)
-    assert annotated.size == (96, 64)
-    # [200, 100, 800, 400] on 96x64 is pixel [19, 6, 77, 26]; the top edge runs through (60, 6).
-    assert annotated.getpixel((60, 6)) == (0, 255, 0), "box was not drawn where the corners describe"
+    with Image.open(out) as annotated:
+        assert annotated.size == (96, 64)
+        # Pixel (60, 6) lies on the normalized box's top edge.
+        assert annotated.getpixel((60, 6)) == (0, 255, 0), "box was not drawn where the corners describe"
 
 
 # ── server protocol (real MCP client over stdio) ─────────────────────

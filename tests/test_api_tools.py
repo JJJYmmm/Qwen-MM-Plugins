@@ -634,8 +634,6 @@ def test_segmentation_returns_error_on_non_connection_failure(monkeypatch, sampl
 
 def test_grounding_draws_boxes_with_reversed_corners(monkeypatch, sample_image):
     pytest.importorskip("openai")
-    # The model names the corners in the other order. Pillow >= 9 raises on such a rectangle,
-    # and the draw sits outside grounding's try/except, so the whole tool call used to escape.
     model_json = '[{"label": "cat", "bbox_2d": [800, 100, 200, 400]}]'
     monkeypatch.setattr(oa, "call_openai_chat", lambda **kwargs: _chat_response(model_json))
 
@@ -644,5 +642,4 @@ def test_grounding_draws_boxes_with_reversed_corners(monkeypatch, sample_image):
     assert not _is_error(blocks)
     result = json.loads(blocks[0]["text"])
     assert result["detections"][0]["label"] == "cat"
-    # return_img=True with a detection → the annotated image block is appended, not an exception
     assert any(block["type"] == "image" for block in blocks)
