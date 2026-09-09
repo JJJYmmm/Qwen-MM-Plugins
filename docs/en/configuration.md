@@ -16,9 +16,9 @@ multimodal host model can inspect the original visual result directly.
 Set `QWEN_MM_NATIVE_MODE=0` when the host model is text-only. Every returned image block is replaced
 at the same position by a generated caption, while existing text blocks (file metadata, PDF text
 layers, video timestamps, and similar context) are preserved. The caption path uses
-`DASHSCOPE_BASE_URL`, `DASHSCOPE_API_KEY`, and `QWEN_MM_API_VL_MODEL`, and requires a non-empty API
-key for every configured endpoint. For an authentication-free local endpoint, set an explicit
-non-empty placeholder key. Missing credentials or a failed caption call produce an explicit
+`DASHSCOPE_BASE_URL` and `QWEN_MM_API_VL_MODEL`. Credentials are selected by endpoint: DashScope uses
+`DASHSCOPE_API_KEY`, OrcaRouter uses `ORCAROUTER_API_KEY`, and OpenRouter uses `OPENROUTER_API_KEY`.
+Authentication-free local endpoints need no key configuration. A failed caption call produces an explicit
 `Visual content unavailable` text block instead of exposing base64 or silently dropping the image.
 
 Enabling text-only mode sends tool-result images—including local files and application or desktop
@@ -46,6 +46,9 @@ come from [`CONFIG_FIELDS`](../../src/shared/env.py); `—` means unset or disab
 | Variable | Default | Purpose |
 |---|---|---|
 | `DASHSCOPE_API_KEY` | — | vision, OCR, grounding, text-only image captions, ASR, generation, memory builds *(secret)* |
+| `ORCAROUTER_API_KEY` | — | OpenAI-compatible calls to api.orcarouter.ai *(secret)* |
+| `OPENROUTER_API_KEY` | — | OpenAI-compatible calls to openrouter.ai *(secret)* |
+| `MINIMAX_API_KEY` | — | MiniMax text-to-speech generation *(secret)* |
 | `DASHSCOPE_BASE_URL` | DashScope compat URL | override the DashScope OpenAI-compatible base URL |
 | `QWEN_MM_API_VL_MODEL` | qwen3.7-plus | default VL model for vision_chat, OCR, grounding, and text-only image captions |
 | `QWEN_MM_API_OMNI_MODEL` | qwen3.5-omni-plus | default Omni model for audio/video understanding tools and omni-memory |

@@ -76,7 +76,7 @@ This Codex session locates cakes, identifies a photographed place, and verifies 
 search and page extraction. Frame/image handling belongs to
 [`core`](../core/usage.md#shared-case-local-views-cloud-grounding-and-web-verification), while
 grounding and vision reasoning belong to
-[`api`](../api/usage.md#shared-case-local-views-cloud-grounding-and-web-verification).
+[`api`](../api/usage.md#vl-examples).
 
 ▶ **[View the shared detailed trace](https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen-MM-Plugins/asserts/core/case-core-codex-api-use.html)**
 

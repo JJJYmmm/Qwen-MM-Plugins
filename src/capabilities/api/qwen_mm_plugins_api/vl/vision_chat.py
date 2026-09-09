@@ -26,7 +26,7 @@ class VisionChatArgs(BaseModel):
         description="Video URLs or local file paths. Local files are auto-extracted into frames.",
     )
     base_url: Optional[str] = Field(default=None, description="API base URL (defaults to DASHSCOPE_BASE_URL)")
-    api_key: Optional[str] = Field(default=None, description="API key (defaults to DASHSCOPE_API_KEY)")
+    api_key: Optional[str] = Field(default=None, description="API key override; otherwise selected by endpoint")
     max_tokens: int = Field(default=2048, description="Maximum tokens in response (default: 2048)")
     temperature: Optional[float] = Field(default=None, description="Sampling temperature")
     dry_run: bool = Field(default=False, description="If true, return the request payload without calling the endpoint")
@@ -46,7 +46,7 @@ class VisionChatArgs(BaseModel):
 TOOL: dict[str, Any] = {
     "name": "vision_chat",
     "description": (
-        "Chat with a vision-language model about images and videos via DashScope. "
+        "Chat with a vision-language model about images and videos via an OpenAI-compatible endpoint. "
         "Local videos are sampled into inline frames, so per request keep ≤ 250 items total "
         "(frames + images) and fps = frames / duration within [0.1, 10] — set video_max_frames to the "
         "video's length; for videos over ~40 min use read_video instead. "
@@ -64,6 +64,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         call_openai_chat,
         encode_image_source,
         encode_video_source,
+        expand_video_frames,
         resolve_openai_endpoint,
         resolve_vl_model,
     )
@@ -104,6 +105,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
             # Preview the first wire request, where the shared client merges optional hints into
             # extra_body. Keep the internal optional_extra_body control out of the payload.
             preview_request = dict(kwargs)
+            preview_request["messages"] = expand_video_frames(messages)
             if optional_extra_body:
                 preview_request["extra_body"] = optional_extra_body
             payload: dict[str, Any] = {"base_url": base_url, "request": preview_request}
@@ -118,10 +120,6 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
                 )
             for msg in payload["request"]["messages"]:
                 for item in msg.get("content", []):
-                    if item.get("type") == "video" and "video" in item:
-                        item["video"] = [
-                            f"<base64 frame {i + 1}/{len(item['video'])}>" for i in range(len(item["video"]))
-                        ]
                     if item.get("type") == "image_url":
                         url = item.get("image_url", {}).get("url", "")
                         if url.startswith("data:"):

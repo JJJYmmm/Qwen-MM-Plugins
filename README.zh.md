@@ -39,9 +39,9 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 
 | 能力 | 用途 | Cookbook |
 |---|---|---|
-| `core` | 面向 VL / Omni agentic 模型。原生读取图片和视频，并可视化文档、代码、数据、3D 文件与 NIfTI 影像。全部在本机完成，不需要 API key。 | [Cookbook](cookbooks/core/usage.md) |
-| `api` | 面向任意模型（含纯文本模型）。用 DashScope key 或本地 endpoint 调用多模态模型 API：VL 的 `vision_chat` / `ocr` / `grounding`，Omni 的 `omni_av_*` / `omni_asr*` / `omni_music_caption`，另有 `transcribe_audio` 与 `segmentation`。 | [Cookbook](cookbooks/api/usage.md) |
-| `search` | 面向任意模型。网页搜索、页面抽取和反向图像搜索，需要 Serper、Exa、Tavily 或 Serply key。 | [Cookbook](cookbooks/search/usage.md) |
+| `core` | 读取本地图片和视频帧，可视化文档、代码、数据、3D 模型与 NIfTI 影像，供 agent 查看。提供媒体元数据、裁图、边框标注及页面/视频帧导出。默认原生模式无需 API key。 | [Cookbook](cookbooks/core/usage.md) |
+| `api` | 调用模型服务理解图片、视频和音频：VL 视觉问答/OCR/目标定位，Omni 转写/说话人区分/内容描述/事件分析，以及专用 ASR 和 SAM3 分割。按模型类别配置 DashScope 或兼容的自托管服务。 | [Cookbook](cookbooks/api/usage.md) |
+| `search` | 面向任意模型。网页搜索和页面抽取支持 Serper、Exa、Tavily 或 Serply；反向图像搜索使用 Serper。 | [Cookbook](cookbooks/search/usage.md) |
 
 **Qwen VL 系列模型**（例如 **Qwen3.8-Max**、**Qwen3.7-Plus**）：
 

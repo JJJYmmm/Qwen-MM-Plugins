@@ -7,7 +7,7 @@ from typing import Annotated, Any, Optional
 from pydantic import BaseModel, Field
 
 from shared.content import default_output_path, require_dep, require_file, text_error
-from shared.image import draw_boxes, norm_to_pixel
+from shared.image import draw_boxes, norm_to_pixel, open_image
 
 
 class BBox(BaseModel):
@@ -69,11 +69,9 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if not bboxes:
         return text_error("'bboxes' is required and must not be empty")
 
-    from PIL import Image
-
     from qwen_mm_plugins_core.renderers import labeled_image
 
-    img = Image.open(image_path)
+    img = open_image(image_path)
     detections = [
         {
             "bbox_pixel": norm_to_pixel([int(v) for v in item["bbox"]], img.width, img.height),

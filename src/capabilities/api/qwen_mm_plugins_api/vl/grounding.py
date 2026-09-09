@@ -20,7 +20,7 @@ class GroundingArgs(BaseModel):
         description="Model id override. Defaults to QWEN_MM_API_VL_MODEL, then 'qwen3.7-plus'.",
     )
     return_img: bool = Field(default=False, description="Return annotated image with bounding boxes drawn")
-    api_key: Optional[str] = Field(default=None, description="API key (defaults to DASHSCOPE_API_KEY)")
+    api_key: Optional[str] = Field(default=None, description="API key override; otherwise selected by endpoint")
     base_url: Optional[str] = Field(default=None, description="API base URL (defaults to DASHSCOPE_BASE_URL)")
 
 
@@ -119,11 +119,10 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if err := require_dep("openai"):
         return err
 
-    from PIL import Image
-
     from shared.api_openai import encode_image_source
+    from shared.image import open_image
 
-    img = Image.open(image_path)
+    img = open_image(image_path)
     orig_w, orig_h = img.size
 
     grounding_prompt = (
@@ -137,7 +136,8 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "role": "user",
             "content": [
-                encode_image_source(image_path),
+                # Send the same pixels used for box conversion; endpoints differ in EXIF handling.
+                encode_image_source(img),
                 {"type": "text", "text": grounding_prompt},
             ],
         }

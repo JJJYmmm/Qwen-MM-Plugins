@@ -13,7 +13,7 @@ Check the `qwen-mm-plugins-search` tools in your tool list for full schemas and 
 
 - **Search the web** for facts → `web_search`
 - **Read a web page** in depth → `web_extractor`
-- **Reverse image search** to identify an entity from a frame/photo → `image_search`
+- **Reverse image search** to identify an entity from a frame/photo → `image_search`. Its optional `bbox` uses 0–1000 coordinates after EXIF orientation, matching core `read_image`/`crop` and API `grounding`.
 
 ## Confirm Before You Commit
 
