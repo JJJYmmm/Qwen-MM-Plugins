@@ -127,25 +127,62 @@ def test_model_resolvers_use_explicit_env_then_builtin(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "base_url,orca_key,explicit_key,expected_key",
+    "base_url,missing_key,explicit_key,expected_key",
     [
-        (None, "orca", None, "dashscope"),
-        ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "orca", None, "dashscope"),
-        ("https://api.orcarouter.ai/v1", "orca", None, "orca"),
-        ("https://api.orcarouter.ai/v1", None, None, "EMPTY"),
-        ("https://api.orcarouter.ai/v1", "orca", "explicit", "explicit"),
-        ("https://api.orcarouter.ai.example/v1", "orca", None, "EMPTY"),
-        ("http://localhost:8000/v1", "orca", None, "EMPTY"),
-        ("http://localhost:8000/v1", "orca", "custom", "custom"),
+        (None, None, None, "dashscope"),
+        ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", None, None, "dashscope"),
+        ("https://api.orcarouter.ai/v1", None, None, "orca"),
+        ("https://api.orcarouter.ai/v1", "ORCAROUTER_API_KEY", None, "EMPTY"),
+        ("https://api.orcarouter.ai/v1", None, "explicit", "explicit"),
+        ("https://api.orcarouter.ai.example/v1", None, None, "EMPTY"),
+        ("https://openrouter.ai/api/v1", None, None, "openrouter"),
+        ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", None, "EMPTY"),
+        ("https://openrouter.ai/api/v1", None, "explicit", "explicit"),
+        ("https://openrouter.ai.example/api/v1", None, None, "EMPTY"),
+        ("http://localhost:8000/v1", None, None, "EMPTY"),
+        ("http://localhost:8000/v1", None, "custom", "custom"),
     ],
 )
-def test_endpoint_selects_key_by_host(monkeypatch, base_url, orca_key, explicit_key, expected_key):
-    values = {"DASHSCOPE_API_KEY": "dashscope", "ORCAROUTER_API_KEY": orca_key}
+def test_endpoint_selects_key_by_host(monkeypatch, base_url, missing_key, explicit_key, expected_key):
+    values = {
+        "DASHSCOPE_API_KEY": "dashscope",
+        "ORCAROUTER_API_KEY": "orca",
+        "OPENROUTER_API_KEY": "openrouter",
+    }
+    if missing_key:
+        del values[missing_key]
     monkeypatch.setattr(oa, "get_env", values.get)
     arguments = {"base_url": base_url, "api_key": explicit_key}
     expected = (base_url or oa.DEFAULT_DASHSCOPE_BASE_URL, expected_key)
     assert oa.resolve_openai_endpoint(arguments) == expected
     assert omni.resolve_omni_endpoint(arguments) == expected
+
+
+def test_openrouter_endpoint_from_config(monkeypatch, tmp_path):
+    import shared.env as env
+
+    config = tmp_path / "config"
+    config.write_text(
+        "DASHSCOPE_BASE_URL=https://openrouter.ai/api/v1\n"
+        "OPENROUTER_API_KEY=config-openrouter\n"
+        "DASHSCOPE_API_KEY=config-dashscope\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("QWEN_MM_CONFIG", str(config))
+    for key in ("DASHSCOPE_BASE_URL", "OPENROUTER_API_KEY", "DASHSCOPE_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(env, "_config_cache", None)
+
+    for resolve in (oa.resolve_openai_endpoint, omni.resolve_omni_endpoint):
+        assert resolve({}) == ("https://openrouter.ai/api/v1", "config-openrouter")
+        assert resolve({"base_url": oa.DEFAULT_DASHSCOPE_BASE_URL}) == (
+            oa.DEFAULT_DASHSCOPE_BASE_URL,
+            "config-dashscope",
+        )
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "env-openrouter")
+    for resolve in (oa.resolve_openai_endpoint, omni.resolve_omni_endpoint):
+        assert resolve({}) == ("https://openrouter.ai/api/v1", "env-openrouter")
 
 
 class _FakeCompletions:
