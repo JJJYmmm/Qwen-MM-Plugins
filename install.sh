@@ -66,6 +66,7 @@ ALL_HARNESSES="$MP_HARNESSES $CFG_HARNESSES"
 # bash-3.2 safe (no assoc arrays).
 CONFIG_SPEC=(
   "DASHSCOPE_API_KEY|1|services||vision, OCR, grounding, text-only image captions, ASR, generation, memory builds"
+  "MINIMAX_API_KEY|1|services||MiniMax text-to-speech generation"
   "DASHSCOPE_BASE_URL|0|services|DashScope compat URL|override the DashScope OpenAI-compatible base URL"
   "QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|default VL model for vision_chat, OCR, grounding, and text-only image captions"
   "QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|default Omni model for audio/video understanding tools and omni-memory"
