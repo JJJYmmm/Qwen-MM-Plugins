@@ -11,9 +11,12 @@ import base64
 import logging
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from shared.env import DEFAULT_DASHSCOPE_BASE_URL, get_env
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
 log = logging.getLogger(__name__)
 
@@ -87,8 +90,13 @@ def is_url(value: str) -> bool:
     return value.startswith(("http://", "https://", "data:"))
 
 
-def encode_image_source(source: str) -> dict[str, Any]:
-    """OpenAI-style image content part: a URL/data-URL passthrough, or a local file base64'd."""
+def encode_image_source(source: str | Image) -> dict[str, Any]:
+    """Encode a path, URL, or prepared PIL image. Prepared images retain their exact dimensions."""
+    if not isinstance(source, str):
+        from shared.image import encode_image
+
+        _, encoded, mime_type = encode_image(source)
+        return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}
     if is_url(source):
         return {"type": "image_url", "image_url": {"url": source}}
     path = Path(source)

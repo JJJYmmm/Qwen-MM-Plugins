@@ -20,6 +20,7 @@ Native reading (feeds content directly to you):
 
 Producing / annotating (writes an image file):
 - **Crop a rectangular region** from an image → `crop`
+- **Photo coordinates**: `read_image`, `crop`, and `draw_bbox` apply EXIF orientation. Use 0–1000 coordinates in the displayed image, including boxes returned by `grounding`.
 - **Draw bounding boxes** on an image → `draw_bbox`
 
 ## Visualize — Supported Formats

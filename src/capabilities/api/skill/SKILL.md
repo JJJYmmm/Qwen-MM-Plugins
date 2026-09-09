@@ -19,7 +19,7 @@ Prefer these over manual ffmpeg/ffprobe scripting. Check the `qwen-mm-plugins-ap
 
 - **Ask a VLM** about images/videos (caption, VQA, free-form) → `vision_chat`
 - **Extract text** from an image → `ocr`
-- **Detect/locate objects** in an image (bounding boxes, spatial WHERE) → `grounding`
+- **Detect/locate objects** in an image (bounding boxes, spatial WHERE) → `grounding`. It sends EXIF-corrected pixels, so returned 0–1000 boxes address the displayed image and can be passed directly to core `crop`/`draw_bbox` or search `image_search`.
 
 **Omni model** (audio + video together, temporal reasoning; clips up to a few minutes):
 
