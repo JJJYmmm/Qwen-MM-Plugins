@@ -31,8 +31,8 @@ CAP_ITEMS=(core api search video-memory omni-memory video-edit blender freecad e
 # Latest stable plugin versions, in exactly the same order as CAP_ITEMS. Keep this release index in
 # sync with plugin-versions.json; scripts/check_manifests.py and tests/test_install_sh.py enforce it.
 CAP_VERSIONS=(1.0.5 1.0.5 1.0.4 1.0.3 1.0.0 1.0.2 1.0.2 1.0.2 1.0.2)
-CAP_DESC=("read/visualize any local file — images, video, docs, 3D"
-          "cloud media APIs by model family: VL (vision_chat/ocr/grounding), Omni A/V, ASR, segmentation"
+CAP_DESC=("read/visualize any local file, inspect media metadata, crop/annotate, export pages/frames"
+          "media understanding via VL/Omni model services, ASR, and SAM3 segmentation"
           "web search/extraction (Serper, Exa, Tavily) + Serper reverse-image search"
           "hierarchical graph memory for long-video QA"
           "audio-visual memory for long video: who said what, how, and what it sounded like"

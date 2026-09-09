@@ -42,8 +42,8 @@ than routing them through a separate API or ad-hoc shell commands.
 
 | Capability | Use case | Cookbook |
 |---|---|---|
-| `core` | For VL/Omni agentic models. Reads images and video natively, and visualizes documents, code, data, 3D files and NIfTI volumes. All on your machine, no API key. | [Cookbook](cookbooks/core/usage.md) |
-| `api` | For any model, including text-only ones. Calls the multimodal model APIs with a DashScope key or local endpoint: VL `vision_chat` / `ocr` / `grounding`, Omni `omni_av_*` / `omni_asr*` / `omni_music_caption`, plus `transcribe_audio` and `segmentation`. | [Cookbook](cookbooks/api/usage.md) |
+| `core` | Reads local images and video frames, and visualizes documents, code, data, 3D models and NIfTI volumes for the agent to inspect. Includes media metadata, cropping, bounding-box annotation and page/frame export. No API key in the default native mode. | [Cookbook](cookbooks/core/usage.md) |
+| `api` | Calls model services to understand images, video and audio: VL vision chat/OCR/grounding, Omni transcription/diarization/captioning/event analysis, dedicated ASR and SAM3 segmentation. Uses DashScope or compatible self-hosted services, configured per model family. | [Cookbook](cookbooks/api/usage.md) |
 | `search` | For any model. Web search, page extraction and reverse-image search, with a Serper, Exa or Tavily key. | [Cookbook](cookbooks/search/usage.md) |
 
 **Qwen VL series model** (e.g. **Qwen3.8-Max**, **Qwen3.7-Plus**):
