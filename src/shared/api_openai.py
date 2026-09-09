@@ -75,16 +75,20 @@ _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 # handled outside the transient retry loop so the request changes before it is sent again.
 _OPTIONAL_FIELD_REJECTION_STATUS = frozenset({400, 422})
 
+_API_KEY_ENV_BY_HOST: dict[str, str] = {
+    "api.orcarouter.ai": "ORCAROUTER_API_KEY",
+}
+
 
 def resolve_openai_endpoint(arguments: dict[str, Any]) -> tuple[str, str]:
     """Resolve (base_url, api_key) for an OpenAI-compatible call.
 
     URL precedence: explicit argument → DASHSCOPE_BASE_URL → default. An explicit
-    api_key wins; otherwise api.orcarouter.ai uses ORCAROUTER_API_KEY and other hosts
+    api_key wins; otherwise use the host's API key environment variable. Unlisted hosts
     use DASHSCOPE_API_KEY. Missing keys fall back to "EMPTY" for local servers.
     """
     base_url = arguments.get("base_url") or get_env("DASHSCOPE_BASE_URL") or DEFAULT_DASHSCOPE_BASE_URL
-    key_env = "ORCAROUTER_API_KEY" if urlsplit(base_url).hostname == "api.orcarouter.ai" else "DASHSCOPE_API_KEY"
+    key_env = _API_KEY_ENV_BY_HOST.get(urlsplit(base_url).hostname or "", "DASHSCOPE_API_KEY")
     api_key = arguments.get("api_key") or get_env(key_env) or "EMPTY"
     return base_url, api_key
 
@@ -182,11 +186,10 @@ def call_openai_chat(
 
     from shared.retry import retry_call
 
-    # Give actionable errors for known credentials; local servers may ignore auth.
+    # A missing key against DashScope just 401s with "No API-key provided"; give an actionable
+    # message. Local/self-hosted servers ignore auth, so only guard the DashScope endpoint.
     if api_key in ("", "EMPTY") and "dashscope" in base_url:
         raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
-    if api_key in ("", "EMPTY") and urlsplit(base_url).hostname == "api.orcarouter.ai":
-        raise RuntimeError("no API key — set ORCAROUTER_API_KEY (or pass api_key)")
 
     retryable = (
         openai.RateLimitError,

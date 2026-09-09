@@ -286,8 +286,6 @@ def call_omni(
 
     if api_key in ("", "EMPTY") and "dashscope" in base_url:
         raise RuntimeError("no API key — set DASHSCOPE_API_KEY (or pass api_key)")
-    if api_key in ("", "EMPTY") and urlsplit(base_url).hostname == "api.orcarouter.ai":
-        raise RuntimeError("no API key — set ORCAROUTER_API_KEY (or pass api_key)")
 
     inline = inline_b64_bytes(messages)
     if inline > OMNI_MAX_B64_BYTES:

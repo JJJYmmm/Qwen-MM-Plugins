@@ -43,7 +43,7 @@ Check the `qwen-mm-plugins-api` tools in your tool list for full schemas and par
 
 **VL/Omni endpoints**: default to DashScope (`DASHSCOPE_BASE_URL` and `DASHSCOPE_API_KEY`). Use the existing `base_url`, `api_key`, and `model` arguments for another compatible endpoint, including a self-hosted service. The endpoint must support the selected tool's media payload and model.
 
-**OrcaRouter**: configure `ORCAROUTER_API_KEY`, then pass `base_url="https://api.orcarouter.ai/v1"` and a gateway `model` ID. The server selects that key automatically; an explicit `api_key` overrides it. For `z-ai/glm-5.3-flash-free`, use `vision_chat` with `images` for pictures or chronologically ordered video frames. Direct `videos` input did not work in verification; Omni/audio support is not verified. See the [image-input documentation](https://docs.orcarouter.ai/advanced/vision).
+**OrcaRouter**: configure `ORCAROUTER_API_KEY`, then pass `base_url="https://api.orcarouter.ai/v1"` and a gateway `model` ID. The server selects that key automatically; an explicit `api_key` overrides it.
 
 **Grounding**: returns normalized boxes (0–1000). Set `return_img=true` to get the annotated image back, or draw them yourself with core's `draw_bbox`.
 

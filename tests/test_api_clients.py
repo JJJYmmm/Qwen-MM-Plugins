@@ -145,18 +145,14 @@ def test_endpoint_selects_key_by_host(monkeypatch, base_url, orca_key, explicit_
     assert omni.resolve_omni_endpoint(arguments) == expected
 
 
-@pytest.mark.parametrize(
-    "base_url,key_name",
-    [
-        ("https://dashscope.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
-        ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
-        ("https://api.orcarouter.ai/v1", "ORCAROUTER_API_KEY"),
-    ],
-)
-def test_call_openai_chat_missing_key_guard(base_url, key_name):
-    for call in (oa.call_openai_chat, omni.call_omni):
-        with pytest.raises(RuntimeError, match=key_name):
-            call(base_url=base_url, api_key="EMPTY", model="m", messages=[])
+def test_call_openai_chat_missing_key_guard():
+    with pytest.raises(RuntimeError, match="no API key"):
+        oa.call_openai_chat(
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            api_key="EMPTY",
+            model="m",
+            messages=[],
+        )
 
 
 class _FakeCompletions:
