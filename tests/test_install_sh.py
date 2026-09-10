@@ -57,12 +57,19 @@ def test_config_spec_lists_api_model_defaults():
     assert any(row.startswith("QWEN_MM_NATIVE_MODE|0|runtime|1|") for row in rows)
 
 
+def test_config_spec_lists_omni_chatcut_model_config():
+    result = _bash('printf "%s\\n" "${CONFIG_SPEC[@]}"')
+    assert result.returncode == 0, result.stderr
+    assert any(row.startswith("QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG|0|chatcut||") for row in result.stdout.splitlines())
+
+
 def test_config_spec_mirrors_shared_catalog():
     result = _bash('printf "%s\\n" "${CONFIG_SPEC[@]}"')
     assert result.returncode == 0, result.stderr
     actual = [row.split("|", 4) for row in result.stdout.splitlines()]
     group_tags = {
         "Media APIs & endpoints": "services",
+        "Omni ChatCut": "chatcut",
         "Search providers": "search",
         "Runtime paths & limits": "runtime",
         "Video-memory": "memory",
@@ -526,10 +533,50 @@ def test_explicit_ref_overrides_package_and_marketplace():
 
 
 def test_gemini_skill_checkout_uses_same_stable_tag():
-    result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skill gemini search")
+    result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skills gemini search")
     assert result.returncode == 0, result.stderr
     assert f"fetch --depth 1 origin {_release_tag('search')}" in result.stdout
     assert "--path src/capabilities/search/skill" in result.stdout
+
+
+def test_gemini_installs_every_omni_chatcut_skill_from_its_own_root():
+    result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skills gemini omni-chatcut")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("gemini skills install") == 3
+    for child in ("music-to-mv", "movie-commentary", "video-translation"):
+        assert f"--path src/capabilities/omni-chatcut/skill/{child}" in result.stdout
+    assert "--path src/capabilities/omni-chatcut/skill --consent" not in result.stdout
+
+
+def test_gemini_omni_chatcut_uninstall_names_match_skill_frontmatter():
+    result = _bash(
+        "for component in $(gemini_skill_components omni-chatcut); do "
+        'gemini_skill_name omni-chatcut "$component"; printf "\\n"; done'
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "qwen-mm-plugins-omni-chatcut-music-to-mv",
+        "qwen-mm-plugins-omni-chatcut-movie-commentary",
+        "qwen-mm-plugins-omni-chatcut-video-translation",
+    ]
+    for name in result.stdout.splitlines():
+        child = name.removeprefix("qwen-mm-plugins-omni-chatcut-")
+        skill = ROOT / "src/capabilities/omni-chatcut/skill" / child / "SKILL.md"
+        assert skill.is_file()
+        assert f"name: {name}\n" in skill.read_text()
+
+    uninstall = _bash("QMP_DRY=1; uninstall_gemini_skills gemini omni-chatcut")
+    assert uninstall.returncode == 0, uninstall.stderr
+    assert uninstall.stdout.count("gemini skills uninstall") == 3
+    for name in result.stdout.splitlines():
+        assert f"gemini skills uninstall {name}" in uninstall.stdout
+
+
+def test_gemini_detects_omni_chatcut_from_any_installed_child_skill(tmp_path):
+    skill = tmp_path / ".gemini/skills/qwen-mm-plugins-omni-chatcut-movie-commentary"
+    skill.mkdir(parents=True)
+    result = _bash("gemini_has_capability_skill omni-chatcut", HOME=str(tmp_path))
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize(
@@ -586,7 +633,6 @@ printf 'last=%s first=%s\\n' "${MP_SEL[9]}" "${MP_SEL[0]}"
     result = _bash(script)
     assert result.returncode == 0, result.stderr
     assert "last=1 first=0" in result.stdout, result.stdout + result.stderr
-
 
 def test_installer_version_index_matches_release_index():
     versions = json.loads((ROOT / "plugin-versions.json").read_text())["plugins"]

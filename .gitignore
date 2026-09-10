@@ -8,3 +8,5 @@ dist/
 *.egg
 .venv*/
 eval/
+.DS_Store
+uv.lock

@@ -72,6 +72,7 @@ than routing them through a separate API or ad-hoc shell commands.
 |---|---|---|
 | `omni-memory` | Builds an audio-visual memory of a long video: who is present, who said what, how they said it, and what it sounded like. The Omni model reads the video together with its audio track. Needs a DashScope key and ffmpeg. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/omni-memory/cookbook/) |
 | `omni-video2note` | Converts a local tutorial video into a resumable, audited illustrated PDF. Needs a DashScope key and ffmpeg. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/omni-video2note/cookbook/) |
+| `omni-chatcut` | Video-creation Skill collection for Music-to-MV, movie commentary, and speaker-preserving video translation. Needs the relevant generation/Omni services, ffmpeg/ffprobe, and an optional external dubbing service for translated voice output. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/omni-chatcut/cookbook/) |
 
 Exact versions and optional extras are in the
 [installation guide](docs/en/installation.md#dependencies).

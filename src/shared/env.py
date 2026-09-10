@@ -16,14 +16,21 @@ _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off"})
 
 
-def get_env(name: str, default: str | None = None) -> str | None:
+def get_env(name: str, default: str | None = None, *, refresh_config: bool = False) -> str | None:
     """Env config, read at CALL time. Precedence: environment > user config file > default.
 
     The config-file fallback lets GUI-launched harnesses (Codex/Claude desktop) find
-    DASHSCOPE_API_KEY etc. — they don't inherit a shell's exported vars. See config_file.
+    DASHSCOPE_API_KEY etc. — they don't inherit a shell's exported vars. Set
+    ``refresh_config`` for a long-lived process that must observe changes made by another
+    process. See config_file.
     """
+    global _config_cache
     val = os.environ.get(name)
-    return val if val is not None else _config().get(name, default)
+    if val is not None:
+        return val
+    if refresh_config:
+        _config_cache = None
+    return _config().get(name, default)
 
 
 def get_bool_env(name: str, default: bool = False) -> bool:
@@ -196,10 +203,25 @@ CONFIG_FIELDS: list[tuple[str, bool, str, str, str]] = [
         False,
         "Media APIs & endpoints",
         "qwen3.5-omni-plus",
-        "default Omni model for audio/video understanding tools and omni-memory",
+        "default Omni model for audio/video understanding tools, omni-memory, and Omni ChatCut",
     ),
     ("SAM3_SERVER_URL", False, "Media APIs & endpoints", "", "segmentation SAM3 server URL"),
     ("ASR_SERVER_URLS", False, "Media APIs & endpoints", "", "self-hosted ASR fallback URLs (comma-separated)"),
+    # Omni ChatCut
+    (
+        "QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG",
+        False,
+        "Omni ChatCut",
+        "",
+        "path to the shared Omni, image-provider, and video-provider connection JSON",
+    ),
+    (
+        "QWEN_MM_DUBBING_SERVER_URL",
+        False,
+        "Omni ChatCut",
+        "",
+        "external IndexTTS2/Demucs/TEN-VAD service used by video translation",
+    ),
     # Search providers
     (
         "QWEN_MM_SEARCH_BACKEND",
