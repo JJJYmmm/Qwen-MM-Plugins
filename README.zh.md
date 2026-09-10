@@ -67,6 +67,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 | 能力 | 用途 | Cookbook |
 |---|---|---|
 | `omni-memory` | 为长音视频构建音视频记忆：谁在场、谁说了什么、怎么说的、听起来是什么样。由 Omni 模型连同音轨一起读取视频。需要 DashScope key 和 ffmpeg。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/omni-memory/cookbook/) |
+| `omni-video2note` | 将本地教程视频转换为可恢复、经审核的图文 PDF。需要 DashScope key 和 ffmpeg。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/omni-video2note/cookbook/) |
 
 具体版本与可选依赖见[安装文档](docs/zh/installation.md#依赖)。
 
@@ -79,6 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 @meeting.mp4         带说话人标签和时间戳转写这段会议。
 @place.jpg           判断照片拍摄地点，并联网核实。
 @lecture-2h.mp4      按时间戳列出这段长视频的主要观点。
+@tutorial.mp4        生成图文 PDF 到 /absolute/path/tutorial-notes.pdf。
 @brain.nii.gz        查看元数据和三个正交方向的中心切片。
 ```
 

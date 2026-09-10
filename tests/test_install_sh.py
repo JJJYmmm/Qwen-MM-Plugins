@@ -566,8 +566,26 @@ def test_capability_rows_never_wrap_at_narrow_terminal_widths(width):
     result = _bash(f"term_cols() {{ printf {width}; }}; load_caps core; _multi_rows 0")
     assert result.returncode == 0, result.stderr
     lines = [line.replace("\x1b[2K", "") for line in result.stdout.splitlines()]
-    assert len(lines) == 9
+    # One row per published capability — read the count rather than restating it, so adding a
+    # capability does not need this literal updated.
+    published_count = len(json.loads((ROOT / "plugin-versions.json").read_text())["plugins"])
+    assert len(lines) == published_count
     assert all(len(line) < width for line in lines), result.stdout
+    if width >= 36:
+        assert any("omni-video2note" in line for line in lines), result.stdout
+
+
+def test_numeric_toggle_reaches_double_digit_rows():
+    # The catalog passed ten capabilities, so the text-mode prompt has to accept "10", not just 1-9.
+    script = """
+load_caps ''
+exec 3< <(printf '10\\n\\n')
+multi_pick 'pick' >/dev/null
+printf 'last=%s first=%s\\n' "${MP_SEL[9]}" "${MP_SEL[0]}"
+"""
+    result = _bash(script)
+    assert result.returncode == 0, result.stderr
+    assert "last=1 first=0" in result.stdout, result.stdout + result.stderr
 
 
 def test_installer_version_index_matches_release_index():

@@ -27,10 +27,10 @@ QMP_DRY=0
 LOCAL_REPO_ROOT=''
 
 # ── capability catalog — the ONE place capabilities are declared; every menu iterates this ──
-CAP_ITEMS=(core api search video-memory omni-memory video-edit blender freecad edu-agent)
+CAP_ITEMS=(core api search video-memory omni-memory video-edit blender freecad edu-agent omni-video2note)
 # Latest stable plugin versions, in exactly the same order as CAP_ITEMS. Keep this release index in
 # sync with plugin-versions.json; scripts/check_manifests.py and tests/test_install_sh.py enforce it.
-CAP_VERSIONS=(1.1.0 1.1.0 1.1.0 1.1.0 1.1.1 1.1.0 1.1.0 1.1.0 1.1.0)
+CAP_VERSIONS=(1.1.0 1.1.0 1.1.0 1.1.0 1.1.1 1.1.0 1.1.0 1.1.0 1.1.0 1.0.0)
 CAP_DESC=("Inspect local files and media, extract video frames, and crop or annotate images."
           "Understand images, audio, and video through model APIs, including OCR, object localization, and speech transcription."
           "Search the web, read pages, and identify objects or places with reverse-image search."
@@ -39,7 +39,8 @@ CAP_DESC=("Inspect local files and media, extract video frames, and crop or anno
           "Edit existing footage into finished videos with pacing, sound, subtitles, and visual effects."
           "Create, refine, and render 3D scenes and assets in Blender."
           "Create and edit parametric CAD models, technical drawings, and model exports in FreeCAD."
-          "Create narrated Mandarin math and science tutorial videos or interactive explainers from problem statements and images.")
+          "Create narrated Mandarin math and science tutorial videos or interactive explainers from problem statements and images."
+          "Convert a local tutorial video into an audited, illustrated PDF with resumable processing and offline status inspection.")
 # Skill-only capabilities have NO MCP server / pyproject extra / console entry: they install via
 # the marketplace like any plugin, but the uvx --check-system self-test doesn't apply to them.
 CAP_SKILL_ONLY=" edu-agent "
@@ -1147,14 +1148,20 @@ menu_pick() {
 
 # _multi_rows <cur> — render MP_ITEMS/MP_DESC/MP_SEL/MP_DIS (cur=-1 → num mode: no pointer / no clear)
 _multi_rows() {
-  local cur=$1 i box ptr num body clr='' cols desc_w name_w desc name
+  local cur=$1 i box ptr num body clr='' cols desc_w name_w=0 desc name
   [ "$cur" != -1 ] && clr='\033[2K'
-  cols=$(term_cols); desc_w=$(( cols - 26 ))
+  # Widths are derived, never fixed: the longest capability name sizes the name column, and the two
+  # spare columns cover a two-digit row number (10+). Every rendered row therefore stays strictly
+  # narrower than the terminal, so cursor-based redraws never wrap.
+  cols=$(term_cols)
+  for name in "${MP_ITEMS[@]}"; do
+    [ ${#name} -gt "$name_w" ] && name_w=${#name}
+  done
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
     num=$((i + 1)); [ "$i" = "$cur" ] && ptr="${CB}${CC}❯${C0}" || ptr=' '
-    if [ "$cols" -lt 27 ]; then
+    if [ "$cols" -lt $(( name_w + 14 )) ]; then
       # At very small widths omit the description and spend the remaining columns on the name.
-      name_w=$(( cols - 12 )); [ "$name_w" -lt 1 ] && name_w=1
+      name_w=$(( cols - 13 )); [ "$name_w" -lt 1 ] && name_w=1
       name=$(_fit "${MP_ITEMS[$i]}" "$name_w")
       if [ "${MP_DIS[$i]}" = 1 ]; then
         body=$(printf '%b[-] %d) %s%b' "$CD" "$num" "$name" "$C0")
@@ -1163,12 +1170,13 @@ _multi_rows() {
         body=$(printf '%s %d) %s' "$box" "$num" "$name")
       fi
     else
+      desc_w=$(( cols - name_w - 14 )); [ "$desc_w" -lt 1 ] && desc_w=1
       desc=$(_fit "${MP_DESC[$i]}" "$desc_w")
       if [ "${MP_DIS[$i]}" = 1 ]; then
-        body=$(printf '%b[-] %d) %-13s %s%b' "$CD" "$num" "${MP_ITEMS[$i]}" "$desc" "$C0")
+        body=$(printf '%b[-] %d) %-*s %s%b' "$CD" "$num" "$name_w" "${MP_ITEMS[$i]}" "$desc" "$C0")
       else
         [ "${MP_SEL[$i]}" = 1 ] && box="${CG}[✓]${C0}" || box='[ ]'
-        body=$(printf '%s %d) %-13s %b%s%b' "$box" "$num" "${MP_ITEMS[$i]}" "$CD" "$desc" "$C0")
+        body=$(printf '%s %d) %-*s %b%s%b' "$box" "$num" "$name_w" "${MP_ITEMS[$i]}" "$CD" "$desc" "$C0")
       fi
     fi
     printf '%b  %s %s\n' "$clr" "$ptr" "$body"
@@ -1207,7 +1215,8 @@ multi_pick() {
       [ -z "$ans" ] && break
       for tok in $ans; do
         case "$tok" in
-          [1-9]) i=$((tok - 1))
+          # Two digits too: the catalog passed ten capabilities, so row 10 needs to be reachable.
+          [1-9]|[1-9][0-9]) i=$((tok - 1))
                  if [ "$i" -ge "$n" ]; then warn "ignored: $tok"
                  elif [ "${MP_DIS[$i]}" = 1 ]; then warn "${MP_ITEMS[$i]} locked — skipped"
                  else MP_SEL[$i]=$(( 1 - ${MP_SEL[$i]} )); fi ;;
