@@ -22,7 +22,8 @@ from conftest import mcp_call
 from PIL import Image
 from pydantic import ValidationError
 from qwen_mm_plugins_nifti.renderers import nifti
-from qwen_mm_plugins_nifti.tools import visualize
+from qwen_mm_plugins_nifti.tools import inspect as inspect_tool
+from qwen_mm_plugins_nifti.tools import render_slices
 
 nib = pytest.importorskip("nibabel")
 ASSETS_DIR = Path(__file__).with_name("assets")
@@ -80,12 +81,12 @@ def _assert_successful_render(content: list[dict], expected_images: int = 3) -> 
     return decoded
 
 
-def test_visualize_nifti_asset_reports_default_sampling_and_intensity_config():
+def test_render_slices_nifti_asset_reports_default_sampling_and_intensity_config():
     path = ASSETS_DIR / "avg152T1_LR_nifti.nii.gz"
     if not path.is_file():
         pytest.skip("public MNI152 template is not present")
 
-    content = visualize.handle({"file_path": str(path), "budget": "small"})
+    content = render_slices.handle({"file_path": str(path), "budget": "small"})
 
     _assert_successful_render(content)
     report = _text(content)
@@ -109,7 +110,7 @@ def test_visualize_nifti_asset_reports_default_sampling_and_intensity_config():
     assert "Configured consistently for: 3 resolved slices" in report
 
 
-def test_visualize_nifti_4d_defaults_and_selects_volumes_as_3d_volumes(tmp_path, monkeypatch):
+def test_render_slices_nifti_4d_defaults_and_selects_volumes_as_3d_volumes(tmp_path, monkeypatch):
     shape = (7, 9, 11)
     x, y, z = np.indices(shape, dtype=np.float32)
     first = x + 10 * y + 100 * z
@@ -119,7 +120,7 @@ def test_visualize_nifti_4d_defaults_and_selects_volumes_as_3d_volumes(tmp_path,
     path = _save_nifti(tmp_path, "synthetic-4d.nii", data)
     selections = _guard_array_proxy(monkeypatch)
 
-    content = visualize.handle({"file_path": path, "budget": "small"})
+    content = render_slices.handle({"file_path": path, "budget": "small"})
 
     _assert_successful_render(content)
     report = _text(content)
@@ -133,7 +134,7 @@ def test_visualize_nifti_4d_defaults_and_selects_volumes_as_3d_volumes(tmp_path,
     assert all(isinstance(axis, slice) for axis in selections[0][:3])
 
     selections.clear()
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "volumes": "1-3",
@@ -155,7 +156,7 @@ def test_visualize_nifti_4d_defaults_and_selects_volumes_as_3d_volumes(tmp_path,
     assert all(all(isinstance(axis, slice) for axis in selection[:3]) for selection in selections)
 
 
-def test_visualize_nifti_noncanonical_orientation_uses_source_axis(tmp_path, monkeypatch):
+def test_render_slices_nifti_noncanonical_orientation_uses_source_axis(tmp_path, monkeypatch):
     shape = (6, 8, 10)
     x, y, z = np.indices(shape, dtype=np.float32)
     first = x + 10 * y + 100 * z
@@ -170,7 +171,7 @@ def test_visualize_nifti_noncanonical_orientation_uses_source_axis(tmp_path, mon
     nib.save(source_image, path)
     selections = _guard_array_proxy(monkeypatch)
 
-    content = visualize.handle({"file_path": str(path), "budget": "small"})
+    content = render_slices.handle({"file_path": str(path), "budget": "small"})
 
     _assert_successful_render(content)
     report = _text(content)
@@ -192,14 +193,14 @@ def test_visualize_nifti_noncanonical_orientation_uses_source_axis(tmp_path, mon
     assert np.array_equal(actual, canonical[:, 2, :])
 
 
-def test_visualize_nifti_supports_axis_count_indices_and_positions(tmp_path):
+def test_render_slices_nifti_supports_axis_count_indices_and_positions(tmp_path):
     path = _save_nifti(
         tmp_path,
         "sampling.nii",
         np.arange(9 * 7 * 5, dtype=np.float32).reshape(9, 7, 5),
     )
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "slice_axis": 0,
@@ -212,7 +213,7 @@ def test_visualize_nifti_supports_axis_count_indices_and_positions(tmp_path):
     assert "source voxel axis 0" in report
     assert "Resolved source indices (0-based): (2, 3, 5, 6)" in report
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "slice_axis": 1,
@@ -226,7 +227,7 @@ def test_visualize_nifti_supports_axis_count_indices_and_positions(tmp_path):
     assert "Slice count: requested 3; resolved 2" in report
     assert "Resolved source indices (0-based): (6, 0)" in report
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "slice_axis": 2,
@@ -241,7 +242,7 @@ def test_visualize_nifti_supports_axis_count_indices_and_positions(tmp_path):
     assert "Requested normalized positions: (0.0, 0.5, 1.0)" in report
 
 
-def test_visualize_nifti_uses_one_volume_level_percentile_range(tmp_path):
+def test_render_slices_nifti_uses_one_volume_level_percentile_range(tmp_path):
     data = np.zeros((3, 3, 5), dtype=np.float32)
     data[:, :, 0] = 0
     data[:, :, 1] = 25
@@ -250,7 +251,7 @@ def test_visualize_nifti_uses_one_volume_level_percentile_range(tmp_path):
     data[:, :, 4] = 100
     path = _save_nifti(tmp_path, "volume-range.nii", data)
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "percentile_low": 0,
@@ -291,14 +292,14 @@ def test_visualize_nifti_uses_one_volume_level_percentile_range(tmp_path):
         ),
     ],
 )
-def test_visualize_nifti_manual_and_preset_windows(tmp_path, arguments, expected):
+def test_render_slices_nifti_manual_and_preset_windows(tmp_path, arguments, expected):
     path = _save_nifti(
         tmp_path,
         "window.nii",
         np.arange(5 * 5 * 5, dtype=np.float32).reshape(5, 5, 5),
     )
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "slice_indices": [2],
@@ -312,7 +313,7 @@ def test_visualize_nifti_manual_and_preset_windows(tmp_path, arguments, expected
     assert all(text in report for text in expected)
 
 
-def test_visualize_nifti_large_volume_statistics_are_sampled_lazily(tmp_path, monkeypatch):
+def test_render_slices_nifti_large_volume_statistics_are_sampled_lazily(tmp_path, monkeypatch):
     shape = (17, 19, 23)
     data = np.arange(math.prod(shape), dtype=np.float32).reshape(shape)
     path = _save_nifti(tmp_path, "sampled.nii.gz", data)
@@ -320,7 +321,7 @@ def test_visualize_nifti_large_volume_statistics_are_sampled_lazily(tmp_path, mo
     monkeypatch.setattr(nifti, "MAX_INTENSITY_SAMPLES", 100)
     selections = _guard_array_proxy(monkeypatch)
 
-    content = visualize.handle({"file_path": path, "budget": "small"})
+    content = render_slices.handle({"file_path": path, "budget": "small"})
 
     _assert_successful_render(content)
     report = _text(content)
@@ -331,13 +332,13 @@ def test_visualize_nifti_large_volume_statistics_are_sampled_lazily(tmp_path, mo
     assert all(sum(isinstance(axis, (int, np.integer)) for axis in selection) == 1 for selection in selections[1:])
 
 
-def test_visualize_nifti_sampled_thin_volume_keeps_a_nonempty_grid(tmp_path, monkeypatch):
+def test_render_slices_nifti_sampled_thin_volume_keeps_a_nonempty_grid(tmp_path, monkeypatch):
     data = np.arange(15, dtype=np.float32).reshape(1, 3, 5)
     path = _save_nifti(tmp_path, "thin.nii.gz", data)
     monkeypatch.setattr(nifti, "MAX_EXACT_VOLUME_BYTES", 0)
     monkeypatch.setattr(nifti, "MAX_INTENSITY_SAMPLES", 1)
 
-    content = visualize.handle({"file_path": path, "budget": "small"})
+    content = render_slices.handle({"file_path": path, "budget": "small"})
 
     _assert_successful_render(content)
     report = _text(content)
@@ -346,7 +347,7 @@ def test_visualize_nifti_sampled_thin_volume_keeps_a_nonempty_grid(tmp_path, mon
     assert "Fallback: no finite voxels" not in report
 
 
-def test_visualize_nifti_scaled_integer_estimates_decoded_memory(tmp_path, monkeypatch):
+def test_render_slices_nifti_scaled_integer_estimates_decoded_memory(tmp_path, monkeypatch):
     data = np.arange(4 * 4 * 4, dtype=np.int16).reshape(4, 4, 4)
     image = nib.Nifti1Image(data, np.eye(4))
     image.header.set_slope_inter(2.0, 10.0)
@@ -354,7 +355,7 @@ def test_visualize_nifti_scaled_integer_estimates_decoded_memory(tmp_path, monke
     nib.save(image, path)
     monkeypatch.setattr(nifti, "MAX_EXACT_VOLUME_BYTES", 600)
 
-    content = visualize.handle({"file_path": str(path), "budget": "small"})
+    content = render_slices.handle({"file_path": str(path), "budget": "small"})
 
     _assert_successful_render(content, expected_images=2)
     report = _text(content)
@@ -362,14 +363,14 @@ def test_visualize_nifti_scaled_integer_estimates_decoded_memory(tmp_path, monke
 
 
 @pytest.mark.parametrize("volumes", ["999", "0", "3-1", "one", "1,,2"])
-def test_visualize_nifti_rejects_invalid_4d_volume_selection(tmp_path, volumes):
+def test_render_slices_nifti_rejects_invalid_4d_volume_selection(tmp_path, volumes):
     path = _save_nifti(
         tmp_path,
         "invalid-volumes.nii",
         np.zeros((3, 4, 5, 3), dtype=np.float32),
     )
 
-    content = visualize.handle({"file_path": path, "volumes": volumes})
+    content = render_slices.handle({"file_path": path, "volumes": volumes})
 
     report = _text(content)
     assert report.startswith("Error")
@@ -377,13 +378,13 @@ def test_visualize_nifti_rejects_invalid_4d_volume_selection(tmp_path, volumes):
     assert not _images(content)
 
 
-def test_visualize_nifti_caps_total_response_size(tmp_path, monkeypatch):
+def test_render_slices_nifti_caps_total_response_size(tmp_path, monkeypatch):
     rng = np.random.default_rng(7)
     data = rng.normal(size=(64, 64, 9)).astype(np.float32)
     path = _save_nifti(tmp_path, "response-cap.nii", data)
     monkeypatch.setattr(nifti, "MAX_RESPONSE_BYTES", 1_000)
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "num_slices": 7,
@@ -398,13 +399,13 @@ def test_visualize_nifti_caps_total_response_size(tmp_path, monkeypatch):
     assert "Returned before response-size truncation: 1 / 7 slices" in report
 
 
-def test_visualize_nifti_response_cap_omits_unrendered_volume_config(tmp_path, monkeypatch):
+def test_render_slices_nifti_response_cap_omits_unrendered_volume_config(tmp_path, monkeypatch):
     rng = np.random.default_rng(11)
     data = rng.normal(size=(64, 64, 3, 2)).astype(np.float32)
     path = _save_nifti(tmp_path, "response-cap-4d.nii", data)
     monkeypatch.setattr(nifti, "MAX_RESPONSE_BYTES", 1_000)
 
-    content = visualize.handle(
+    content = render_slices.handle(
         {
             "file_path": path,
             "volumes": "1-2",
@@ -421,12 +422,20 @@ def test_visualize_nifti_response_cap_omits_unrendered_volume_config(tmp_path, m
     assert "before volume number 2" in report
 
 
-def test_nifti_registry_advertises_the_standalone_tool_and_documented_schema():
-    tools = plugin.list_tools()
-    assert [tool["name"] for tool in tools] == ["nifti_visualize"]
-    assert plugin.get_handler("nifti_visualize") is visualize.handle
+def test_nifti_registry_advertises_two_tools_and_documented_schemas():
+    tools = {tool["name"]: tool for tool in plugin.list_tools()}
+    assert set(tools) == {"nifti_inspect", "nifti_render_slices"}
+    assert plugin.get_handler("nifti_inspect") is inspect_tool.handle
+    assert plugin.get_handler("nifti_render_slices") is render_slices.handle
+    assert plugin.get_handler("nifti_visualize") is None
     assert plugin.get_handler("visualize") is None
-    tool = tools[0]
+    assert plugin.get_handler("render_slices") is None
+    inspect_schema = tools["nifti_inspect"]["inputSchema"]
+    assert inspect_schema["required"] == ["file_path"]
+    assert set(inspect_schema["properties"]) == {"file_path"}
+    assert tools["nifti_inspect"]["description"]
+    assert inspect_schema["properties"]["file_path"]["description"]
+    tool = tools["nifti_render_slices"]
     schema = tool["inputSchema"]
     assert schema["required"] == ["file_path"]
     assert tool["description"]
@@ -447,10 +456,10 @@ def test_nifti_registry_advertises_the_standalone_tool_and_documented_schema():
     assert "$ref" not in json.dumps(schema)
 
 
-def test_visualize_nifti_defaults_unknown_spatial_units_to_mm(tmp_path):
+def test_render_slices_nifti_defaults_unknown_spatial_units_to_mm(tmp_path):
     path = _save_nifti(tmp_path, "unknown-units.nii", np.zeros((3, 4, 5)))
 
-    content = visualize.handle({"file_path": path, "budget": "small"})
+    content = render_slices.handle({"file_path": path, "budget": "small"})
 
     report = _text(content)
     assert "mm (default; NIfTI header unit is unknown)" in report
@@ -485,10 +494,10 @@ def test_visualize_nifti_defaults_unknown_spatial_units_to_mm(tmp_path):
         ),
     ],
 )
-def test_visualize_nifti_rejects_invalid_options(tmp_path, arguments, message):
+def test_render_slices_nifti_rejects_invalid_options(tmp_path, arguments, message):
     path = _save_nifti(tmp_path, "invalid-options.nii", np.zeros((3, 4, 5)))
 
-    content = visualize.handle({"file_path": path, **arguments})
+    content = render_slices.handle({"file_path": path, **arguments})
 
     report = _text(content)
     assert report.startswith("Error")
@@ -496,11 +505,11 @@ def test_visualize_nifti_rejects_invalid_options(tmp_path, arguments, message):
     assert not _images(content)
 
 
-def test_visualize_nifti_corrupt_compound_extension_returns_renderer_error(tmp_path):
+def test_render_slices_nifti_corrupt_compound_extension_returns_renderer_error(tmp_path):
     path = tmp_path / "corrupt.nii.gz"
     path.write_bytes(b"not a nifti file")
 
-    content = visualize.handle({"file_path": str(path)})
+    content = render_slices.handle({"file_path": str(path)})
 
     report = _text(content)
     assert any(line.startswith("Error") for line in report.splitlines()), report
@@ -523,19 +532,19 @@ def test_visualize_nifti_corrupt_compound_extension_returns_renderer_error(tmp_p
         ),
     ],
 )
-def test_visualize_nifti_handles_degenerate_intensities(tmp_path, case, data):
+def test_render_slices_nifti_handles_degenerate_intensities(tmp_path, case, data):
     path = _save_nifti(tmp_path, f"{case}.nii", data)
 
-    content = visualize.handle({"file_path": path, "budget": "small"})
+    content = render_slices.handle({"file_path": path, "budget": "small"})
 
     _assert_successful_render(content)
 
 
-def test_visualize_nifti_rejects_dimensions_other_than_3d_or_4d(tmp_path):
+def test_render_slices_nifti_rejects_dimensions_other_than_3d_or_4d(tmp_path):
     shape = (3, 4, 5, 2, 2)
     path = _save_nifti(tmp_path, "unsupported-dimensions.nii", np.zeros(shape, dtype=np.float32))
 
-    content = visualize.handle({"file_path": path})
+    content = render_slices.handle({"file_path": path})
 
     report = _text(content)
     assert report.startswith("Error")
@@ -561,11 +570,11 @@ def test_visualize_nifti_rejects_dimensions_other_than_3d_or_4d(tmp_path):
 def test_nifti_rejects_invalid_values_in_direct_calls_and_discovered_model(tmp_path, arguments):
     path = _save_nifti(tmp_path, "validation.nii", np.zeros((3, 4, 5)))
     arguments = {"file_path": path, **arguments}
-    spec = next(spec for spec in plugin.SPECS if spec.name == "nifti_visualize")
+    spec = next(spec for spec in plugin.SPECS if spec.name == "nifti_render_slices")
     with pytest.raises(ValidationError):
         spec.args_model.model_validate(arguments)
 
-    content = plugin.get_handler("nifti_visualize")(arguments)
+    content = plugin.get_handler("nifti_render_slices")(arguments)
     assert _text(content).startswith("Error")
     assert not _images(content)
 
@@ -596,40 +605,40 @@ def test_nifti_fastmcp_rejects_invalid_declared_numeric_fields(arguments, invali
 
     from mcp_framework import _make_wrapper
 
-    spec = next(spec for spec in plugin.SPECS if spec.name == "nifti_visualize")
+    spec = next(spec for spec in plugin.SPECS if spec.name == "nifti_render_slices")
     server = fastmcp.FastMCP("nifti-validation-test")
     server.add_tool(_make_wrapper(spec), name=spec.name, description=spec.description, structured_output=False)
     # Exercise FastMCP's initial argument model as well as the framework wrapper.
     # Invalid fields must fail before handler file lookup, without coercing booleans
     # or strings into different numeric settings.
     with pytest.raises(ToolError, match=invalid_field):
-        asyncio.run(server.call_tool("nifti_visualize", {"file_path": "/missing.nii", **arguments}))
+        asyncio.run(server.call_tool("nifti_render_slices", {"file_path": "/missing.nii", **arguments}))
 
 
 def test_nifti_3d_volume_selection_accepts_only_volume_one(tmp_path):
     path = _save_nifti(tmp_path, "three-dimensional.nii", np.zeros((3, 4, 5)))
-    content = visualize.handle({"file_path": path, "volumes": "1", "budget": "small"})
+    content = render_slices.handle({"file_path": path, "volumes": "1", "budget": "small"})
     _assert_successful_render(content)
 
     for volumes in ("2", "1-2", "", " "):
-        content = visualize.handle({"file_path": path, "volumes": volumes})
+        content = render_slices.handle({"file_path": path, "volumes": volumes})
         assert _text(content).startswith("Error"), volumes
         assert not _images(content), volumes
 
 
 def test_nifti_reports_missing_local_input_and_unsupported_extension(tmp_path):
-    missing = visualize.handle({"file_path": str(tmp_path / "missing.nii.gz")})
+    missing = render_slices.handle({"file_path": str(tmp_path / "missing.nii.gz")})
     assert "file not found" in _text(missing).lower()
     assert not _images(missing)
 
     text_path = tmp_path / "not-nifti.txt"
     text_path.write_text("not a nifti file")
-    unsupported = visualize.handle({"file_path": str(text_path)})
+    unsupported = render_slices.handle({"file_path": str(text_path)})
     assert _text(unsupported).startswith("Error")
     assert ".nii" in _text(unsupported)
     assert not _images(unsupported)
 
-    remote = visualize.handle({"file_path": "https://example.invalid/volume.nii.gz"})
+    remote = render_slices.handle({"file_path": "https://example.invalid/volume.nii.gz"})
     assert _text(remote).startswith("Error")
     assert "local" in _text(remote).lower()
     assert not _images(remote)
@@ -657,10 +666,10 @@ class BlockImports(importlib.abc.MetaPathFinder):
 blocker = BlockImports()
 sys.meta_path.insert(0, blocker)
 import qwen_mm_plugins_nifti as plugin
-assert [tool['name'] for tool in plugin.list_tools()] == ['nifti_visualize']
+assert {tool['name'] for tool in plugin.list_tools()} == {'nifti_inspect', 'nifti_render_slices'}
 assert not {'numpy', 'nibabel', 'PIL'}.intersection(sys.modules)
 blocker.deny_heavy = False
-content = plugin.get_handler('nifti_visualize')({'file_path': sys.argv[3], 'budget': 'small'})
+content = plugin.get_handler('nifti_render_slices')({'file_path': sys.argv[3], 'budget': 'small'})
 assert len([block for block in content if block['type'] == 'image']) == 3, content
 """
     result = subprocess.run(
@@ -673,20 +682,36 @@ assert len([block for block in content if block['type'] == 'image']) == 3, conte
     assert result.returncode == 0, result.stderr
 
 
-def test_nifti_stdio_discovers_and_renders_with_its_own_server(tmp_path):
+def test_nifti_render_slices_does_not_require_inspect(tmp_path, monkeypatch):
+    path = _save_nifti(tmp_path, "direct-render.nii", np.arange(60, dtype=np.float32).reshape(3, 4, 5))
+
+    def reject_inspect(*args, **kwargs):
+        raise AssertionError("Rendering must not depend on an inspection tool call")
+
+    monkeypatch.setattr(inspect_tool, "handle", reject_inspect)
+    content = render_slices.handle({"file_path": path, "budget": "small"})
+    _assert_successful_render(content)
+
+
+def test_nifti_stdio_discovers_renders_and_inspects_with_its_own_server(tmp_path):
     pytest.importorskip("mcp")
     path = _save_nifti(tmp_path, "protocol.nii.gz", np.arange(60, dtype=np.float32).reshape(3, 4, 5))
 
     async def action(session):
-        tools = await session.list_tools()
-        assert [tool.name for tool in tools.tools] == ["nifti_visualize"]
-        assert tools.tools[0].inputSchema["properties"]["slice_axis"]["default"] == 2
-        return await session.call_tool(
-            "nifti_visualize",
+        discovered = await session.list_tools()
+        tools = {tool.name: tool for tool in discovered.tools}
+        assert set(tools) == {"nifti_inspect", "nifti_render_slices"}
+        assert tools["nifti_render_slices"].inputSchema["properties"]["slice_axis"]["default"] == 2
+        assert set(tools["nifti_inspect"].inputSchema["properties"]) == {"file_path"}
+        # Rendering must work as the first call, without an inspection token or session state.
+        rendered = await session.call_tool(
+            "nifti_render_slices",
             {"file_path": path, "slice_indices": [1], "budget": "small"},
         )
+        inspected = await session.call_tool("nifti_inspect", {"file_path": path})
+        return rendered, inspected
 
-    content = mcp_call(
+    content, inspected = mcp_call(
         str(Path(plugin.__file__).parent),
         action,
         env={**os.environ, "QWEN_MM_NATIVE_MODE": "true"},
@@ -695,3 +720,9 @@ def test_nifti_stdio_discovers_and_renders_with_its_own_server(tmp_path):
     blocks = [block.model_dump() for block in content.content]
     _assert_successful_render(blocks, expected_images=1)
     assert "Resolved source indices (0-based): (1,)" in _text(blocks)
+    assert not inspected.isError
+    assert len(inspected.content) == 1
+    assert inspected.content[0].type == "text"
+    metadata = json.loads(inspected.content[0].text)
+    assert metadata["shape"] == [3, 4, 5]
+    assert metadata["volume_count"] == 1

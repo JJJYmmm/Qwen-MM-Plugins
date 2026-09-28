@@ -351,9 +351,28 @@ def test_encode_video_source_allow_upload_false_skips_oss(monkeypatch, sample_vi
 
 
 def test_vision_chat_dry_run_does_not_upload(monkeypatch, sample_video):
-    """A dry_run preview never hits the network, even with OSS configured; it notes the real behavior."""
-    from shared import oss
+    """A dry_run preview never hits the network, even with an upload path available; it notes the
+    real behavior. DashScope temporary storage outranks a configured bucket, so its note wins."""
+    from shared import dashscope_upload, oss
 
+    monkeypatch.setattr(dashscope_upload, "is_available", lambda *a, **k: True)
+    monkeypatch.setattr(
+        dashscope_upload,
+        "upload_temporary_file",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("uploaded")),
+    )
+    monkeypatch.setattr(oss, "is_upload_configured", lambda: True)
+    monkeypatch.setattr(oss, "upload_and_sign", lambda *a, **k: (_ for _ in ()).throw(AssertionError("uploaded")))
+    blocks = vision_chat.handle({"videos": [sample_video], "text": "hi", "dry_run": True})
+    payload = json.loads(blocks[0]["text"])
+    assert "DashScope temporary storage" in payload.get("note", "")
+
+
+def test_vision_chat_dry_run_notes_bucket_when_no_temporary_storage(monkeypatch, sample_video):
+    """Without DashScope temporary storage the preview falls back to noting the configured bucket."""
+    from shared import dashscope_upload, oss
+
+    monkeypatch.setattr(dashscope_upload, "is_available", lambda *a, **k: False)
     monkeypatch.setattr(oss, "is_upload_configured", lambda: True)
     monkeypatch.setattr(oss, "upload_and_sign", lambda *a, **k: (_ for _ in ()).throw(AssertionError("uploaded")))
     blocks = vision_chat.handle({"videos": [sample_video], "text": "hi", "dry_run": True})
@@ -374,7 +393,7 @@ def test_vl_video_max_sec_resolves():
 def test_omni_video_max_sec_resolves():
     from shared import api_omni
 
-    assert api_omni.omni_video_max_sec("qwen3.5-omni-plus") == 3600
+    assert api_omni.omni_video_max_sec("qwen3.8-omni-flash") == 3600
     assert api_omni.omni_video_max_sec("qwen-omni-turbo") == 180
     assert api_omni.omni_video_max_sec("mystery") is None
 
@@ -416,7 +435,7 @@ def test_omni_over_limit_degrades_to_frames_and_audio(monkeypatch):
     monkeypatch.setattr(video, "video_duration_exceeds", lambda p, cap: True)
     for configured in (True, False):
         monkeypatch.setattr(oss, "is_upload_configured", lambda c=configured: c)
-        parts = _common._local_video_parts("/x/clip.mp4", 1.0, 200704, [], 3600, "qwen3.5-omni-plus")
+        parts = _common._local_video_parts("/x/clip.mp4", 1.0, 200704, [], 3600, "qwen3.8-omni-flash")
         assert parts == [{"type": "video", "video": ["f0", "f1"]}]
 
 

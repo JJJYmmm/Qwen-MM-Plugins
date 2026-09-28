@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from shared.env import CONFIG_FIELDS
+from shared.env import CONFIG_FIELDS, _parse_config
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,6 +18,404 @@ ROOT = Path(__file__).resolve().parents[1]
 def _release_tag(cap: str) -> str:
     index = json.loads((ROOT / "plugin-versions.json").read_text(encoding="utf-8"))
     return index["tag_format"].format(cap=cap, version=index["plugins"][cap])
+
+
+@pytest.fixture
+def installer_env(tmp_path):
+    """Isolate configuration and replace native CLIs with offline stand-ins."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    log = tmp_path / "commands.log"
+    state = tmp_path / "installed.txt"
+    state.write_text("core\nsearch\n")
+    for harness in ("qwen", "gemini"):
+        for cap in ("core", "search"):
+            (tmp_path / f"home/.{harness}/extensions/qwen-mm-plugins-{cap}").mkdir(parents=True)
+    for binary in ("claude", "codebuddy", "codex", "qodercli", "openclaw", "qwen", "gemini", "uvx", "git"):
+        path = fake_bin / binary
+        path.write_text(
+            "#!/bin/bash\n"
+            'printf "%s %s\\n" "${0##*/}" "$*" >> "$COMMAND_LOG"\n'
+            "if read -r unexpected; then exit 92; fi\n"
+            'if [ "${0##*/} $*" = "${FAIL_COMMAND:-}" ]; then exit 23; fi\n'
+            'case "$*" in\n'
+            '  "plugin list"|"plugins list")\n'
+            '    while read -r cap; do printf "qwen-mm-plugins-%s@qwen-mm-plugins\\n" "$cap"; done < "$PLUGIN_STATE" ;;\n'
+            '  "plugin uninstall "*|"plugin remove "*|"plugins uninstall "*|"extensions uninstall "*)\n'
+            "    cap=${3#qwen-mm-plugins-}; cap=${cap%@*}\n"
+            '    grep -vxF "$cap" "$PLUGIN_STATE" > "$PLUGIN_STATE.tmp" || true\n'
+            '    mv "$PLUGIN_STATE.tmp" "$PLUGIN_STATE" ;;\n'
+            "esac\n"
+            "exit 0\n"
+        )
+        path.chmod(0o755)
+
+    return {
+        **os.environ,
+        "HOME": str(tmp_path / "home"),
+        "NO_COLOR": "1",
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "COMMAND_LOG": str(log),
+        "PLUGIN_STATE": str(state),
+        "QMP_REPO": "https://example.test/repo.git",
+        "QMP_REF": "",
+        "QWEN_MM_CONFIG_DIR": str(tmp_path / "config"),
+        "QWEN_MM_CONFIG": str(tmp_path / "config/settings"),
+    }
+
+
+@pytest.fixture
+def installer_cli(installer_env, tmp_path):
+    """Run the real CLI without a controlling TTY."""
+
+    def run(*args, script=ROOT / "install.sh", **overrides):
+        return subprocess.run(
+            ["bash", str(script), *args],
+            cwd=tmp_path,
+            env={**installer_env, **overrides},
+            # Give the installer input that must never reach the native harness subprocesses.
+            input="not an answer\n",
+            capture_output=True,
+            text=True,
+            start_new_session=True,
+            timeout=15,
+        )
+
+    return run
+
+
+@pytest.mark.parametrize("harness", ["claude", "codebuddy", "codex", "qoder", "openclaw", "qwen-code", "gemini"])
+def test_headless_local_install_executes_without_prompts(installer_cli, tmp_path, harness):
+    checkout = _make_local_checkout(tmp_path)
+    shutil.copy2(ROOT / "install.sh", checkout)
+    result = installer_cli("local", "--plugin", "core", "--harness", harness, script=checkout / "install.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text()
+    assert str(checkout) in commands
+    assert "uvx --from qwen-mm-plugins[core] @ file://" in commands
+    assert "--check-system" in commands
+    assert "[Y/n]" not in result.stdout
+    assert "configure it now" not in result.stdout
+    assert not (tmp_path / "config").exists()
+    if harness != "gemini":
+        manifest = (checkout / "src/capabilities/core/.mcp.json").read_text()
+        assert checkout.as_uri() in manifest
+        assert "--refresh" in manifest
+
+
+def test_headless_release_install_accepts_and_deduplicates_multiple_plugins(installer_cli, tmp_path):
+    result = installer_cli(
+        "install", "--harness", "codex", "--plugin", "core,search", "--plugin", "qwen-mm-plugins-core"
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text()
+    assert commands.count("codex plugin add qwen-mm-plugins-core@") == 1
+    assert commands.count("codex plugin add qwen-mm-plugins-search@") == 1
+    assert f"@{_release_tag('core')}" in commands
+    assert f"@{_release_tag('search')}" in commands
+
+
+def test_headless_local_dry_run_keeps_manifests_unchanged(installer_cli, tmp_path):
+    checkout = _make_local_checkout(tmp_path)
+    shutil.copy2(ROOT / "install.sh", checkout)
+    before = {path: path.read_bytes() for path in checkout.rglob("*.json")}
+    result = installer_cli(
+        "local", "--plugin", "all", "--harness", "codex", "--dry-run", script=checkout / "install.sh"
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "codex plugin add qwen-mm-plugins-core@" in result.stdout
+    assert "codex plugin add qwen-mm-plugins-video-spatio@" in result.stdout
+    assert before == {path: path.read_bytes() for path in before}
+    assert (tmp_path / "commands.log").read_text().splitlines() == ["codex plugin marketplace list"]
+    assert not (tmp_path / "config").exists()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("local", "--plugin", "core"),
+        ("install", "--harness", "codex"),
+        ("local", "--plugin"),
+        ("local", "--plugin", "--harness", "codex"),
+        ("local", "--plugin", "core", "--harness", "unknown"),
+        ("local", "--plugin", "core", "--harness", "claude codebuddy"),
+        ("local", "--plugin", "unknown", "--harness", "codex"),
+        ("local", "--plugin", "core api", "--harness", "codex"),
+        ("local", "--plugin", "core\nunknown", "--harness", "codex"),
+        ("local", "--plugin", "core,", "--harness", "codex"),
+        ("local", "--plugin", "core", "--harness", "codex", "--harness", "claude"),
+        ("local", "--restore", "--plugin", "core", "--harness", "codex"),
+        ("update", "--harness", "codex"),
+        ("uninstall", "--plugin", "core"),
+        ("verify", "--dry-run"),
+        ("config-set", "QWEN_MM_NATIVE_MODE=1"),
+        ("install", "--dry-run"),
+        ("install", "--typo"),
+        ("instal",),
+    ],
+)
+def test_headless_invalid_arguments_fail_before_side_effects(installer_cli, tmp_path, args):
+    result = installer_cli(*args)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "Try install.sh --help" in result.stderr
+    assert not (tmp_path / "commands.log").exists()
+    assert not (tmp_path / "config").exists()
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "codex plugin add qwen-mm-plugins-core@qwen-mm-plugins",
+        f"uvx --from qwen-mm-plugins[core] @ git+https://example.test/repo.git@{_release_tag('core')} "
+        "qwen-mm-plugins-core --check-system",
+    ],
+)
+def test_headless_install_propagates_harness_and_system_check_failures(installer_cli, command):
+    result = installer_cli("install", "--plugin", "core", "--harness", "codex", FAIL_COMMAND=command)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "[Y/n]" not in result.stdout
+
+
+@pytest.mark.parametrize("missing", ["codex", "uvx"])
+def test_headless_missing_prerequisite_fails_without_installing(missing):
+    result = _bash(
+        "CLI_HARNESS=codex; CLI_CAPS=core; "
+        f'have() {{ [ "$1" != {missing} ]; }}; '
+        'confirm() { printf "UNEXPECTED prompt\\n"; return 0; }; '
+        'install_for() { printf "UNEXPECTED installation\\n"; }; do_install'
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "UNEXPECTED" not in result.stdout
+
+
+def test_headless_skill_only_install_does_not_require_uv():
+    result = _bash(
+        "CLI_HARNESS=codex; CLI_CAPS=edu-agent; "
+        'have() { [ "$1" != uvx ]; }; '
+        'install_for() { printf "installed %s\\n" "$*"; }; do_install'
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "installed codex qwen-mm-plugins-edu-agent" in result.stdout
+
+
+@pytest.mark.parametrize("action", ["update", "uninstall"])
+@pytest.mark.parametrize("harness", ["claude", "codebuddy", "codex", "qoder", "openclaw", "qwen-code", "gemini"])
+def test_headless_update_and_uninstall_use_native_commands(installer_cli, tmp_path, action, harness):
+    result = installer_cli(action, "--plugin", "core", "--harness", harness)
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text()
+    assert "[Y/n]" not in result.stdout
+    assert "[y/N]" not in result.stdout
+    assert "qwen-mm-plugins-core" in commands
+    if action == "update":
+        assert "--check-system" in commands
+        assert f"@{_release_tag('core')}" in commands
+    else:
+        assert "uvx" not in commands
+        assert "marketplace remove" not in commands  # search is still installed
+
+
+@pytest.mark.parametrize("action,verb", [("update", "add"), ("uninstall", "remove")])
+def test_headless_all_only_targets_installed_plugins(installer_cli, tmp_path, action, verb):
+    result = installer_cli(action, "--plugin", "all", "--harness", "codex")
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text().splitlines()
+    assert [line for line in commands if line.startswith(f"codex plugin {verb} ")] == [
+        f"codex plugin {verb} qwen-mm-plugins-core@qwen-mm-plugins",
+        f"codex plugin {verb} qwen-mm-plugins-search@qwen-mm-plugins",
+    ]
+
+
+@pytest.mark.parametrize("action", ["update", "uninstall", "verify"])
+def test_headless_missing_plugin_fails_before_mutation(installer_cli, tmp_path, action):
+    result = installer_cli(action, "--plugin", "core,api", "--harness", "codex")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "api is not installed" in result.stdout
+    assert (tmp_path / "commands.log").read_text().splitlines() == ["codex plugin list"]
+
+
+@pytest.mark.parametrize("action", ["update", "uninstall", "verify"])
+def test_headless_empty_inventory_does_not_act_on_all_plugins(installer_cli, tmp_path, action):
+    (tmp_path / "installed.txt").write_text("")
+    result = installer_cli(action, "--plugin", "all", "--harness", "codex")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "no matching plugins" in result.stdout
+    assert (tmp_path / "commands.log").read_text().splitlines() == ["codex plugin list"]
+
+
+@pytest.mark.parametrize("action", ["update", "uninstall", "verify"])
+def test_headless_dry_run_preserves_config_and_skips_native_mutations(installer_cli, tmp_path, action):
+    config = tmp_path / "config/settings"
+    config.parent.mkdir()
+    config.write_text("DASHSCOPE_API_KEY=keep\n")
+    result = installer_cli(action, "--plugin", "core", "--harness", "codex", "--dry-run")
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text().splitlines()
+    assert commands == ["codex plugin list"] + (["codex plugin marketplace list --json"] if action == "update" else [])
+    assert config.read_text() == "DASHSCOPE_API_KEY=keep\n"
+    assert (tmp_path / "installed.txt").read_text() == "core\nsearch\n"
+    assert "[Y/n]" not in result.stdout
+    if action == "verify":
+        assert "planned" in result.stdout
+        assert "passed" not in result.stdout
+
+
+@pytest.mark.parametrize("harness", ["claude", "codebuddy"])
+def test_headless_uninstall_all_removes_empty_marketplace_but_keeps_shared_config(installer_cli, tmp_path, harness):
+    config = tmp_path / "config/settings"
+    config.parent.mkdir()
+    config.write_text("DASHSCOPE_API_KEY=keep\n")
+    result = installer_cli("uninstall", "--plugin", "all", "--harness", harness)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"{harness} plugin marketplace remove qwen-mm-plugins" in (tmp_path / "commands.log").read_text()
+    assert config.read_text() == "DASHSCOPE_API_KEY=keep\n"
+    assert "[y/N]" not in result.stdout
+
+
+def test_interactive_uninstall_dry_run_cannot_delete_shared_config(installer_env, tmp_path):
+    config = tmp_path / "config/settings"
+    config.parent.mkdir()
+    config.write_text("DASHSCOPE_API_KEY=keep\n")
+    result = _bash(
+        "screen() { :; }; pause() { :; }; "
+        "menu_pick() { PICK_I=0; PICK=claude; }; "
+        'spin() { printf -v "$2" 1; }; '
+        "multi_pick() { MP_STATUS=ok; MP_SEL[0]=1; }; "
+        'confirm() { case "$1" in "Run the uninstall"*) return 1 ;; *) return 0 ;; esac; }; '
+        "do_uninstall",
+        **installer_env,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert config.read_text() == "DASHSCOPE_API_KEY=keep\n"
+    assert not (tmp_path / "commands.log").exists()
+
+
+@pytest.mark.parametrize("action,verb", [("update", "add"), ("uninstall", "remove")])
+def test_headless_update_and_uninstall_propagate_command_failure(installer_cli, action, verb):
+    result = installer_cli(
+        action,
+        "--plugin",
+        "core",
+        "--harness",
+        "codex",
+        FAIL_COMMAND=f"codex plugin {verb} qwen-mm-plugins-core@qwen-mm-plugins",
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert f"{action} incomplete" in result.stdout
+
+
+def test_headless_update_propagates_system_check_failure(installer_cli):
+    result = installer_cli(
+        "update",
+        "--plugin",
+        "core",
+        "--harness",
+        "codex",
+        FAIL_COMMAND=f"uvx --from qwen-mm-plugins[core] @ git+https://example.test/repo.git@{_release_tag('core')} "
+        "qwen-mm-plugins-core --check-system",
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "failed to start" in result.stdout
+
+
+@pytest.mark.parametrize("args", [("--plugin", "core,edu-agent"), ("--harness", "codex")])
+def test_headless_verify_checks_requested_or_installed_plugins(installer_cli, tmp_path, args):
+    result = installer_cli("verify", *args)
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text()
+    assert "qwen-mm-plugins-core --check-system" in commands
+    assert "qwen-mm-plugins-edu-agent --check-system" not in commands
+    assert ("qwen-mm-plugins-search --check-system" in commands) == ("--harness" in args)
+    assert "Verify summary" in result.stdout
+
+
+def test_headless_verify_propagates_failure(installer_cli):
+    result = installer_cli(
+        "verify",
+        "--plugin",
+        "core",
+        FAIL_COMMAND=f"uvx --from qwen-mm-plugins[core] @ git+https://example.test/repo.git@{_release_tag('core')} "
+        "qwen-mm-plugins-core --check-system",
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "failed       1" in result.stdout
+
+
+def test_headless_verify_missing_uv_never_prompts():
+    result = _bash('CLI_CAPS=core; have() { return 1; }; confirm() { printf "UNEXPECTED prompt\\n"; }; do_verify')
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "UNEXPECTED" not in result.stdout
+
+
+def test_headless_verify_skill_only_does_not_require_uv():
+    result = _bash("CLI_CAPS=edu-agent; have() { return 1; }; do_verify")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "skipped      1" in result.stdout
+
+
+def test_legacy_verify_still_works(installer_cli, tmp_path):
+    result = installer_cli("--verify", "core,search")
+    assert result.returncode == 0, result.stdout + result.stderr
+    commands = (tmp_path / "commands.log").read_text()
+    assert "qwen-mm-plugins-core --check-system" in commands
+    assert "qwen-mm-plugins-search --check-system" in commands
+
+
+def test_configure_preserves_literal_values_and_hides_secrets(installer_cli, tmp_path):
+    path = tmp_path / "custom directory/nested/settings"
+    secret = 'key with spaces=a=b # literal $(touch NEVER) `id` "quotes"'
+    values = {"DASHSCOPE_API_KEY": secret, "QWEN_MM_CACHE": " /tmp/cache with spaces ", "QWEN_MM_NATIVE_MODE": "0"}
+    result = installer_cli("configure", *(f"{key}={value}" for key, value in values.items()), QWEN_MM_CONFIG=str(path))
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _parse_config(path.read_text()) == values
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert secret not in result.stdout + result.stderr
+    assert not (tmp_path / "NEVER").exists()
+    assert not (tmp_path / "commands.log").exists()
+
+
+def test_configure_updates_and_clears_without_losing_other_settings(installer_cli, tmp_path):
+    path = tmp_path / "config/settings"
+    path.parent.mkdir()
+    path.write_text(
+        '# keep this comment\nexport QWEN_MM_NATIVE_MODE = "1"\nQWEN_MM_NATIVE_MODE=1\nSERPER_API_KEY=previous-secret\n'
+    )
+    result = installer_cli("configure", "QWEN_MM_NATIVE_MODE=0", "SERPER_API_KEY=")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _parse_config(path.read_text()) == {"QWEN_MM_NATIVE_MODE": "0"}
+    assert path.read_text().count("QWEN_MM_NATIVE_MODE") == 1
+    assert "# keep this comment" in path.read_text()
+    assert "previous-secret" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "bad", ["UNKNOWN=secret", "DASHSCOPE_API_KEY", "DASHSCOPE_API_KEY=a\nb", "DASHSCOPE_API_KEY=a\rb"]
+)
+def test_configure_rejects_entire_invalid_batch_without_echoing_values(installer_cli, tmp_path, bad):
+    path = tmp_path / "config/settings"
+    path.parent.mkdir()
+    original = "QWEN_MM_NATIVE_MODE=1\n"
+    path.write_text(original)
+    result = installer_cli("configure", "QWEN_MM_NATIVE_MODE=0", bad)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert path.read_text() == original
+    assert bad not in result.stdout + result.stderr
+
+
+def test_configure_without_assignments_remains_interactive(installer_cli, tmp_path):
+    result = installer_cli("configure")
+    assert result.returncode == 1
+    assert "installer is interactive" in result.stderr
+    assert not (tmp_path / "config").exists()
+
+
+def test_configure_write_failure_is_reported(installer_cli, tmp_path):
+    path = tmp_path / "not-a-directory"
+    path.write_text("keep")
+    result = installer_cli("configure", "DASHSCOPE_API_KEY=secret", QWEN_MM_CONFIG=str(path / "config"))
+    assert result.returncode == 1
+    assert "secret" not in result.stdout + result.stderr
+    assert path.read_text() == "keep"
 
 
 def _bash(script: str, **env_overrides: str) -> subprocess.CompletedProcess[str]:
@@ -53,8 +451,14 @@ def test_config_spec_lists_api_model_defaults():
     rows = result.stdout.splitlines()
     assert any(row.startswith("MINIMAX_API_KEY|1|services||") for row in rows)
     assert any(row.startswith("QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|") for row in rows)
-    assert any(row.startswith("QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|") for row in rows)
+    assert any(row.startswith("QWEN_MM_API_OMNI_MODEL|0|services|qwen3.8-omni-flash|") for row in rows)
     assert any(row.startswith("QWEN_MM_NATIVE_MODE|0|runtime|1|") for row in rows)
+
+
+def test_config_spec_lists_omni_chatcut_model_config():
+    result = _bash('printf "%s\\n" "${CONFIG_SPEC[@]}"')
+    assert result.returncode == 0, result.stderr
+    assert any(row.startswith("QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG|0|chatcut||") for row in result.stdout.splitlines())
 
 
 def test_config_spec_mirrors_shared_catalog():
@@ -63,6 +467,7 @@ def test_config_spec_mirrors_shared_catalog():
     actual = [row.split("|", 4) for row in result.stdout.splitlines()]
     group_tags = {
         "Media APIs & endpoints": "services",
+        "Omni ChatCut": "chatcut",
         "Search providers": "search",
         "Runtime paths & limits": "runtime",
         "Video-memory": "memory",
@@ -351,12 +756,13 @@ do_verify
         ("gemini", "gemini mcp add -s user qwen-mm-plugins-core uvx --refresh --from"),
     ],
 )
-def test_local_install_uses_each_harness_native_command(tmp_path, harness, expected):
+def test_local_install_uses_each_harness_native_command(installer_env, tmp_path, harness, expected):
     checkout = _make_local_checkout(tmp_path)
     result = _bash(
         'LOCAL_REPO_ROOT="$TEST_REPO"; REPO_URL="$TEST_REPO"; '
         f"confirm() {{ return 1; }}; install_for {harness} qwen-mm-plugins-core",
         TEST_REPO=str(checkout),
+        **installer_env,
     )
     assert result.returncode == 0, result.stderr
     assert expected in result.stdout
@@ -526,10 +932,50 @@ def test_explicit_ref_overrides_package_and_marketplace():
 
 
 def test_gemini_skill_checkout_uses_same_stable_tag():
-    result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skill gemini search")
+    result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skills gemini search")
     assert result.returncode == 0, result.stderr
     assert f"fetch --depth 1 origin {_release_tag('search')}" in result.stdout
     assert "--path src/capabilities/search/skill" in result.stdout
+
+
+def test_gemini_installs_every_omni_chatcut_skill_from_its_own_root():
+    result = _bash("QMP_DRY=1; REPO_REF=; install_gemini_skills gemini omni-chatcut")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("gemini skills install") == 3
+    for child in ("music-to-mv", "movie-commentary", "video-translation"):
+        assert f"--path src/capabilities/omni-chatcut/skill/{child}" in result.stdout
+    assert "--path src/capabilities/omni-chatcut/skill --consent" not in result.stdout
+
+
+def test_gemini_omni_chatcut_uninstall_names_match_skill_frontmatter():
+    result = _bash(
+        "for component in $(gemini_skill_components omni-chatcut); do "
+        'gemini_skill_name omni-chatcut "$component"; printf "\\n"; done'
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "qwen-mm-plugins-omni-chatcut-music-to-mv",
+        "qwen-mm-plugins-omni-chatcut-movie-commentary",
+        "qwen-mm-plugins-omni-chatcut-video-translation",
+    ]
+    for name in result.stdout.splitlines():
+        child = name.removeprefix("qwen-mm-plugins-omni-chatcut-")
+        skill = ROOT / "src/capabilities/omni-chatcut/skill" / child / "SKILL.md"
+        assert skill.is_file()
+        assert f"name: {name}\n" in skill.read_text()
+
+    uninstall = _bash("QMP_DRY=1; uninstall_gemini_skills gemini omni-chatcut")
+    assert uninstall.returncode == 0, uninstall.stderr
+    assert uninstall.stdout.count("gemini skills uninstall") == 3
+    for name in result.stdout.splitlines():
+        assert f"gemini skills uninstall {name}" in uninstall.stdout
+
+
+def test_gemini_detects_omni_chatcut_from_any_installed_child_skill(tmp_path):
+    skill = tmp_path / ".gemini/skills/qwen-mm-plugins-omni-chatcut-movie-commentary"
+    skill.mkdir(parents=True)
+    result = _bash("gemini_has_capability_skill omni-chatcut", HOME=str(tmp_path))
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize(
@@ -566,9 +1012,26 @@ def test_capability_rows_never_wrap_at_narrow_terminal_widths(width):
     result = _bash(f"term_cols() {{ printf {width}; }}; load_caps core; _multi_rows 0")
     assert result.returncode == 0, result.stderr
     lines = [line.replace("\x1b[2K", "") for line in result.stdout.splitlines()]
-    versions = json.loads((ROOT / "plugin-versions.json").read_text())["plugins"]
-    assert len(lines) == len(versions)
+    # One row per published capability — read the count rather than restating it, so adding a
+    # capability does not need this literal updated.
+    published_count = len(json.loads((ROOT / "plugin-versions.json").read_text())["plugins"])
+    assert len(lines) == published_count
     assert all(len(line) < width for line in lines), result.stdout
+    if width >= 36:
+        assert any("omni-video2note" in line for line in lines), result.stdout
+
+
+def test_numeric_toggle_reaches_double_digit_rows():
+    # The catalog passed ten capabilities, so the text-mode prompt has to accept "10", not just 1-9.
+    script = """
+load_caps ''
+exec 3< <(printf '10\\n\\n')
+multi_pick 'pick' >/dev/null
+printf 'last=%s first=%s\\n' "${MP_SEL[9]}" "${MP_SEL[0]}"
+"""
+    result = _bash(script)
+    assert result.returncode == 0, result.stderr
+    assert "last=1 first=0" in result.stdout, result.stdout + result.stderr
 
 
 def test_installer_version_index_matches_release_index():

@@ -1,4 +1,4 @@
-"""MCP entry point for configurable local NIfTI visualization."""
+"""MCP entry point for configurable local NIfTI slice rendering."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ NormalizedPosition = Annotated[float, Field(ge=0.0, le=1.0, strict=True, allow_i
 SliceIndex = Annotated[int, Field(ge=0, strict=True)]
 
 
-class NiftiVisualizeArgs(BaseModel):
+class NiftiRenderSlicesArgs(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
     # FastMCP reconstructs a model from field annotations, so keep wire validation on each field.
@@ -33,7 +33,7 @@ class NiftiVisualizeArgs(BaseModel):
     window_preset: Literal["ct_brain", "ct_soft_tissue", "ct_lung", "ct_bone"] | None = None
 
     @model_validator(mode="after")
-    def validate_options(self) -> NiftiVisualizeArgs:
+    def validate_options(self) -> NiftiRenderSlicesArgs:
         if self.volumes is not None and not self.volumes.strip():
             raise ValueError("volumes must be a non-empty 1-based range")
         if self.slice_indices is not None and self.slice_positions is not None:
@@ -59,13 +59,14 @@ class NiftiVisualizeArgs(BaseModel):
         return self
 
 
-TOOL = {"name": "nifti_visualize", "args": NiftiVisualizeArgs}
+TOOL = {"name": "nifti_render_slices", "args": NiftiRenderSlicesArgs}
 
 
 def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
-    """Visualize a local 3D or 4D NIfTI with configurable source-voxel slices and intensity mapping.
+    """Render a local 3D or 4D NIfTI with configurable source-voxel slices and intensity mapping.
 
-    Prefer this specialized tool for NIfTI inspection when it is available. By default, render
+    Call directly to view slices; a prior nifti_inspect call is not required. For header-only
+    metadata without reading voxel values or producing images, use nifti_inspect. By default, render
     three uniformly spaced interior slices along source voxel axis 2, sharing one volume-level
     P1-P99 range. Source axes need not align with anatomical axes; slices are oriented for
     display without anatomical resampling. A 4D input defaults to its first 3D volume.
@@ -112,7 +113,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
             with a custom center/width.
     """
     try:
-        options = NiftiVisualizeArgs.model_validate(arguments).model_dump()
+        options = NiftiRenderSlicesArgs.model_validate(arguments).model_dump()
     except ValidationError as exc:
         return text_error(f"Invalid NIfTI options: {exc}")
 
@@ -120,7 +121,7 @@ def handle(arguments: dict[str, Any]) -> list[dict[str, Any]]:
     if "://" in path or not Path(path).is_absolute():
         return text_error("file_path must be an absolute local .nii or .nii.gz path; URLs are not supported")
     if not path.lower().endswith((".nii", ".nii.gz")):
-        return text_error("unsupported file type; nifti_visualize accepts local .nii and .nii.gz files")
+        return text_error("unsupported file type; nifti_render_slices accepts local .nii and .nii.gz files")
     if error := require_file(path):
         return error
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 #
-# Qwen-MM-Plugins — interactive installer & setup.
+# Qwen-MM-Plugins — guided and non-interactive installer & setup.
 #
 #   curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install.sh | bash   # guided menu
 #   bash install.sh [install|update|local|configure|verify|uninstall]  # single interactive action
+#   bash install.sh local --plugin core,search --harness codex  # non-interactive install
+#   bash install.sh configure DASHSCOPE_API_KEY=... QWEN_MM_NATIVE_MODE=1
 #   bash install.sh local --restore  # restore release refs after local-checkout testing
 #   bash install.sh --verify [caps]   # non-interactive: check system deps of installed (or listed) caps
 #
@@ -27,12 +29,12 @@ QMP_DRY=0
 LOCAL_REPO_ROOT=''
 
 # ── capability catalog — the ONE place capabilities are declared; every menu iterates this ──
-CAP_ITEMS=(core nifti api search video-memory omni-memory video-edit blender freecad edu-agent)
+CAP_ITEMS=(core nifti api search video-memory omni-memory video-edit blender freecad edu-agent omni-video2note omni-chatcut omni-skill-creator mhs video-spatio)
 # Latest stable plugin versions, in exactly the same order as CAP_ITEMS. Keep this release index in
 # sync with plugin-versions.json; scripts/check_manifests.py and tests/test_install_sh.py enforce it.
-CAP_VERSIONS=(1.1.0 1.0.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0 1.1.0)
+CAP_VERSIONS=(1.1.0 1.0.0 1.1.2 1.1.0 1.1.0 1.1.3 1.1.0 1.1.0 1.1.0 1.1.0 1.0.3 1.0.2 1.0.1 1.1.0 1.0.0)
 CAP_DESC=("Inspect local files and media, extract video frames, and crop or annotate images."
-          "Inspect NIfTI volumes with configurable slices, shared intensity ranges, and window presets."
+          "Inspect NIfTI header metadata and render slices with shared intensity ranges and window presets."
           "Understand images, audio, and video through model APIs, including OCR, object localization, and speech transcription."
           "Search the web, read pages, and identify objects or places with reverse-image search."
           "Build searchable, hierarchical memory of long videos to summarize content and locate events, text, and dialogue."
@@ -40,7 +42,12 @@ CAP_DESC=("Inspect local files and media, extract video frames, and crop or anno
           "Edit existing footage into finished videos with pacing, sound, subtitles, and visual effects."
           "Create, refine, and render 3D scenes and assets in Blender."
           "Create and edit parametric CAD models, technical drawings, and model exports in FreeCAD."
-          "Create narrated Mandarin math and science tutorial videos or interactive explainers from problem statements and images.")
+          "Create narrated Mandarin math and science tutorial videos or interactive explainers from problem statements and images."
+          "Convert a local tutorial video into an audited, illustrated PDF with resumable processing and offline status inspection."
+          "Omni ChatCut video creation with Music-to-MV, movie commentary, and speaker-preserving video translation."
+          "Turns a demonstration video into a reusable Agent Skill. Needs a DashScope key and ffmpeg."
+          "Operate physical hardware through Model Hardware Standard adapters: discover devices, read sensors and camera frames, send commands with host-side safety-limit enforcement, check health, and emergency-stop — as MCP tools. Adapters are run by the hardware's owner."
+          "Reason about distance, orientation, object motion, and camera motion in images and video.")
 # Skill-only capabilities have NO MCP server / pyproject extra / console entry: they install via
 # the marketplace like any plugin, but the uvx --check-system self-test doesn't apply to them.
 CAP_SKILL_ONLY=" edu-agent "
@@ -71,10 +78,13 @@ CONFIG_SPEC=(
   "OPENROUTER_API_KEY|1|services||OpenAI-compatible calls to openrouter.ai"
   "MINIMAX_API_KEY|1|services||MiniMax text-to-speech generation"
   "DASHSCOPE_BASE_URL|0|services|DashScope compat URL|override the DashScope OpenAI-compatible base URL"
-  "QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|default VL model for vision_chat, OCR, grounding, and text-only image captions"
-  "QWEN_MM_API_OMNI_MODEL|0|services|qwen3.5-omni-plus|default Omni model for audio/video understanding tools and omni-memory"
+  "DASHSCOPE_UPLOAD_POLICY_URL|0|services|inferred for official DashScope hosts|override the model-bound temporary OSS policy endpoint used for oversized Omni and VL media"
+  "QWEN_MM_API_VL_MODEL|0|services|qwen3.7-plus|default VL model for vision_chat, OCR, grounding, text-only image captions, and video-spatio VLM tools"
+  "QWEN_MM_API_OMNI_MODEL|0|services|qwen3.8-omni-flash|default Omni model for audio/video understanding tools, omni-memory, and Omni ChatCut"
   "SAM3_SERVER_URL|0|services||segmentation SAM3 server URL"
   "ASR_SERVER_URLS|0|services||self-hosted ASR fallback URLs (comma-separated)"
+  "QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG|0|chatcut||path to the shared Omni, image-provider, and video-provider connection JSON"
+  "QWEN_MM_DUBBING_SERVER_URL|0|chatcut||external IndexTTS2/Demucs/TEN-VAD service used by video translation"
   "QWEN_MM_SEARCH_BACKEND|0|search|auto|text search backend (auto: serper > tavily > exa > serply; or choose one)"
   "SERPER_API_KEY|1|search||Serper web_search / web_extractor and Serper-only image_search"
   "TAVILY_API_KEY|1|search||Tavily web_search / web_extractor"
@@ -105,10 +115,11 @@ CONFIG_SPEC=(
   "NODE_PATH|0|edu||Node.js module resolution path"
   "PUPPETEER_EXECUTABLE_PATH|0|edu||headless Chromium executable for Puppeteer"
 )
-CONFIG_GROUPS=(services search runtime oss memory omni hosts edu)
+CONFIG_GROUPS=(services chatcut search runtime oss memory omni hosts edu)
 config_group_title() {
   case "$1" in
     services) printf 'Media APIs & endpoints' ;;
+    chatcut) printf 'Omni ChatCut' ;;
     search)   printf 'Search providers' ;;
     runtime)  printf 'Runtime paths & limits' ;;
     oss)    printf 'OSS storage (serve large media by URL)' ;;
@@ -133,14 +144,141 @@ if [ -d "$HOME/.nvm/versions/node" ]; then
 fi
 export PATH
 
-# Non-interactive forms (--verify / --help / local --restore) run headless and need no terminal;
-# every other invocation is an interactive TUI that reads keys from the tty (fd 3).
+usage() {
+  cat <<'EOF'
+Usage: install.sh [install|update|local|configure|verify|uninstall]
+       install.sh {install|local|update|uninstall} --plugin <names> --harness <name> [--dry-run]
+       install.sh verify [--plugin <names>] [--harness <name>] [--dry-run]
+       install.sh local --restore
+       install.sh configure KEY=VALUE [KEY=VALUE...]
+       install.sh --verify [caps]
+
+With no arguments, open the interactive menu. Actions without options are interactive.
+  install                  Install each plugin's latest immutable stable tag.
+  update                   Update installed plugins to current stable tags.
+  local                    Install from the checkout containing this script.
+  local --restore          Restore published refs after local testing.
+  configure KEY=VALUE       Save shared settings without prompts; KEY= clears a setting.
+  verify                   Check MCP environments; selections make it non-interactive.
+  uninstall                Remove selected plugins; headless mode keeps config and caches.
+  --verify [caps]           Legacy headless system check of installed (or listed) capabilities.
+  --plugin <names>          Capability names or full qwen-mm-plugins-<name> IDs.
+                           Repeat the option, separate names with commas, or use all.
+  --harness <name>          One target harness; optional for verify.
+  --dry-run                Print commands without executing changes or system checks.
+  -h, --help               Show this help.
+
+Explicit plugin and harness selections run without installer prompts. Install the harness
+and uv/uvx first; set service credentials through the environment or shared config file.
+For update/uninstall, all selects installed plugins only; named plugins must be installed.
+For verify, --harness selects installed plugins; --plugin alone checks the requested packages.
+Rollback: QMP_REF=qwen-mm-plugins-<cap>-v<version> (select that cap only).
+EOF
+  printf '\nPlugins: %s\nHarnesses: %s\n' "${CAP_ITEMS[*]}" "$ALL_HARNESSES"
+}
+
+cli_error() { printf 'install.sh: %s\nTry install.sh --help for usage.\n' "$*" >&2; return 2; }
+
+CLI_ACTION=''
+CLI_CAPS=''
+CLI_HARNESS=''
+
+add_cli_plugins() {
+  local value=$1 cap
+  local -a names=()
+  case "$value" in ''|,*|*,|*,,*) cli_error "--plugin requires non-empty names"; return 2 ;; esac
+  case "$value" in *[!a-z0-9,-]*) cli_error "invalid plugin name"; return 2 ;; esac
+  IFS=, read -r -a names <<< "$value"
+  for cap in "${names[@]}"; do
+    cap=${cap#qwen-mm-plugins-}
+    if [ "$cap" != all ]; then
+      case " ${CAP_ITEMS[*]} " in
+        *" $cap "*) ;;
+        *) cli_error "unknown plugin: $cap"; return 2 ;;
+      esac
+    fi
+    case " $CLI_CAPS " in
+      *" $cap "*) ;;
+      *) CLI_CAPS="${CLI_CAPS:+$CLI_CAPS }$cap" ;;
+    esac
+  done
+}
+
+# Parse and validate before opening /dev/tty or invoking any harness commands, including errors.
+parse_cli() {
+  local targeted=0 restore=0
+  CLI_ACTION=${1:-}
+  [ "$#" -gt 0 ] && shift
+  case "$CLI_ACTION" in
+    --verify) return 0 ;;  # Preserve the existing positional capability-list interface.
+    configure)
+      [ "$#" -eq 0 ] && return 0
+      CLI_ACTION=configure-values
+      if [ "$#" -eq 1 ]; then
+        case "$1" in -h|--help) CLI_ACTION=help ;; esac
+      fi
+      return 0 ;;
+    -h|--help) CLI_ACTION=help; return 0 ;;
+    ''|install|update|local|verify|uninstall) ;;
+    *) cli_error "unknown action: $CLI_ACTION"; return 2 ;;
+  esac
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help) CLI_ACTION=help; return 0 ;;
+      --plugin|--harness)
+        [ "$#" -ge 2 ] && [ -n "$2" ] && [[ "$2" != -* ]] || {
+          cli_error "$1 requires a value"; return 2;
+        }
+        if [ "$1" = --plugin ]; then
+          add_cli_plugins "$2" || return
+        else
+          [ -z "$CLI_HARNESS" ] || { cli_error "specify --harness only once"; return 2; }
+          case "$2" in *[!a-z0-9-]*) cli_error "invalid harness name"; return 2 ;; esac
+          case " $ALL_HARNESSES " in
+            *" $2 "*) CLI_HARNESS=$2 ;;
+            *) cli_error "unknown harness: $2"; return 2 ;;
+          esac
+        fi
+        targeted=1
+        shift 2 ;;
+      --dry-run) QMP_DRY=1; targeted=1; shift ;;
+      --restore) restore=1; shift ;;
+      *) cli_error "unknown option: $1"; return 2 ;;
+    esac
+  done
+  if [ "$restore" = 1 ]; then
+    [ "$CLI_ACTION" = local ] && [ "$targeted" = 0 ] || {
+      cli_error "--restore is only supported by 'local --restore', without install options"; return 2;
+    }
+    CLI_ACTION=local-restore
+  fi
+  if [ "$targeted" = 1 ]; then
+    case "$CLI_ACTION" in
+      verify)
+        [ -n "$CLI_CAPS$CLI_HARNESS" ] || {
+          cli_error "non-interactive verify requires --plugin or --harness"; return 2;
+        }
+        [ -n "$CLI_CAPS" ] || CLI_CAPS=all
+        ;;
+      install|local|update|uninstall)
+        [ -n "$CLI_CAPS" ] && [ -n "$CLI_HARNESS" ] || {
+          cli_error "non-interactive $CLI_ACTION requires both --plugin and --harness"; return 2;
+        }
+        ;;
+      *) cli_error "selection options are not supported by $CLI_ACTION"; return 2 ;;
+    esac
+  fi
+}
+parse_cli "$@" || exit $?
+
 NONINTERACTIVE=0
-case "${1:-}:${2:-}" in
-  --verify:*|-h:*|--help:*|local:--restore) NONINTERACTIVE=1; QMP_NO_TUI=1 ;;
+case "$CLI_ACTION" in
+  --verify|configure-values|help|local-restore) NONINTERACTIVE=1 ;;
 esac
+[ -n "$CLI_CAPS$CLI_HARNESS" ] && NONINTERACTIVE=1
 # ── an interactive terminal, even under `curl | bash` (stdin is the pipe → read from /dev/tty) ──
 if [ "$NONINTERACTIVE" = 1 ]; then
+  QMP_NO_TUI=1
   exec 3</dev/null                                   # headless: no prompts, no terminal required
 elif ! { exec 3</dev/tty; } 2>/dev/null; then
   printf 'This installer is interactive — run it in a terminal (or use a documented headless command):\n' >&2
@@ -409,19 +547,34 @@ default_cache_dir() {
   esac
 }
 
-# Update-or-append one KEY=VALUE in the config file (bash 3.2 safe — no assoc arrays), 0600.
-set_kv() {  # set_kv KEY VALUE
-  local key=$1 val=$2 tmp
-  mkdir -p "$CONFIG_DIR"
-  if [ ! -f "$CONFIG_FILE" ]; then
-    printf '# qwen-mm-plugins config — KEY=VALUE per line, read when the var is not in the environment.\n\n' > "$CONFIG_FILE"
+# Write KEY VALUE, or delete KEY when VALUE is omitted. Both paths replace the file with a
+# same-directory, mode-0600 temporary file; a failed write leaves the original intact.
+write_kv() {
+  local key=$1 tmp rc
+  [ "$#" -eq 1 ] && [ ! -e "$CONFIG_FILE" ] && return 0
+  mkdir -p "$(dirname "$CONFIG_FILE")" || return 1
+  tmp=$(mktemp "$(dirname "$CONFIG_FILE")/.qmp-config.XXXXXX") || return 1
+  if [ -e "$CONFIG_FILE" ]; then
+    grep -v -E "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=" "$CONFIG_FILE" > "$tmp"
+    rc=$?
+    [ "$rc" -le 1 ] || { rm -f "$tmp"; return 1; }
+  else
+    printf '# qwen-mm-plugins config — KEY=VALUE per line, read when the var is not in the environment.\n\n' > "$tmp" || {
+      rm -f "$tmp"; return 1;
+    }
   fi
-  tmp=$(mktemp "${TMPDIR:-/tmp}/qmp.XXXXXX")
-  grep -v -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "$CONFIG_FILE" > "$tmp" 2>/dev/null || true
-  printf '%s=%s\n' "$key" "$val" >> "$tmp"
-  mv "$tmp" "$CONFIG_FILE"
-  chmod 600 "$CONFIG_FILE"
+  if [ "$#" -eq 2 ]; then
+    # Outer quotes preserve whitespace and literal quotes under shared.env's minimal dotenv parser.
+    printf '%s="%s"\n' "$key" "$2" >> "$tmp" || { rm -f "$tmp"; return 1; }
+  fi
+  chmod 600 "$tmp" && mv "$tmp" "$CONFIG_FILE" || {
+    rm -f "$tmp"; return 1;
+  }
 }
+
+set_kv() { write_kv "$1" "$2"; }
+# Delete the line rather than writing KEY=, which would shadow the runtime default.
+del_kv() { write_kv "$1"; }
 
 has_key_in_file() { [ -n "$(get_kv DASHSCOPE_API_KEY)" ]; }
 
@@ -440,14 +593,35 @@ get_kv() {  # get_kv KEY
   printf '%s' "$val"
 }
 
-# del_kv KEY → remove any line setting KEY from the config file (preserves 0600). Clearing must
-# delete the line, not write KEY= — an empty value would shadow a real default (see shared.env).
-del_kv() {  # del_kv KEY
-  [ -f "$CONFIG_FILE" ] || return 0
-  local tmp; tmp=$(mktemp "${TMPDIR:-/tmp}/qmp.XXXXXX")
-  grep -v -E "^[[:space:]]*(export[[:space:]]+)?$1=" "$CONFIG_FILE" > "$tmp" 2>/dev/null || true
-  mv "$tmp" "$CONFIG_FILE"
-  chmod 600 "$CONFIG_FILE"
+# Validate the whole batch before writing, and never echo values (including malformed arguments).
+configure_values() {
+  [ "$#" -gt 0 ] || { cli_error "configure requires KEY=VALUE [KEY=VALUE...]"; return 2; }
+  local assignment key value spec found
+  for assignment in "$@"; do
+    case "$assignment" in
+      *=*) key=${assignment%%=*}; value=${assignment#*=} ;;
+      *) cli_error "configure expects KEY=VALUE arguments"; return 2 ;;
+    esac
+    found=0
+    for spec in "${CONFIG_SPEC[@]}"; do
+      [ "${spec%%|*}" = "$key" ] && { found=1; break; }
+    done
+    [ "$found" = 1 ] || { cli_error "unknown config key; use a field from the Configure catalog"; return 2; }
+    case "$value" in
+      *$'\n'*|*$'\r'*) cli_error "config values must be a single line"; return 2 ;;
+    esac
+  done
+  for assignment in "$@"; do
+    key=${assignment%%=*}; value=${assignment#*=}
+    if [ -z "$value" ]; then
+      del_kv "$key" || { err "could not clear $key"; return 1; }
+      ok "cleared $key"
+    else
+      set_kv "$key" "$value" || { err "could not save $key"; return 1; }
+      ok "saved $key"
+    fi
+  done
+  ok "config: $CONFIG_FILE (environment variables take precedence)"
 }
 
 # cfg_raw KEY → the value that would win at runtime (environment first, then config file); empty if
@@ -495,6 +669,10 @@ status() {
 ensure_uv() {
   have uvx && return 0
   warn "uv / uvx not found — the MCP servers launch via 'uvx'."
+  if [ -n "$CLI_CAPS" ]; then
+    err "install uv first: https://docs.astral.sh/uv/"
+    return 1
+  fi
   if confirm "Install uv now (astral.sh official installer)?" y; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -727,12 +905,51 @@ uvx_cap() {
   fi
 }
 
-install_gemini_skill() {  # install_gemini_skill <gemini-bin> <cap>
-  local bin=$1 cap=$2 checkout ref repo
+# Gemini installs one Agent Skill at a time. Most capabilities ship one `skill/`; collection
+# capabilities enumerate their independently-discoverable children here so install/update/uninstall
+# operate on the complete capability bundle even though Gemini registers Skill and MCP separately.
+gemini_skill_components() {  # gemini_skill_components <cap> -> one component per line; `.` = skill/
+  case "$1" in
+    omni-chatcut) printf '%s\n' music-to-mv movie-commentary video-translation ;;
+    *)            printf '.\n' ;;
+  esac
+}
+
+gemini_skill_path() {  # gemini_skill_path <cap> <component>
+  local cap=$1 component=$2
+  if [ "$component" = . ]; then
+    printf 'src/capabilities/%s/skill' "$cap"
+  else
+    printf 'src/capabilities/%s/skill/%s' "$cap" "$component"
+  fi
+}
+
+gemini_skill_name() {  # gemini_skill_name <cap> <component>
+  local cap=$1 component=$2
+  if [ "$component" = . ]; then
+    printf 'qwen-mm-plugins-%s' "$cap"
+  else
+    printf 'qwen-mm-plugins-%s-%s' "$cap" "$component"
+  fi
+}
+
+gemini_has_capability_skill() {  # gemini_has_capability_skill <cap>
+  local cap=$1 component
+  for component in $(gemini_skill_components "$cap"); do
+    [ -d "$HOME/.gemini/skills/$(gemini_skill_name "$cap" "$component")" ] && return 0
+  done
+  return 1
+}
+
+install_gemini_skills() {  # install_gemini_skills <gemini-bin> <cap>
+  local bin=$1 cap=$2 checkout ref repo component path failed=0
   if is_local_repo "$REPO_URL"; then
     repo=${REPO_URL#file://}
-    run_cmd "$bin" skills install "$repo" --path "src/capabilities/${cap}/skill" --consent
-    return
+    for component in $(gemini_skill_components "$cap"); do
+      path=$(gemini_skill_path "$cap" "$component")
+      run_cmd "$bin" skills install "$repo" --path "$path" --consent || failed=1
+    done
+    return "$failed"
   fi
 
   # Gemini's skills installer has --path but no --ref. Materialize the same immutable ref used by
@@ -744,10 +961,20 @@ install_gemini_skill() {  # install_gemini_skill <gemini-bin> <cap>
   run_cmd git -C "$checkout" remote add origin "$repo" || { rm -rf "$checkout"; return 1; }
   run_cmd git -C "$checkout" fetch --depth 1 origin "$ref" || { rm -rf "$checkout"; return 1; }
   run_cmd git -C "$checkout" checkout --detach FETCH_HEAD || { rm -rf "$checkout"; return 1; }
-  run_cmd "$bin" skills install "$checkout" --path "src/capabilities/${cap}/skill" --consent
-  local rc=$?
+  for component in $(gemini_skill_components "$cap"); do
+    path=$(gemini_skill_path "$cap" "$component")
+    run_cmd "$bin" skills install "$checkout" --path "$path" --consent || failed=1
+  done
   rm -rf "$checkout"
-  return "$rc"
+  return "$failed"
+}
+
+uninstall_gemini_skills() {  # uninstall_gemini_skills <gemini-bin> <cap>
+  local bin=$1 cap=$2 component failed=0
+  for component in $(gemini_skill_components "$cap"); do
+    run_cmd "$bin" skills uninstall "$(gemini_skill_name "$cap" "$component")" || failed=1
+  done
+  return "$failed"
 }
 
 # CodeBuddy can report success after a failed plugin operation. Verify its inventory instead.
@@ -780,7 +1007,9 @@ install_for() {  # install_for <harness> <plugin...>
       } ;;
   esac
   is_local_repo "$REPO_URL" && prompt="Install the selected plugins from this checkout into $h now?"
-  QMP_DRY=0; confirm "$prompt" y || QMP_DRY=1
+  if [ -z "$CLI_HARNESS" ]; then
+    QMP_DRY=0; confirm "$prompt" y || QMP_DRY=1
+  fi
   if is_local_repo "$REPO_URL" && [ "$QMP_DRY" = 0 ] && [ "$h" != gemini ]; then
     localize_plugin_sources "$@" || { err "could not prepare the local plugin manifests"; return 1; }
   fi
@@ -866,7 +1095,7 @@ install_for() {  # install_for <harness> <plugin...>
         fi
       done ;;
     gemini)
-      # MCP + skill use the selected tag or checkout. No `--` before uvx args (gemini drops them).
+      # MCP + Skills use the selected tag or checkout. No `--` before uvx args (gemini drops them).
       for p in "$@"; do
         cap=${p#qwen-mm-plugins-}
         if ! is_skill_only "$cap"; then
@@ -876,7 +1105,7 @@ install_for() {  # install_for <harness> <plugin...>
             run_cmd "$bin" mcp add -s user "$p" uvx --from "$(cap_spec "$cap")" "$p" || failed=1
           fi
         fi
-        install_gemini_skill "$bin" "$cap" || failed=1
+        install_gemini_skills "$bin" "$cap" || failed=1
       done
       warn "gemini uses Google models only — no external / OpenAI-compatible providers." ;;
     *)
@@ -913,7 +1142,9 @@ update_for() {
         return 1
       fi ;;
   esac
-  QMP_DRY=0; confirm "$prompt" y || QMP_DRY=1
+  if [ -z "$CLI_HARNESS" ]; then
+    QMP_DRY=0; confirm "$prompt" y || QMP_DRY=1
+  fi
   case "$h" in
     claude)
       run_cmd "$bin" plugin marketplace update "$MARKETPLACE" || return
@@ -964,7 +1195,7 @@ update_for() {
         if ! is_skill_only "$cap"; then
           run_cmd "$bin" mcp add -s user "$p" uvx --from "$(cap_spec "$cap")" "$p" || failed=1
         fi
-        install_gemini_skill "$bin" "$cap" || failed=1
+        install_gemini_skills "$bin" "$cap" || failed=1
       done ;;
     *)
       warn "Unknown harness '$h' — use its native marketplace/plugin update command."
@@ -1004,7 +1235,7 @@ _cfg_has() {
   case "$h" in
     qwen-code) [ -d "$HOME/.qwen/extensions/$id" ] ||
                { [ -f "$HOME/.qwen/settings.json" ] && grep -q "\"$id\"" "$HOME/.qwen/settings.json"; } ;;
-    gemini)    [ -d "$HOME/.gemini/extensions/$id" ] || [ -d "$HOME/.gemini/skills/$id" ] ||
+    gemini)    [ -d "$HOME/.gemini/extensions/$id" ] || gemini_has_capability_skill "$2" ||
                { [ -f "$HOME/.gemini/settings.json" ] && grep -q "\"$id\"" "$HOME/.gemini/settings.json"; } ;;
     *) return 1 ;;
   esac
@@ -1148,16 +1379,20 @@ menu_pick() {
 
 # _multi_rows <cur> — render MP_ITEMS/MP_DESC/MP_SEL/MP_DIS (cur=-1 → num mode: no pointer / no clear)
 _multi_rows() {
-  local cur=$1 i box ptr num body clr='' cols desc_w name_w desc name
+  local cur=$1 i box ptr num body clr='' cols desc_w name_w=0 desc name
   [ "$cur" != -1 ] && clr='\033[2K'
+  # Widths are derived, never fixed: the longest capability name sizes the name column, and the two
+  # spare columns cover a two-digit row number (10+). Every rendered row therefore stays strictly
+  # narrower than the terminal, so cursor-based redraws never wrap.
   cols=$(term_cols)
+  for name in "${MP_ITEMS[@]}"; do
+    [ ${#name} -gt "$name_w" ] && name_w=${#name}
+  done
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
     num=$((i + 1)); [ "$i" = "$cur" ] && ptr="${CB}${CC}❯${C0}" || ptr=' '
-    # Account for two-digit menu indices as the capability catalog grows.
-    desc_w=$(( cols - 25 - ${#num} ))
-    if [ "$desc_w" -lt 1 ]; then
+    if [ "$cols" -lt $(( name_w + 14 )) ]; then
       # At very small widths omit the description and spend the remaining columns on the name.
-      name_w=$(( cols - 11 - ${#num} )); [ "$name_w" -lt 1 ] && name_w=1
+      name_w=$(( cols - 13 )); [ "$name_w" -lt 1 ] && name_w=1
       name=$(_fit "${MP_ITEMS[$i]}" "$name_w")
       if [ "${MP_DIS[$i]}" = 1 ]; then
         body=$(printf '%b[-] %d) %s%b' "$CD" "$num" "$name" "$C0")
@@ -1166,12 +1401,13 @@ _multi_rows() {
         body=$(printf '%s %d) %s' "$box" "$num" "$name")
       fi
     else
+      desc_w=$(( cols - name_w - 14 )); [ "$desc_w" -lt 1 ] && desc_w=1
       desc=$(_fit "${MP_DESC[$i]}" "$desc_w")
       if [ "${MP_DIS[$i]}" = 1 ]; then
-        body=$(printf '%b[-] %d) %-13s %s%b' "$CD" "$num" "${MP_ITEMS[$i]}" "$desc" "$C0")
+        body=$(printf '%b[-] %d) %-*s %s%b' "$CD" "$num" "$name_w" "${MP_ITEMS[$i]}" "$desc" "$C0")
       else
         [ "${MP_SEL[$i]}" = 1 ] && box="${CG}[✓]${C0}" || box='[ ]'
-        body=$(printf '%s %d) %-13s %b%s%b' "$box" "$num" "${MP_ITEMS[$i]}" "$CD" "$desc" "$C0")
+        body=$(printf '%s %d) %-*s %b%s%b' "$box" "$num" "$name_w" "${MP_ITEMS[$i]}" "$CD" "$desc" "$C0")
       fi
     fi
     printf '%b  %s %s\n' "$clr" "$ptr" "$body"
@@ -1210,7 +1446,8 @@ multi_pick() {
       [ -z "$ans" ] && break
       for tok in $ans; do
         case "$tok" in
-          [1-9]) i=$((tok - 1))
+          # Two digits too: the catalog passed ten capabilities, so row 10 needs to be reachable.
+          [1-9]|[1-9][0-9]) i=$((tok - 1))
                  if [ "$i" -ge "$n" ]; then warn "ignored: $tok"
                  elif [ "${MP_DIS[$i]}" = 1 ]; then warn "${MP_ITEMS[$i]} locked — skipped"
                  else MP_SEL[$i]=$(( 1 - ${MP_SEL[$i]} )); fi ;;
@@ -1236,6 +1473,39 @@ load_caps() {
     MP_DIS[i]=0
     { [ "$presel" = core ] && [ "${CAP_ITEMS[$i]}" = core ]; } && MP_SEL[i]=1 || MP_SEL[i]=0
   done
+}
+
+# Fill the same selection state used by the menus. With "installed", all means the installed
+# subset, and an explicit missing plugin is an error before any command can mutate the harness.
+select_cli_plugins() {
+  local scope=${1:-catalog} mask='' i cap requested all=0
+  load_caps '' entry
+  SELECTED_PLUGINS=''
+  [ "$scope" = installed ] && mask=$(_detect_mask "$CLI_HARNESS")
+  case " $CLI_CAPS " in *" all "*) all=1 ;; esac
+  for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
+    cap=${MP_ITEMS[$i]}; requested=0
+    case " $CLI_CAPS " in *" $cap "*) requested=1 ;; esac
+    if [ "$scope" = installed ] && [ "${mask:i:1}" != 1 ]; then
+      MP_DIS[i]=1
+      [ "$requested" = 0 ] || { err "$cap is not installed in $CLI_HARNESS"; return 1; }
+      continue
+    fi
+    if [ "$all" = 1 ] || [ "$requested" = 1 ]; then
+      MP_SEL[i]=1
+      SELECTED_PLUGINS="$SELECTED_PLUGINS qwen-mm-plugins-$cap"
+    fi
+  done
+  [ -n "$SELECTED_PLUGINS" ] || { err "no matching plugins selected or installed"; return 1; }
+}
+
+ensure_selected_uv() {
+  local p
+  [ "$QMP_DRY" = 1 ] && return 0
+  for p in $SELECTED_PLUGINS; do
+    is_skill_only "${p#qwen-mm-plugins-}" || { ensure_uv; return $?; }
+  done
+  return 0
 }
 
 # choose_caps <harness> → SELECTED_PLUGINS (installed caps rendered [-] and pre-excluded)
@@ -1318,35 +1588,45 @@ detect_installed() {
 
 do_install() {
   local harness
-  while :; do
-    if is_local_repo "$REPO_URL"; then
-      screen; hr "Install from local checkout"
-      menu_pick "Target harness" $ALL_HARNESSES
-    else
-      screen; hr "Install plugin"
-      menu_pick "Target harness" $ALL_HARNESSES "other (manual / another harness)"
+  if [ -n "$CLI_HARNESS" ]; then
+    harness=$CLI_HARNESS
+    select_cli_plugins || return 1
+    if [ "$QMP_DRY" = 0 ]; then
+      require_harness "$harness" || return 1
+      ensure_selected_uv || return 1
     fi
-    [ "$PICK_I" -lt 0 ] && return 0                 # esc/q at top level → back to menu
-    case "$PICK" in "other"*) show_manual install; return 0 ;; esac
-    harness=$PICK
-    require_harness "$harness" || continue
-    ensure_uv || { pause; return 0; }
-    screen; hr "Install → $harness"
-    if is_local_repo "$REPO_URL"; then
-      choose_caps_local "$harness"
-    else
-      choose_caps "$harness"
-    fi
-    case "$MP_STATUS" in
-      back)   continue ;;                           # esc → back to harness pick
-      cancel) return 0 ;;                           # q → back to menu
-    esac
-    [ -n "$SELECTED_PLUGINS" ] && break
-    warn "nothing selected."
-    pause
-    return 0
-  done
-  screen; hr "Install → $harness"
+  else
+    while :; do
+      if is_local_repo "$REPO_URL"; then
+        screen; hr "Install from local checkout"
+        menu_pick "Target harness" $ALL_HARNESSES
+      else
+        screen; hr "Install plugin"
+        menu_pick "Target harness" $ALL_HARNESSES "other (manual / another harness)"
+      fi
+      [ "$PICK_I" -lt 0 ] && return 0                 # esc/q at top level → back to menu
+      case "$PICK" in "other"*) show_manual install; return 0 ;; esac
+      harness=$PICK
+      require_harness "$harness" || continue
+      ensure_uv || { pause; return 0; }
+      screen; hr "Install → $harness"
+      if is_local_repo "$REPO_URL"; then
+        choose_caps_local "$harness"
+      else
+        choose_caps "$harness"
+      fi
+      case "$MP_STATUS" in
+        back)   continue ;;                           # esc → back to harness pick
+        cancel) return 0 ;;                           # q → back to menu
+      esac
+      [ -n "$SELECTED_PLUGINS" ] && break
+      warn "nothing selected."
+      pause
+      return 0
+    done
+  fi
+  [ -n "$CLI_HARNESS" ] || screen
+  hr "Install → $harness"
   if ! install_for "$harness" $SELECTED_PLUGINS; then
     err "installation incomplete — one or more commands failed"
     pause
@@ -1374,6 +1654,7 @@ do_install() {
     box_close
   fi
   printf '\n'
+  [ -n "$CLI_HARNESS" ] && return 0
   if ! has_key_in_file && [ -z "${DASHSCOPE_API_KEY:-}" ]; then
     if confirm "No API key yet — configure it now?" y; then do_configure nested; fi
   fi
@@ -1436,27 +1717,35 @@ do_manual_update() {
 }
 
 do_update() {
-  local harness bin p cap checked=0 check_failed=0
-  while :; do
-    screen; hr "Update installed plugins"
-    menu_pick "Target harness" $ALL_HARNESSES "other (manual / another harness)"
-    [ "$PICK_I" -lt 0 ] && return 0
-    case "$PICK" in "other"*) do_manual_update; return $? ;; esac
-    harness=$PICK; bin=$(harness_bin "$harness")
-    require_harness "$harness" || continue
-    screen; hr "Update → $harness"
-    choose_caps_update "$harness"
-    case "$MP_STATUS" in
-      back)   continue ;;
-      cancel) return 0 ;;
-    esac
-    [ -n "$SELECTED_PLUGINS" ] && break
-    warn "nothing installed or selected in $harness."
-    pause
-    return 0
-  done
+  local harness p cap checked=0 check_failed=0
+  if [ -n "$CLI_HARNESS" ]; then
+    harness=$CLI_HARNESS
+    require_harness "$harness" || return 1
+    select_cli_plugins installed || return 1
+    ensure_selected_uv || return 1
+  else
+    while :; do
+      screen; hr "Update installed plugins"
+      menu_pick "Target harness" $ALL_HARNESSES "other (manual / another harness)"
+      [ "$PICK_I" -lt 0 ] && return 0
+      case "$PICK" in "other"*) do_manual_update; return $? ;; esac
+      harness=$PICK
+      require_harness "$harness" || continue
+      screen; hr "Update → $harness"
+      choose_caps_update "$harness"
+      case "$MP_STATUS" in
+        back)   continue ;;
+        cancel) return 0 ;;
+      esac
+      [ -n "$SELECTED_PLUGINS" ] && break
+      warn "nothing installed or selected in $harness."
+      pause
+      return 0
+    done
+  fi
 
-  screen; hr "Update → $harness"
+  [ -n "$CLI_HARNESS" ] || screen
+  hr "Update → $harness"
   if ! update_for "$harness" $SELECTED_PLUGINS; then
     err "update incomplete — one or more commands failed"
     pause
@@ -1656,23 +1945,38 @@ do_configure() {  # do_configure [nested] — nested: invoked from another actio
 }
 
 do_verify() {
-  screen; hr "Verify"
+  [ -n "$CLI_CAPS" ] || screen
+  hr "Verify"
   [ -f "$CONFIG_FILE" ] && ok "config file present: $CONFIG_FILE" || warn "no config file yet — run Configure"
   if [ -n "${DASHSCOPE_API_KEY:-}" ]; then ok "DASHSCOPE_API_KEY found in environment"
   elif has_key_in_file; then ok "DASHSCOPE_API_KEY found in config file"
   else warn "DASHSCOPE_API_KEY not set — run Configure"; fi
   local i any=0 installed passed=0 failed=0 skipped=0
-  spin "detecting installed capabilities..." installed -- detect_installed
-  load_caps "" entry
-  for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do            # preselect whatever is already installed
-    case " $installed " in *" ${MP_ITEMS[$i]} "*) MP_SEL[$i]=1 ;; esac
+  if [ -n "$CLI_CAPS" ]; then
+    if [ -n "$CLI_HARNESS" ]; then
+      require_harness "$CLI_HARNESS" || return 1
+      select_cli_plugins installed || return 1
+    else
+      select_cli_plugins || return 1
+    fi
+  else
+    spin "detecting installed capabilities..." installed -- detect_installed
+    load_caps "" entry
+    for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do            # preselect whatever is already installed
+      case " $installed " in *" ${MP_ITEMS[$i]} "*) MP_SEL[$i]=1 ;; esac
+    done
+    multi_pick "Self-test which capabilities (each fetched via uvx, checks system tools + config)"
+    [ "$MP_STATUS" != ok ] && return 0
+    QMP_DRY=0
+  fi
+  SELECTED_PLUGINS=''
+  for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
+    if [ "${MP_SEL[$i]}" = 1 ]; then
+      any=1; SELECTED_PLUGINS="$SELECTED_PLUGINS qwen-mm-plugins-${MP_ITEMS[$i]}"
+    fi
   done
-  multi_pick "Self-test which capabilities (each fetched via uvx, checks system tools + config)"
-  [ "$MP_STATUS" != ok ] && return 0
-  for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do [ "${MP_SEL[$i]}" = 1 ] && any=1; done
   [ "$any" = 0 ] && { printf '  (nothing selected)\n'; pause; return 0; }
-  ensure_uv || { pause; return 0; }
-  QMP_DRY=0
+  ensure_selected_uv || { pause; return 1; }
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
     [ "${MP_SEL[$i]}" = 1 ] || continue
     cap_divider "qwen-mm-plugins-${MP_ITEMS[$i]}"
@@ -1688,7 +1992,8 @@ do_verify() {
     fi
   done
   printf '\n'; box_open "Verify summary"
-  [ "$passed" -gt 0 ] && box_row "${CG}✓${C0} passed       $passed"
+  if [ "$QMP_DRY" = 1 ]; then box_row "planned      $passed (dry-run)"
+  elif [ "$passed" -gt 0 ]; then box_row "${CG}✓${C0} passed       $passed"; fi
   [ "$failed" -gt 0 ] && box_row "${CR}✗${C0} failed       $failed"
   [ "$skipped" -gt 0 ] && box_row "${CD}· skipped      $skipped ${CD}(skill-only)${C0}"
   box_close
@@ -1719,36 +2024,45 @@ run_caps_noninteractive() {
 }
 
 do_uninstall() {
-  screen; hr "Uninstall"
-  menu_pick "Remove from which harness" $ALL_HARNESSES "other (manual / another harness)"
-  [ "$PICK_I" -lt 0 ] && return 0
-  case "$PICK" in "other"*) show_manual uninstall; return 0 ;; esac
-  local h=$PICK bin i mask=""
+  local h bin i mask="" any=0
+  if [ -n "$CLI_HARNESS" ]; then
+    h=$CLI_HARNESS
+    require_harness "$h" || return 1
+    select_cli_plugins installed || return 1
+  else
+    screen; hr "Uninstall"
+    menu_pick "Remove from which harness" $ALL_HARNESSES "other (manual / another harness)"
+    [ "$PICK_I" -lt 0 ] && return 0
+    case "$PICK" in "other"*) show_manual uninstall; return 0 ;; esac
+    h=$PICK
+    require_harness "$h" || return 0
+    screen; hr "Uninstall → $h"
+
+    # detect installed; NOT-installed rows are locked so you only pick real ones
+    load_caps
+    spin "checking installed plugins in ${h}..." mask -- _detect_mask "$h"
+    for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
+      if [ "${mask:i:1}" = 1 ]; then any=1
+      else MP_DIS[$i]=1; MP_DESC[$i]="not installed"; fi
+    done
+    [ "$any" = 0 ] && { warn "nothing installed in ${h}."; pause; return 0; }
+
+    multi_pick "Uninstall which capabilities from $h (space=select · a=all)"
+    [ "$MP_STATUS" != ok ] && return 0
+  fi
   bin=$(harness_bin "$h")
-  require_harness "$h" || return 0
-  screen; hr "Uninstall → $h"
-
-  # detect installed; NOT-installed rows are locked ([-] not installed) so you only pick real ones
-  load_caps
-  spin "checking installed plugins in ${h}..." mask -- _detect_mask "$h"
-  local any=0
-  for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
-    if [ "${mask:i:1}" = 1 ]; then any=1
-    else MP_DIS[$i]=1; MP_DESC[$i]="not installed"; fi
-  done
-  [ "$any" = 0 ] && { warn "nothing installed in ${h}."; pause; return 0; }
-
-  multi_pick "Uninstall which capabilities from $h (space=select · a=all)"
-  [ "$MP_STATUS" != ok ] && return 0
   local picks="" remains=0
   for ((i = 0; i < ${#MP_ITEMS[@]}; i++)); do
     if [ "${MP_SEL[$i]}" = 1 ]; then picks="$picks ${MP_ITEMS[$i]}"
-    elif [ "${mask:i:1}" = 1 ]; then remains=1; fi   # installed but not selected → stays
+    elif [ "${MP_DIS[$i]}" = 0 ]; then remains=1; fi   # installed but not selected → stays
   done
   [ -z "$picks" ] && { warn "nothing selected."; pause; return 0; }
 
-  screen; hr "Uninstall → $h"
-  QMP_DRY=0; confirm "Run the uninstall commands now (otherwise just print)?" y || QMP_DRY=1
+  [ -n "$CLI_HARNESS" ] || screen
+  hr "Uninstall → $h"
+  if [ -z "$CLI_HARNESS" ]; then
+    QMP_DRY=0; confirm "Run the uninstall commands now (otherwise just print)?" y || QMP_DRY=1
+  fi
   local p plugin_rc removed="" failed=0
   for p in $picks; do
     plugin_rc=0
@@ -1763,7 +2077,7 @@ do_uninstall() {
       gemini)   if ! is_skill_only "$p"; then
                   run_cmd "$bin" mcp remove -s user "qwen-mm-plugins-${p}" || plugin_rc=1
                 fi
-                run_cmd "$bin" skills uninstall "qwen-mm-plugins-${p}" || plugin_rc=1 ;;
+                uninstall_gemini_skills "$bin" "$p" || plugin_rc=1 ;;
       *) warn "Unknown harness '$h' — use its native uninstall verb."; plugin_rc=1 ;;
     esac
     if [ "$plugin_rc" = 0 ]; then removed="$removed $p"; else failed=1; fi
@@ -1785,6 +2099,8 @@ do_uninstall() {
     return 1
   fi
 
+  # Shared configuration/cache deletion is an optional interactive cleanup, never a dry-run action.
+  { [ -n "$CLI_HARNESS" ] || [ "$QMP_DRY" = 1 ]; } && return 0
   printf '\n'
   if [ -f "$CONFIG_FILE" ] && confirm "Also delete the config file ($CONFIG_FILE)?" n; then
     rm -f "$CONFIG_FILE" && ok "removed config file"
@@ -1812,25 +2128,21 @@ menu() {
   done
 }
 
-case "${1:-}" in
-  install)   do_install ;;
-  update)    do_update ;;
-  local)
-    shift
-    case "${1:-}" in
-      '') do_local_install ;;
-      --restore)
-        shift
-        [ "$#" -eq 0 ] || { err "usage: install.sh local [--restore]"; exit 2; }
-        do_local_restore
-        ;;
-      *) err "usage: install.sh local [--restore]"; exit 2 ;;
-    esac
-    ;;
-  configure) do_configure ;;
-  verify)    do_verify ;;
-  uninstall) do_uninstall ;;
-  --verify)  shift; run_caps_noninteractive "$@" ;;
-  -h|--help) banner; printf '\n  Usage: install.sh [install|update|local|configure|verify|uninstall]   (no arg = interactive menu)\n         install.sh update            # update installed plugins to current stable tags\n         install.sh local             # install plugins from this checkout\n         install.sh local --restore   # restore published refs after local testing\n         install.sh --verify [caps]   # non-interactive: check installed (or listed) caps\n\n  Default: each plugin uses its latest immutable stable tag.\n  Rollback: QMP_REF=qwen-mm-plugins-<cap>-v<version> (select that cap only).\n\n' ;;
-  *)         menu ;;
-esac
+main() {
+  case "$CLI_ACTION" in
+    install)   do_install ;;
+    update)    do_update ;;
+    local)     do_local_install ;;
+    local-restore) do_local_restore ;;
+    configure) do_configure ;;
+    configure-values) shift; configure_values "$@" ;;
+    verify)    do_verify ;;
+    uninstall) do_uninstall ;;
+    --verify)  shift; run_caps_noninteractive "$@" ;;
+    help) banner; usage ;;
+    *)         menu ;;
+  esac
+}
+
+# Native CLIs must not consume a piped install script or wait for stdin in headless mode.
+if [ "$NONINTERACTIVE" = 1 ]; then main "$@" </dev/null; else main "$@"; fi

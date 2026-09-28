@@ -1,1 +1,1 @@
-"""MCP tools for configurable NIfTI visualization."""
+"""Independent MCP tools for NIfTI header inspection and configurable slice rendering."""

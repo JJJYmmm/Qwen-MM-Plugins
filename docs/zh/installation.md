@@ -58,6 +58,48 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 QMP_REF=qwen-mm-plugins-search-v1.0.1 bash install.sh install
 ```
 
+## 非交互安装与配置
+
+每个操作都支持交互引导，也支持通过显式参数非交互执行：
+
+```bash
+bash install.sh local --plugin core --harness codex
+bash install.sh install --plugin core,search --harness claude
+bash install.sh local --plugin qwen-mm-plugins-core --plugin search --harness qwen-code --dry-run
+bash install.sh update --plugin all --harness codex
+bash install.sh uninstall --plugin search --harness codex
+bash install.sh verify --plugin core,search
+bash install.sh verify --harness codex
+bash install.sh configure DASHSCOPE_API_KEY="$DASHSCOPE_API_KEY" QWEN_MM_NATIVE_MODE=1
+bash install.sh configure 'QWEN_MM_CACHE=/path/with spaces/cache'
+bash install.sh configure QWEN_MM_CACHE=  # 清除覆盖值，恢复默认值
+```
+
+`--plugin` 支持能力简称、完整插件 ID、逗号分隔、重复传入，或用 `all` 选择全部。
+`--harness` 选择一个目标：`claude`、`codebuddy`、`codex`、`qoder`、`openclaw`、`qwen-code`
+或 `gemini`。运行 `bash install.sh --help` 可查看当前插件列表。
+
+`install`、`local`、`update`、`uninstall` 非交互执行时需要同时指定两个参数。
+对于 `update` 和 `uninstall`，`all` 仅选择目标 harness 中已安装的插件；显式指定未安装的插件
+会在开始修改前报错。非交互卸载会保留共享配置和缓存；仅当所有所选插件成功卸载且没有剩余
+插件时，才移除 Claude/CodeBuddy 的 marketplace。
+
+`verify --plugin <names>` 检查指定 MCP 包，无需 harness；`verify --harness <name>` 检查该
+harness 中已安装的插件，也可以组合两项参数检查其中一部分。旧的 `--verify [caps]` 用法仍保留。
+
+显式指定后会直接执行，无需终端，也不会出现安装器询问。请提前安装 harness CLI 和 `uv`/`uvx`
+（卸载、dry-run 和纯 Skill 插件不需要 `uvx`）。缺少依赖、参数错误、原生命令失败或 MCP 启动
+检查失败时，返回非零退出码。`install`、`local`、`update`、`uninstall`、`verify` 均可添加
+`--dry-run` 预览命令，不执行修改或系统检查，但可能查询已安装插件及 marketplace。
+命令不带参数时仍使用原来的交互流程。
+
+`configure` 不带参数时打开配置菜单；带一项或多项 `KEY=VALUE` 时直接设置，字段来自
+[配置目录](../en/configuration.md#configure-catalog)。
+写入前会校验所有参数，保留其他已有配置，且不输出配置值。包含空格的参数需加引号；值可以
+包含 `=`，但必须为单行。空值表示删除该项。共享配置文件权限保持 `600`，可通过
+`QWEN_MM_CONFIG` 或 `QWEN_MM_CONFIG_DIR` 指定位置；环境变量仍优先于文件中的值。
+非交互安装会跳过配置菜单。
+
 ## 本地 checkout
 
 使用路径稳定的专用 clone：
@@ -132,6 +174,13 @@ wsl --install -d Ubuntu
 
 本地 `core` 文件读取无需 API key。可通过安装器的 **Configure**、shell 环境变量或
 `~/.qwen-mm-plugins/config` 设置；环境变量优先。
+
+使用官方 DashScope 端点调用 Omni 工具时，超过 10 MB base64 限额的本地音视频会优先
+上传到与当前模型、API key 绑定的百炼临时 OSS（单文件最大 1 GiB，目前约保留 48 小时），
+随后以 `oss://` 地址请求模型；无需配置 `OSS_AK`、`OSS_SK`、`OSS_ENDPOINT` 或
+`OSS_BUCKET`。非官方兼容网关如支持该流程，可通过 `DASHSCOPE_UPLOAD_POLICY_URL` 指定完整的
+临时上传凭证接口。临时上传不可用或失败时，仍按原有规则转码、使用用户自管 OSS 或抽帧降级。
+
 未设置 `QWEN_MM_SEARCH_BACKEND` 或设为 `auto` 时，文本搜索按固定顺序选择第一个已配置
 key 的后端：Serper、Tavily、Exa、Serply。设为 `serper`、`tavily`、`exa` 或 `serply` 会固定使用该后端；
 如果缺少对应 key，则直接报错，不会回退。
@@ -146,6 +195,7 @@ key 的后端：Serper、Tavily、Exa、Serply。设为 `serper`、`tavily`、`e
 | LibreOffice | Office 与 DrawIO 可视化 |
 | TeX | LaTeX 可视化 |
 | Chromium | 网页截图和 edu-agent 渲染 |
+| `tesseract` | 从视频提取 Skill 时识别屏幕文字（可选） |
 | Blender / FreeCAD | 对应的实时应用集成 |
 
 运行 `bash install.sh verify` 或 `<entry> --check-system` 查看所选能力的具体要求。能力专属依赖

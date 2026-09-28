@@ -8,6 +8,19 @@ Use `QWEN_MM_CONFIG=/path/to/file` to select another file, or `QWEN_MM_CONFIG_DI
 change the directory containing the default `config` file. These bootstrap variables must be set
 in the process environment because they determine which file is read.
 
+Run `bash install.sh configure` for the interactive menu, or pass one or more catalog fields for
+non-interactive configuration:
+
+```bash
+bash install.sh configure DASHSCOPE_API_KEY="$DASHSCOPE_API_KEY" QWEN_MM_NATIVE_MODE=1
+bash install.sh configure 'QWEN_MM_CACHE=/path/with spaces/cache'
+bash install.sh configure QWEN_MM_CACHE=  # remove the override and restore the default
+```
+
+All arguments are validated before writing. Values must be single-line strings; spaces and `=`
+are supported. The command preserves other settings, keeps permissions at `600`, and prints only
+key names, never values. Environment variables continue to take precedence.
+
 ## Model output mode
 
 `QWEN_MM_NATIVE_MODE=1` is the default. MCP tools return native image content blocks so a
@@ -18,6 +31,8 @@ at the same position by a generated caption, while existing text blocks (file me
 layers, video timestamps, and similar context) are preserved. The caption path uses
 `DASHSCOPE_BASE_URL` and `QWEN_MM_API_VL_MODEL`. Credentials are selected by endpoint: DashScope uses
 `DASHSCOPE_API_KEY`, OrcaRouter uses `ORCAROUTER_API_KEY`, and OpenRouter uses `OPENROUTER_API_KEY`.
+Any other OpenAI-compatible endpoint set as `DASHSCOPE_BASE_URL` uses `DASHSCOPE_API_KEY`, which is
+sent only to that URL's origin (scheme, host, port).
 Authentication-free local endpoints need no key configuration. A failed caption call produces an explicit
 `Visual content unavailable` text block instead of exposing base64 or silently dropping the image.
 
@@ -50,10 +65,18 @@ come from [`CONFIG_FIELDS`](../../src/shared/env.py); `—` means unset or disab
 | `OPENROUTER_API_KEY` | — | OpenAI-compatible calls to openrouter.ai *(secret)* |
 | `MINIMAX_API_KEY` | — | MiniMax text-to-speech generation *(secret)* |
 | `DASHSCOPE_BASE_URL` | DashScope compat URL | override the DashScope OpenAI-compatible base URL |
-| `QWEN_MM_API_VL_MODEL` | qwen3.7-plus | default VL model for vision_chat, OCR, grounding, and text-only image captions |
-| `QWEN_MM_API_OMNI_MODEL` | qwen3.5-omni-plus | default Omni model for audio/video understanding tools and omni-memory |
+| `DASHSCOPE_UPLOAD_POLICY_URL` | inferred for official DashScope hosts | override the model-bound temporary OSS policy endpoint used for oversized Omni and VL media |
+| `QWEN_MM_API_VL_MODEL` | qwen3.7-plus | default VL model for vision_chat, OCR, grounding, text-only image captions, and video-spatio VLM tools |
+| `QWEN_MM_API_OMNI_MODEL` | qwen3.8-omni-flash | default Omni model for audio/video understanding tools, omni-memory, and Omni ChatCut |
 | `SAM3_SERVER_URL` | — | segmentation SAM3 server URL |
 | `ASR_SERVER_URLS` | — | self-hosted ASR fallback URLs (comma-separated) |
+
+### Omni ChatCut
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG` | — | path to the shared Omni, image-provider, and video-provider connection JSON |
+| `QWEN_MM_DUBBING_SERVER_URL` | — | external IndexTTS2/Demucs/TEN-VAD service used by video translation |
 
 ### Search providers
 

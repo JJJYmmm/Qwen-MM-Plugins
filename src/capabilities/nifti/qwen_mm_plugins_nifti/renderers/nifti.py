@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from qwen_mm_plugins_nifti.metadata import header_metadata, load_image
 from shared.env import MAX_RESPONSE_BYTES
 
 DEFAULT_MAX_VOLUMES = 20
@@ -26,23 +27,6 @@ WINDOW_PRESETS: dict[str, tuple[float, float]] = {
 }
 
 _CLOSEST_PLANE_NAMES = ("sagittal", "coronal", "axial")
-
-
-def _orientation_info(image, nib) -> tuple[object, str, str, float]:
-    """Return source orientation, closest-canonical display orientation, and obliquity."""
-    import numpy as np
-
-    source_codes = nib.orientations.aff2axcodes(image.affine)
-    source_orientation = "".join(code or "?" for code in source_codes)
-
-    orientation = nib.orientations.io_orientation(image.affine)
-    if np.isnan(orientation[:, 0]).any():
-        raise ValueError("Cannot determine all three spatial axes from the NIfTI affine")
-    display_affine = image.affine.dot(nib.orientations.inv_ornt_aff(orientation, image.shape))
-    display_codes = nib.orientations.aff2axcodes(display_affine)
-    display_orientation = "".join(code or "?" for code in display_codes)
-    obliquity_degrees = float(np.max(np.rad2deg(nib.affines.obliquity(image.affine))))
-    return orientation, source_orientation, display_orientation, obliquity_degrees
 
 
 def _read_source_plane(
@@ -358,11 +342,8 @@ def _format_number(value: float | None) -> str:
 
 
 def _metadata_text(
-    image,
+    metadata: dict[str, Any],
     orientation,
-    source_orientation: str,
-    display_orientation: str,
-    obliquity_degrees: float,
     source_axis: int,
     sampling_mode: str,
     requested_count: int,
@@ -374,15 +355,17 @@ def _metadata_text(
 ) -> str:
     import numpy as np
 
-    shape = tuple(int(size) for size in image.shape)
-    spacing = tuple(float(value) for value in image.header.get_zooms()[:3])
-    header_space_unit = image.header.get_xyzt_units()[0]
-    if header_space_unit == "unknown":
+    shape = tuple(metadata["shape"])
+    spacing = tuple(metadata["voxel_spacing"])
+    source_orientation = metadata["source_orientation"]
+    display_orientation = metadata["closest_canonical_orientation"]
+    obliquity_degrees = metadata["max_obliquity_degrees"]
+    if metadata["spatial_unit_assumed"]:
         space_unit = "mm (default; NIfTI header unit is unknown)"
     else:
-        space_unit = header_space_unit
+        space_unit = metadata["spatial_unit"]
     affine = np.array2string(
-        np.asarray(image.affine),
+        np.asarray(metadata["affine"]),
         precision=6,
         suppress_small=True,
     )
@@ -393,7 +376,7 @@ def _metadata_text(
     lines = [
         "**NIfTI volume**",
         f"- Shape: {shape}",
-        f"- Dtype: {image.get_data_dtype()}",
+        f"- Dtype: {metadata['dtype']}",
         f"- Voxel spacing: {spacing} {space_unit}",
         (
             "- Orientation (closest axis codes): closest-canonical reference "
@@ -410,8 +393,8 @@ def _metadata_text(
             lines.append(f"- Selected 3D volumes: numbers {volume_numbers}; indices {indices_4d} (of {shape[3]})")
         if defaulted_4d:
             lines.append("- 4D handling: defaulted to the first 3D volume; remaining volumes were not rendered")
-        fourth_spacing = float(image.header.get_zooms()[3])
-        fourth_unit = image.header.get_xyzt_units()[1]
+        fourth_spacing = metadata["fourth_dimension"]["spacing"]
+        fourth_unit = metadata["fourth_dimension"]["unit"]
         lines.append(f"- Fourth-dimension spacing: {fourth_spacing:g} {fourth_unit}")
         if volume_selection_truncated:
             lines.append("- Volume selection was truncated by max_volumes")
@@ -497,17 +480,11 @@ def labeled_image(label: str, image, budget: str = "large") -> list[dict[str, An
 def render(path: str, **opts: Any) -> list[dict[str, Any]]:
     """Read a 3D/4D NIfTI file and render configured source-voxel slices."""
     try:
-        import nibabel as nib
+        source = load_image(path)
     except ImportError:
         raise RuntimeError('Missing dependency — install with: pip install "qwen-mm-plugins[nifti]"')
 
     import numpy as np
-
-    source = nib.load(path)
-    if source.ndim not in (3, 4):
-        raise ValueError(f"NIfTI visualization supports 3D or 4D images, got {source.ndim}D shape {source.shape}")
-    if any(size < 1 for size in source.shape):
-        raise ValueError(f"NIfTI image has an empty dimension: {source.shape}")
 
     source_axis_value = opts.get("slice_axis", DEFAULT_SLICE_AXIS)
     if isinstance(source_axis_value, bool) or not isinstance(source_axis_value, (int, np.integer)):
@@ -519,7 +496,7 @@ def render(path: str, **opts: Any) -> list[dict[str, Any]]:
     sampling_mode, requested_count, slice_indices, positions = _resolve_slice_indices(
         int(source.shape[source_axis]), opts
     )
-    orientation, source_orientation, display_orientation, obliquity = _orientation_info(source, nib)
+    orientation, metadata = header_metadata(source)
 
     volumes = opts.get("volumes")
     defaulted_4d = source.ndim == 4 and volumes is None
@@ -543,11 +520,8 @@ def render(path: str, **opts: Any) -> list[dict[str, Any]]:
         {
             "type": "text",
             "text": _metadata_text(
-                source,
+                metadata,
                 orientation,
-                source_orientation,
-                display_orientation,
-                obliquity,
                 source_axis,
                 sampling_mode,
                 requested_count,
