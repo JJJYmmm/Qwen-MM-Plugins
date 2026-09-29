@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Qwen multimodal understanding plugins — Agent Skills + MCP servers",
-    "version": "1.1.10-rc.36624179585"
+    "version": "1.1.11-rc.36624179585"
   },
   "plugins": [
     {
@@ -143,9 +143,9 @@
       "name": "qwen-mm-plugins-mhs",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/mhs",
-        "ref": "qwen-mm-plugins-mhs-v1.1.0"
+        "ref": "qwen-mm-plugins-mhs-v1.1.1-rc.36624179585.1"
       },
       "description": "Operate physical hardware through Model Hardware Standard adapters: discover devices, read sensors and camera frames, send commands with host-side safety-limit enforcement, check health, and emergency-stop — as MCP tools. Adapters are run by the hardware's owner."
     }
