@@ -20,16 +20,20 @@ def git(repo: Path, *args: str) -> str:
 @pytest.fixture
 def checkout(tmp_path):
     repo = tmp_path / "source"
-    git(ROOT, "clone", "--quiet", "--shared", str(ROOT), str(repo))
+    # CI may checkout only one commit. Use its tree as a fresh fixture, so the bare test remote
+    # receives a complete history without fetching any network objects or weakening Git checks.
+    repo.mkdir()
+    archive = subprocess.run(["git", "archive", "HEAD"], cwd=ROOT, check=True, capture_output=True).stdout
+    subprocess.run(["tar", "-xf", "-", "-C", str(repo)], input=archive, check=True, capture_output=True)
+    git(repo, "init", "--quiet", "--initial-branch=main")
     git(repo, "config", "user.name", "Release Test")
     git(repo, "config", "user.email", "release@example.test")
     git(repo, "config", "commit.gpgsign", "false")
     # Include work-in-progress tooling without depending on a committed parent checkout.
     for name in ("prepare_plugin_release.py", "release_snapshot_poc.py"):
         shutil.copy2(ROOT / "scripts" / name, repo / "scripts" / name)
-    git(repo, "add", "scripts")
-    if git(repo, "diff", "--cached", "--name-only"):
-        git(repo, "commit", "--quiet", "-m", "test: add snapshot tooling")
+    git(repo, "add", "--all")
+    git(repo, "commit", "--quiet", "-m", "test: source fixture with snapshot tooling")
     return repo
 
 
