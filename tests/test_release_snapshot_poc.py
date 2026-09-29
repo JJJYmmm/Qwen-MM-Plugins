@@ -32,6 +32,16 @@ def checkout(tmp_path):
     # Include work-in-progress tooling without depending on a committed parent checkout.
     for name in ("prepare_plugin_release.py", "release_snapshot_poc.py"):
         shutil.copy2(ROOT / "scripts" / name, repo / "scripts" / name)
+    # These are synthetic release scenarios, independent of the real catalog's current version
+    # or provenance. Otherwise the next genuine release would invalidate every test's inputs.
+    shutil.rmtree(repo / ".release", ignore_errors=True)
+    poc.prepare(repo, {"search": "1.1.0", "mhs": "1.1.0", "edu-agent": "1.1.0"}, "1.1.9", URL)
+    (repo / "src/capabilities/mhs/qwen_mm_plugins_mhs/poc_marker.py").unlink(missing_ok=True)
+    project = repo / "pyproject.toml"
+    project.write_text(
+        re.sub(r"^mhs\s*=\s*\[[^\n]*\]", 'mhs = ["msgpack>=1.1,<2"]', project.read_text(), count=1, flags=re.MULTILINE),
+        encoding="utf-8",
+    )
     git(repo, "add", "--all")
     git(repo, "commit", "--quiet", "-m", "test: source fixture with snapshot tooling")
     return repo
