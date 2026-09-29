@@ -100,6 +100,7 @@ def update_manifests(cap: str, version: str, tag: str) -> None:
 
 
 def main() -> int:
+    global REPO_URL
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capability")
     parser.add_argument("version")
@@ -108,7 +109,12 @@ def main() -> int:
         required=True,
         help="new one-distribution/release-train semver; reuse it for every cap in one release commit",
     )
+    parser.add_argument("--repo-url", default=REPO_URL, help="Git source URL; override for isolated fork releases")
+    parser.add_argument(
+        "--allow-existing-tag", action="store_true", help="sync catalog metadata for an already published tag"
+    )
     args = parser.parse_args()
+    REPO_URL = args.repo_url
     cap, version = args.capability, args.version
     if not SEMVER.fullmatch(version):
         parser.error(f"version must be semver, got {version!r}")
@@ -123,7 +129,7 @@ def main() -> int:
     existing = subprocess.run(
         ["git", "tag", "--list", tag], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout.strip()
-    if existing:
+    if existing and not args.allow_existing_tag:
         parser.error(f"tag already exists locally: {tag}")
 
     market = load(MARKETPLACE)
