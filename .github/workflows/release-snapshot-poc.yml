@@ -34,6 +34,16 @@ jobs:
       - name: Test scope detection and failure/retry behavior offline
         run: uv run --no-project --with pytest python -m pytest -q tests/test_release_snapshot_poc.py tests/test_tag_plugin_release.py
 
+      - name: Run the full offline suite with the published runtime dependency bounds
+        run: >-
+          uv run --isolated --no-project --with pytest
+          --with "mcp>=1,<2" --with "anyio>=4,<5"
+          --with "docstring-parser>=0.18,<0.19" --with "pydantic>=2.11,<3"
+          --with "pillow<12" --with "numpy<3" --with scipy --with matplotlib
+          --with opencv-python-headless --with "nibabel>=5,<6" --with requests
+          --with "msgpack>=1.1,<2" --with "openai>=1,<2" --with pyyaml
+          python -m pytest -q -m "not reachability" tests/
+
       - name: Record source and isolated prerelease identities
         run: |
           gh auth setup-git

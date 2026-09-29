@@ -44,7 +44,8 @@ def main() -> int:
     if args.marker:
         assert importlib.import_module(package + ".poc_marker").VALUE == "newer-developer-code"
     else:
-        assert importlib.util.find_spec("qwen_mm_plugins_mhs.poc_marker") is None
+        files = {str(path) for path in metadata.files("qwen-mm-plugins") or []}
+        assert "qwen_mm_plugins_mhs/poc_marker.py" not in files
     tools = asyncio.run(probe(package))
     assert tools
     installed = {}
