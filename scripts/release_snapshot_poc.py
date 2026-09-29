@@ -128,7 +128,10 @@ def plan(repo: Path, base: str, source: str) -> dict:
 def clone_at(repo: Path, ref: str, destination: Path) -> None:
     if destination.exists():
         raise RuntimeError(f"destination already exists: {destination}")
-    git(repo, "clone", "--quiet", "--no-hardlinks", str(repo), str(destination))
+    # Use upload-pack rather than copying loose objects while automatic maintenance may repack
+    # the source. Fetch the pinned commit explicitly, including refs outside its advertised HEAD.
+    git(repo, "clone", "--quiet", "--no-local", str(repo), str(destination))
+    git(destination, "fetch", "--quiet", "--no-tags", str(repo), ref)
     git(destination, "checkout", "--quiet", "--detach", ref)
 
 
