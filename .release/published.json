@@ -1,0 +1,13 @@
+{
+  "plugins": {
+    "search": {
+      "dependency_sha256": "b34543034f01ae287880239aeaf23f904507bfd612f1ac3e3903df5c7a6764fd",
+      "distribution_version": "1.1.10-rc.36626938026",
+      "release_commit": "c8b694a9e4da6a07cdfedaa0b66d632919cd76f6",
+      "source_commit": "649e6791bc10c162402d6d08083c5cc7158dea7a",
+      "tag": "qwen-mm-plugins-search-v1.1.1-rc.36626938026.1",
+      "version": "1.1.1-rc.36626938026.1"
+    }
+  },
+  "schema": 1
+}
