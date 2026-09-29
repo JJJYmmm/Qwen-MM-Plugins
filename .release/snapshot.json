@@ -1,0 +1,16 @@
+{
+  "dependency_sha256": "22ea19f95152b97e36cd39f07bf5f13d30ad3042d53a9e7455ba3642bbdefc8e",
+  "distribution_version": "1.1.11-rc.36624997875",
+  "plugins": {
+    "mhs": {
+      "tag": "qwen-mm-plugins-mhs-v1.1.1-rc.36624997875.1",
+      "version": "1.1.1-rc.36624997875.1"
+    }
+  },
+  "previous_versions": {
+    "mhs": "1.1.0"
+  },
+  "repository_url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
+  "schema": 1,
+  "source_commit": "1ad18ef77c8d7f84336f676de29599ecd608c505"
+}
