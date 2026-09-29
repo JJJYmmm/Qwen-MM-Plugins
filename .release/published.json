@@ -1,5 +1,13 @@
 {
   "plugins": {
+    "mhs": {
+      "dependency_sha256": "22ea19f95152b97e36cd39f07bf5f13d30ad3042d53a9e7455ba3642bbdefc8e",
+      "distribution_version": "1.1.11-rc.36626938026",
+      "release_commit": "9b580061df1555ec5b17c9f5c3e7ce8195fcbb7b",
+      "source_commit": "c0b277d6e4004c507081abe478d169e66cd08361",
+      "tag": "qwen-mm-plugins-mhs-v1.1.1-rc.36626938026.1",
+      "version": "1.1.1-rc.36626938026.1"
+    },
     "search": {
       "dependency_sha256": "b34543034f01ae287880239aeaf23f904507bfd612f1ac3e3903df5c7a6764fd",
       "distribution_version": "1.1.10-rc.36626938026",
