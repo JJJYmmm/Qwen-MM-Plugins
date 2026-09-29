@@ -1,0 +1,151 @@
+name: Fork release snapshot feasibility
+
+on:
+  push:
+    branches: [codex/release-snapshot-poc]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-release-snapshot-poc
+  cancel-in-progress: false
+
+jobs:
+  prove:
+    if: github.repository == 'JJJYmmm/Qwen-MM-Plugins'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FORK_URL: https://github.com/JJJYmmm/Qwen-MM-Plugins.git
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.9"
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Test scope detection and failure/retry behavior offline
+        run: uv run --no-project --with pytest python -m pytest -q tests/test_release_snapshot_poc.py tests/test_tag_plugin_release.py
+
+      - name: Run the full offline suite with the published runtime dependency bounds
+        run: >-
+          uv run --isolated --no-project --with pytest
+          --with "mcp>=1,<2" --with "anyio>=4,<5"
+          --with "docstring-parser>=0.18,<0.19" --with "pydantic>=2.11,<3"
+          --with "pillow<12" --with "numpy<3" --with scipy --with matplotlib
+          --with opencv-python-headless --with "nibabel>=5,<6" --with requests
+          --with "msgpack>=1.1,<2" --with "openai>=1,<2" --with pyyaml
+          python -m pytest -q -m "not reachability" tests/
+
+      - name: Record source and isolated prerelease identities
+        run: |
+          gh auth setup-git
+          echo "SOURCE_A=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "SEARCH_VERSION=1.1.1-rc.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          echo "MHS_VERSION=1.1.1-rc.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          echo "DIST_A=1.1.10-rc.${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+          echo "DIST_B=1.1.11-rc.${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+
+      - name: Freeze search without updating the source catalog
+        run: |
+          python scripts/release_snapshot_poc.py snapshot --source "$SOURCE_A" --release "search=$SEARCH_VERSION" --distribution-version "$DIST_A" --repo-url "$FORK_URL" --destination "$RUNNER_TEMP/snapshot-a"
+          git diff --exit-code "$SOURCE_A" -- plugin-versions.json .claude-plugin/marketplace.json install.sh
+
+      - name: Prove catalog promotion refuses an unpublished tag
+        run: |
+          if python scripts/release_snapshot_poc.py promote --snapshot "$RUNNER_TEMP/snapshot-a" --remote "$FORK_URL" --destination "$RUNNER_TEMP/forbidden-catalog"; then
+            echo 'Unpublished tag was incorrectly accepted'
+            exit 1
+          fi
+          test ! -e "$RUNNER_TEMP/forbidden-catalog"
+
+      - name: Build and publish the tested search snapshot
+        run: |
+          uv build --wheel --out-dir "$RUNNER_TEMP/wheels-a" "$RUNNER_TEMP/snapshot-a"
+          python scripts/release_snapshot_poc.py publish --repo "$RUNNER_TEMP/snapshot-a" --remote "$FORK_URL"
+          python scripts/release_snapshot_poc.py publish --repo "$RUNNER_TEMP/snapshot-a" --remote "$FORK_URL"
+
+      - name: Install search from its real fork tag and initialize MCP
+        run: |
+          spec="qwen-mm-plugins[search] @ git+$FORK_URL@qwen-mm-plugins-search-v$SEARCH_VERSION"
+          uvx --isolated --from "$spec" qwen-mm-plugins-search --version
+          uv run --isolated --no-project --with packaging --with "$spec" python scripts/probe_release_snapshot_poc.py --capability search --plugin-version "$SEARCH_VERSION" --distribution-version "$DIST_A" --dependency-fragment 'msgpack<2'
+
+      - name: Advance developer code and the mhs extra without changing versions
+        run: |
+          git clone --quiet --no-hardlinks . "$RUNNER_TEMP/source-b"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+          root = Path(os.environ['RUNNER_TEMP']) / 'source-b'
+          marker = root / 'src/capabilities/mhs/qwen_mm_plugins_mhs/poc_marker.py'
+          marker.write_text("VALUE = 'newer-developer-code'\n")
+          project = root / 'pyproject.toml'
+          old = project.read_text()
+          new = old.replace('mhs = ["msgpack>=1.1,<2"]', 'mhs = ["msgpack>=1.1,<1.2"]')
+          assert new != old
+          project.write_text(new)
+          subprocess.run(['git', 'add', '--all'], cwd=root, check=True)
+          subprocess.run(['git', '-c', 'user.name=Release test', '-c', 'user.email=release-poc@users.noreply.github.com', 'commit', '-m', 'test: advance mhs code and dependency bounds without releasing'], cwd=root, check=True)
+          PY
+          python scripts/release_snapshot_poc.py plan --repo "$RUNNER_TEMP/source-b" --base "$SOURCE_A"
+          git -C "$RUNNER_TEMP/source-b" diff --exit-code "$SOURCE_A" -- plugin-versions.json .claude-plugin/marketplace.json install.sh
+
+      - name: Freeze, build and publish a second independent runtime
+        run: |
+          python scripts/release_snapshot_poc.py snapshot --repo "$RUNNER_TEMP/source-b" --release "mhs=$MHS_VERSION" --distribution-version "$DIST_B" --repo-url "$FORK_URL" --destination "$RUNNER_TEMP/snapshot-b"
+          uv build --wheel --out-dir "$RUNNER_TEMP/wheels-b" "$RUNNER_TEMP/snapshot-b"
+          python scripts/release_snapshot_poc.py publish --repo "$RUNNER_TEMP/snapshot-b" --remote "$FORK_URL"
+
+      - name: Install mhs from its fork tag and verify newer dependencies/framework
+        run: |
+          spec="qwen-mm-plugins[mhs] @ git+$FORK_URL@qwen-mm-plugins-mhs-v$MHS_VERSION"
+          uvx --isolated --from "$spec" qwen-mm-plugins-mhs --version
+          uv run --isolated --no-project --with packaging --with "$spec" python scripts/probe_release_snapshot_poc.py --capability mhs --plugin-version "$MHS_VERSION" --distribution-version "$DIST_B" --dependency-fragment 'msgpack<1.2' --marker
+
+      - name: Promote only published metadata while preserving newer developer code
+        run: |
+          python scripts/release_snapshot_poc.py promote --repo "$RUNNER_TEMP/source-b" --snapshot "$RUNNER_TEMP/snapshot-a" --remote "$FORK_URL" --destination "$RUNNER_TEMP/catalog-a"
+          python scripts/release_snapshot_poc.py promote --repo "$RUNNER_TEMP/catalog-a" --snapshot "$RUNNER_TEMP/snapshot-b" --remote "$FORK_URL" --destination "$RUNNER_TEMP/catalog-b"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          assert (root / 'source-b/pyproject.toml').read_bytes() == (root / 'catalog-b/pyproject.toml').read_bytes()
+          marker = 'src/capabilities/mhs/qwen_mm_plugins_mhs/poc_marker.py'
+          assert (root / 'source-b' / marker).read_bytes() == (root / 'catalog-b' / marker).read_bytes()
+          ledger = json.loads((root / 'catalog-b/.release/published.json').read_text())['plugins']
+          assert ledger['search']['distribution_version'] == os.environ['DIST_A']
+          assert ledger['mhs']['distribution_version'] == os.environ['DIST_B']
+          print(json.dumps(ledger, indent=2))
+          PY
+          python scripts/release_snapshot_poc.py plan --repo "$RUNNER_TEMP/catalog-b" --base "$SOURCE_A"
+          branch="codex/release-snapshot-catalog-poc-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git -C "$RUNNER_TEMP/catalog-b" push "$FORK_URL" "HEAD:refs/heads/$branch"
+          echo "CATALOG_BRANCH=$branch" >> "$GITHUB_ENV"
+
+      - name: Prove search still uses its earlier framework after the mhs release
+        run: |
+          spec="qwen-mm-plugins[search] @ git+$FORK_URL@qwen-mm-plugins-search-v$SEARCH_VERSION"
+          uv run --isolated --no-project --with packaging --with "$spec" python scripts/probe_release_snapshot_poc.py --capability search --plugin-version "$SEARCH_VERSION" --distribution-version "$DIST_A" --dependency-fragment 'msgpack<2'
+
+      - name: Write the experiment evidence
+        run: |
+          {
+            echo '## Fork release snapshot proof'
+            echo "Source commit: $SOURCE_A"
+            echo "Search tag: qwen-mm-plugins-search-v$SEARCH_VERSION (framework $DIST_A)"
+            echo "MHS tag: qwen-mm-plugins-mhs-v$MHS_VERSION (framework $DIST_B)"
+            echo "Published catalog branch: $CATALOG_BRANCH"
+            echo 'Verified: missing-tag guard; repeat publication; package builds; real VCS installs; MCP initialization/tools; independent framework versions; newer source preservation.'
+            echo 'Dependency declarations are frozen; transitive dependency resolutions are not locked by uvx.'
+          } >> "$GITHUB_STEP_SUMMARY"
