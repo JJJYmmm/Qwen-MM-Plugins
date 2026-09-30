@@ -11,7 +11,7 @@ import sys
 
 from mcp_framework import build_registry
 
-__version__ = "1.1.0"
+__version__ = "1.1.1-rc.2026093001"
 
 SPECS, get_handler, list_tools = build_registry(__name__, ["tools"])
 

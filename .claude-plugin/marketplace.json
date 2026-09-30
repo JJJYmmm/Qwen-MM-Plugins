@@ -6,16 +6,16 @@
   },
   "metadata": {
     "description": "Qwen multimodal understanding plugins — Agent Skills + MCP servers",
-    "version": "1.1.9"
+    "version": "1.1.10-rc.2026093001"
   },
   "plugins": [
     {
       "name": "qwen-mm-plugins-core",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/core",
-        "ref": "qwen-mm-plugins-core-v1.1.0"
+        "ref": "qwen-mm-plugins-core-v1.1.1-rc.2026093001"
       },
       "description": "Inspect local files and media, extract video frames, and crop or annotate images."
     },
@@ -23,9 +23,9 @@
       "name": "qwen-mm-plugins-api",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/api",
-        "ref": "qwen-mm-plugins-api-v1.1.2"
+        "ref": "qwen-mm-plugins-api-v1.1.3-rc.2026093001"
       },
       "description": "Understand images, audio, and video through model APIs, including OCR, object localization, and speech transcription."
     },
@@ -33,9 +33,9 @@
       "name": "qwen-mm-plugins-search",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/search",
-        "ref": "qwen-mm-plugins-search-v1.1.0"
+        "ref": "qwen-mm-plugins-search-v1.1.1-rc.2026093001"
       },
       "description": "Search the web, read pages, and identify objects or places with reverse-image search."
     },
@@ -43,9 +43,9 @@
       "name": "qwen-mm-plugins-video-memory",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/video-memory",
-        "ref": "qwen-mm-plugins-video-memory-v1.1.0"
+        "ref": "qwen-mm-plugins-video-memory-v1.1.1-rc.2026093001"
       },
       "description": "Build searchable, hierarchical memory of long videos to summarize content and locate events, text, and dialogue."
     },
@@ -53,9 +53,9 @@
       "name": "qwen-mm-plugins-omni-memory",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/omni-memory",
-        "ref": "qwen-mm-plugins-omni-memory-v1.1.3"
+        "ref": "qwen-mm-plugins-omni-memory-v1.1.4-rc.2026093001"
       },
       "description": "Build and query audio-visual memory to track speakers, dialogue, sounds, and events across videos."
     },
@@ -63,9 +63,9 @@
       "name": "qwen-mm-plugins-omni-video2note",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/omni-video2note",
-        "ref": "qwen-mm-plugins-omni-video2note-v1.0.3"
+        "ref": "qwen-mm-plugins-omni-video2note-v1.0.4-rc.2026093001"
       },
       "description": "Convert a local tutorial video into an illustrated PDF with resumable processing and offline status inspection."
     },
@@ -73,9 +73,9 @@
       "name": "qwen-mm-plugins-video-edit",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/video-edit",
-        "ref": "qwen-mm-plugins-video-edit-v1.1.0"
+        "ref": "qwen-mm-plugins-video-edit-v1.1.1-rc.2026093001"
       },
       "description": "Edit existing footage into finished videos with pacing, sound, subtitles, and visual effects."
     },
@@ -83,9 +83,9 @@
       "name": "qwen-mm-plugins-omni-chatcut",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/omni-chatcut",
-        "ref": "qwen-mm-plugins-omni-chatcut-v1.0.2"
+        "ref": "qwen-mm-plugins-omni-chatcut-v1.0.3-rc.2026093001"
       },
       "description": "Omni ChatCut video creation with Music-to-MV, movie commentary, and speaker-preserving video translation."
     },
@@ -93,9 +93,9 @@
       "name": "qwen-mm-plugins-video-spatio",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/video-spatio",
-        "ref": "qwen-mm-plugins-video-spatio-v1.0.0"
+        "ref": "qwen-mm-plugins-video-spatio-v1.0.1-rc.2026093001"
       },
       "description": "Model-free 3D spatial reasoning (skill) + stateless geometry/BEV MCP tools."
     },
@@ -113,9 +113,9 @@
       "name": "qwen-mm-plugins-blender",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/blender",
-        "ref": "qwen-mm-plugins-blender-v1.1.0"
+        "ref": "qwen-mm-plugins-blender-v1.1.1-rc.2026093001"
       },
       "description": "Create, refine, and render 3D scenes and assets in Blender."
     },
@@ -123,9 +123,9 @@
       "name": "qwen-mm-plugins-freecad",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/freecad",
-        "ref": "qwen-mm-plugins-freecad-v1.1.0"
+        "ref": "qwen-mm-plugins-freecad-v1.1.1-rc.2026093001"
       },
       "description": "Create and edit parametric CAD models, technical drawings, and model exports in FreeCAD."
     },
@@ -133,9 +133,9 @@
       "name": "qwen-mm-plugins-omni-skill-creator",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/omni-skill-creator",
-        "ref": "qwen-mm-plugins-omni-skill-creator-v1.0.1"
+        "ref": "qwen-mm-plugins-omni-skill-creator-v1.0.2-rc.2026093001"
       },
       "description": "Turns a demonstration video into a reusable Agent Skill. Needs a DashScope key and ffmpeg."
     },
@@ -143,9 +143,9 @@
       "name": "qwen-mm-plugins-mhs",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/QwenLM/Qwen-MM-Plugins.git",
+        "url": "https://github.com/JJJYmmm/Qwen-MM-Plugins.git",
         "path": "src/capabilities/mhs",
-        "ref": "qwen-mm-plugins-mhs-v1.1.0"
+        "ref": "qwen-mm-plugins-mhs-v1.1.1-rc.2026093001"
       },
       "description": "Operate physical hardware through Model Hardware Standard adapters: discover devices, read sensors and camera frames, send commands with host-side safety-limit enforcement, check health, and emergency-stop — as MCP tools. Adapters are run by the hardware's owner."
     }
