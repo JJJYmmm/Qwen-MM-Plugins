@@ -38,25 +38,29 @@ def test_invalid_commands(body):
     assert bot.parse("please /release search=1.2.3") is None
 
 
-def test_only_explicit_plugins_release_unless_all_mcp_is_requested():
+def test_only_explicit_plugins_release_unless_all_plugins_is_requested():
     index = {"distribution_version": "1.0.0", "plugins": dict.fromkeys(["search", "mhs", "edu-agent"], "1.0.0")}
-    assert bot.resolve(index, {"search": "minor"}, {"search", "mhs"}) == ({"search": "1.1.0"}, "1.0.1")
-    assert bot.resolve(index, {"all-mcp": "patch", "search": "minor"}, {"search", "mhs"}) == (
-        {"mhs": "1.0.1", "search": "1.1.0"},
+    assert bot.resolve(index, {"search": "minor"}) == ({"search": "1.1.0"}, "1.0.1")
+    assert bot.resolve(index, {"all-plugins": "patch", "search": "minor"}) == (
+        {"edu-agent": "1.0.1", "mhs": "1.0.1", "search": "1.1.0"},
         "1.0.1",
     )
-    assert bot.resolve(index, {"search": "patch", "distribution": "1.2.0"}, {"search", "mhs"}) == (
+    assert bot.resolve(index, {"search": "patch", "distribution": "1.2.0"}) == (
         {"search": "1.0.1"},
         "1.2.0",
     )
-    assert bot.resolve(index, {"all-mcp": "1.3.0"}, {"search", "mhs"})[0] == {"mhs": "1.3.0", "search": "1.3.0"}
+    command, requested = bot.parse("/release all-plugins=1.3.0")
+    assert command == "release"
+    assert bot.resolve(index, requested)[0] == dict.fromkeys(index["plugins"], "1.3.0")
     with pytest.raises(ValueError, match="Select plugins explicitly"):
-        bot.resolve(index, {"distribution": "1.2.0"}, {"search", "mhs"})
+        bot.resolve(index, {"distribution": "1.2.0"})
     with pytest.raises(ValueError, match="Unknown"):
-        bot.resolve(index, {"typo": "patch"}, {"search"})
+        bot.resolve(index, {"typo": "patch"})
+    with pytest.raises(ValueError, match="Unknown"):
+        bot.resolve(index, {"all-mcp": "patch"})
     with pytest.raises(ValueError, match="must advance"):
         bot.next_version("1.2.3", "1.2.3")
-    assert bot.resolve(index, {"edu-agent": "patch"}, {"search", "mhs"})[0] == {"edu-agent": "1.0.1"}
+    assert bot.resolve(index, {"edu-agent": "patch"})[0] == {"edu-agent": "1.0.1"}
 
 
 class FakeAPI:
@@ -220,12 +224,12 @@ def test_shared_detection_ignores_version_stamp_but_finds_runtime_and_dependenci
     framework.write_text(framework.read_text() + "\n# changed runtime\n")
     runtime = bot.commit(repo, stamp, "runtime")
     assert bot.shared_changed(repo, runtime, index, {"search"})
-    releases, distribution = bot.resolve(index, {"search": "patch"}, bot.mcp_plugins(repo, runtime, index))
+    releases, distribution = bot.resolve(index, {"search": "patch"})
     assert set(releases) == {"search"}
     notice = bot.shared_notice(repo, runtime, releases)
     assert "Shared runtime or dependency changes are included" in notice
     assert "`mhs`" in notice and "`edu-agent`" not in notice
-    assert "all-mcp=patch" in notice
+    assert "all-plugins=patch" in notice
     assert bot.shared_notice(repo, runtime, {"edu-agent": "999.0.0"}) == ""
 
     class LocalAPI:

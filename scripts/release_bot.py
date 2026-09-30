@@ -113,16 +113,16 @@ def next_version(current: str, requested: str) -> str:
     return requested
 
 
-def resolve(index: dict, requested: dict, servers: set[str]) -> tuple[dict, str]:
-    unknown = requested.keys() - index["plugins"].keys() - {"distribution", "all-mcp"}
+def resolve(index: dict, requested: dict) -> tuple[dict, str]:
+    unknown = requested.keys() - index["plugins"].keys() - {"distribution", "all-plugins"}
     if unknown:
         raise ValueError(f"Unknown plugins: {', '.join(sorted(unknown))}")
-    selected = {cap: value for cap, value in requested.items() if cap not in {"distribution", "all-mcp"}}
-    if "all-mcp" in requested:
-        selected = {**dict.fromkeys(servers, requested["all-mcp"]), **selected}
+    selected = {cap: value for cap, value in requested.items() if cap not in {"distribution", "all-plugins"}}
+    if "all-plugins" in requested:
+        selected = {**dict.fromkeys(index["plugins"], requested["all-plugins"]), **selected}
     if not selected:
         raise ValueError(
-            "Select plugins explicitly, e.g. search=patch, or use all-mcp=patch to release every MCP plugin."
+            "Select plugins explicitly, e.g. search=patch, or use all-plugins=patch to release every listed plugin."
         )
     releases = {cap: next_version(index["plugins"][cap], value) for cap, value in sorted(selected.items())}
     distribution = next_version(index["distribution_version"], requested.get("distribution", "patch"))
@@ -221,7 +221,7 @@ def shared_notice(repo: Path, source: str, releases: dict) -> str:
             " Other MCP plugins keep their published refs and framework snapshots: "
             + ", ".join(f"`{cap}`" for cap in remaining)
             + ". To roll this change out more widely, close this unpublished version PR and submit a new request "
-            "listing the additional plugins, or use `all-mcp=patch`."
+            "listing the additional plugins, or use `all-plugins=patch` for every listed plugin, including Skill-only plugins."
         )
     return notice + "\n\n"
 
@@ -307,8 +307,7 @@ def make_release(
         else:
             index = json.loads(at(repo, source, "plugin-versions.json"))
             clone_at(repo, source, checkout)
-            servers = mcp_plugins(repo, source, index)
-            releases, distribution = resolve(index, requested, servers)
+            releases, distribution = resolve(index, requested)
             prepare(checkout, releases, distribution, url)
             head = commit(
                 checkout,

@@ -44,7 +44,7 @@ main 保留当前已发布 tag 的引用。本地开发继续使用现有 local 
 | Python distribution 版本 | 每批发布递增一次，作为整个 Python 包的快照编号 |
 
 发布范围由显式选择决定。即使修改 shared 或某个 extra，未选择的插件仍保留旧 ref 及其 framework 快照。
-需要统一推广时使用 `/release all-mcp=patch framework=patch`，单独指定的插件版本可以覆盖批量级别。
+需要一起发布全部插件时使用 `/release all-plugins=patch framework=patch`，包括 Skill-only 插件，不含未发布模板；单独指定的插件版本可以覆盖批量级别。
 只指定 framework/distribution 时要求补充插件选择。语义版本级别仍由发布者判断。
 
 小改动可以先合入 main，在多次提交后一起发布。无需增加“暂缓发布”标签或状态文件：每次都与该插件上次发布的源码比较，待发布改动会自然保留。若希望发布同一插件的一部分改动，同时排除已经合入的另一部分，需要选择合适的源码提交或调整待发布代码；版本号本身不筛选改动。

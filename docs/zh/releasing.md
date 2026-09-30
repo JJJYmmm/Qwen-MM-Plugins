@@ -39,8 +39,9 @@ framework 版本。省略时自动增加 distribution patch。
 变化时，在版本 PR 中提示，由发布者决定范围；仅显式指定的插件更新版本。其他插件保留原有 ref 和 framework
 快照。想扩大尚未发布的范围时，关闭当前版本 PR，再提交包含额外插件的新指令。
 
-需要一起发布全部 MCP 插件时，显式使用 `/release all-mcp=patch framework=patch`；单插件参数可以覆盖
-批量级别，例如 `all-mcp=patch search=minor`。Skill-only 插件仍需单独指定。只指定 framework/distribution
+需要一起发布全部插件时，显式使用 `/release all-plugins=patch framework=patch`，范围是
+`plugin-versions.json` 列出的全部插件，包括 `edu-agent` 等 Skill-only 插件，不含未发布模板。
+单插件参数可以覆盖批量级别，例如 `all-plugins=patch search=minor`。只指定 framework/distribution
 时会要求补充插件选择，不会默认选择全部。新增插件的首次登记仍需单独审阅。
 
 审阅 bot 生成的版本 PR 后，在该 PR 下评论：

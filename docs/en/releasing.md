@@ -44,9 +44,10 @@ they do not add other plugins to the release. Only explicitly selected plugins r
 Unselected plugins keep their published refs and framework snapshots. To expand an unpublished
 release, close its version PR and submit a new request listing the additional plugins.
 
-Use `/release all-mcp=patch framework=patch` to explicitly release every MCP plugin. Individual
-arguments override the batch level, e.g. `all-mcp=patch search=minor`. Skill-only plugins must be
-selected separately. Specifying only `framework`/`distribution` requires adding a plugin selection;
+Use `/release all-plugins=patch framework=patch` to explicitly release every plugin listed in
+`plugin-versions.json`, including Skill-only plugins such as `edu-agent`; unpublished templates are
+excluded. Individual arguments override the batch level, e.g. `all-plugins=patch search=minor`.
+Specifying only `framework`/`distribution` requires adding a plugin selection;
 it never implicitly selects all plugins. First-time plugin onboarding is outside this flow.
 
 Review the generated version PR, then comment:
