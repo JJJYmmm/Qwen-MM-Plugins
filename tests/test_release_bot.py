@@ -53,6 +53,7 @@ def test_shared_runtime_releases_all_servers_but_not_skill_only():
         bot.resolve(index, {"typo": "patch"}, {"search"}, False)
     with pytest.raises(ValueError, match="must advance"):
         bot.next_version("1.2.3", "1.2.3")
+    assert bot.resolve(index, {"edu-agent": "patch"}, {"search", "mhs"}, True)[0] == {"edu-agent": "1.0.1"}
 
 
 class FakeAPI:
@@ -83,6 +84,13 @@ class FakeAPI:
 
 
 EVENT = {"action": "created", "issue": {"number": 7, "pull_request": {}}, "comment": {"id": 8, "body": "/publish"}}
+
+
+def test_repository_endpoint_has_no_trailing_slash(monkeypatch):
+    calls = []
+    monkeypatch.setattr(bot, "run", lambda repo, *args, **kwargs: calls.append(args) or "{}")
+    bot.GitHub("owner/repo").call("")
+    assert calls[0][2] == "repos/owner/repo"
 
 
 def test_unauthorized_comment_cannot_prepare_or_publish(tmp_path):
@@ -188,3 +196,28 @@ def test_tags_precede_catalog_merge_and_retries_never_move_them(release_repo, tm
     bot.git(main, "merge-base", "--is-ancestor", head, "HEAD")
     assert (main / "unrelated.txt").read_text() == "concurrent main update"
     assert bot.git(main, "ls-remote", remote, "refs/tags/*") == before
+
+
+def test_shared_detection_ignores_version_stamp_but_finds_runtime_and_dependencies(release_repo):
+    repo, source, remote = release_repo
+    index = json.loads((repo / "plugin-versions.json").read_text())
+    catalog_path = repo / ".claude-plugin/marketplace.json"
+    catalog = json.loads(catalog_path.read_text())
+    next(p for p in catalog["plugins"] if p["name"] == "qwen-mm-plugins-search")["source"]["url"] = remote
+    catalog_path.write_text(json.dumps(catalog))
+    source = bot.commit(repo, source, "point test catalog at local remote")
+    tag = index["tag_format"].format(cap="search", version=index["plugins"]["search"])
+    bot.git(repo, "tag", tag, source)
+    bot.git(repo, "push", remote, f"refs/tags/{tag}")
+    framework = repo / "src/mcp_framework.py"
+    framework.write_text(bot.VERSION.sub('__version__ = "999.0.0"', framework.read_text()))
+    stamp = bot.commit(repo, source, "stamp only")
+    assert not bot.shared_changed(repo, stamp, index, {"search"})
+    framework.write_text(framework.read_text() + "\n# changed runtime\n")
+    runtime = bot.commit(repo, stamp, "runtime")
+    assert bot.shared_changed(repo, runtime, index, {"search"})
+    bot.git(repo, "checkout", "--detach", stamp)
+    project = repo / "pyproject.toml"
+    project.write_text(project.read_text() + "\n# changed dependencies\n")
+    dependencies = bot.commit(repo, stamp, "dependencies")
+    assert bot.shared_changed(repo, dependencies, index, {"search"})

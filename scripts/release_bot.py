@@ -49,7 +49,8 @@ class GitHub:
         self.repository = repository
 
     def call(self, path: str, method: str = "GET", data: dict | None = None):
-        args = ["gh", "api", f"repos/{self.repository}/{path}", "--method", method]
+        endpoint = f"repos/{self.repository}" + (f"/{path}" if path else "")
+        args = ["gh", "api", endpoint, "--method", method]
         if data is not None:
             args += ["--input", "-"]
         output = run(ROOT, *args, input_text=json.dumps(data) if data is not None else None)
@@ -117,7 +118,7 @@ def resolve(index: dict, requested: dict, servers: set[str], shared_changed: boo
     if unknown:
         raise ValueError(f"Unknown plugins: {', '.join(sorted(unknown))}")
     selected = {cap: value for cap, value in requested.items() if cap != "distribution"}
-    if shared_changed or not selected:
+    if (shared_changed and selected.keys() & servers) or not selected:
         selected = {**dict.fromkeys(servers, "patch"), **selected}
     releases = {cap: next_version(index["plugins"][cap], value) for cap, value in sorted(selected.items())}
     distribution = next_version(index["distribution_version"], requested.get("distribution", "patch"))
