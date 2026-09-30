@@ -8,7 +8,7 @@ from mcp_framework import build_registry
 
 from .stdio_streaming import streaming_stdio_server
 
-__version__ = "1.1.0"
+__version__ = "1.1.1-rc.2026093001"
 
 # Auto-discover tools from these subpackages. Dedicated model and search tools live in the api and
 # search capabilities. The framework's optional caption fallback also applies to core image results.
