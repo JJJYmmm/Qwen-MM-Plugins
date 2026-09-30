@@ -31,3 +31,5 @@ Details and worked examples in `references/video_search.md`.
 
 - **Frames come from** `qwen-mm-plugins-core` (`save_view` / `read_video`) — this capability does not read media.
 - **Model-based understanding** (caption, OCR, grounding, ASR) → `qwen-mm-plugins-api`.
+
+<!-- Isolated fork release automation test. -->
