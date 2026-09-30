@@ -18,7 +18,8 @@ Marketplace entry 与 MCP `uvx --from` 固定到同一个插件 tag；`main` 只
 都包含完整 distribution，但各插件启动独立的 tag 环境；发布 `search` 不会更新已安装的 `core`。
 
 每个能力遵循 SemVer：兼容修复增加 patch，新增工具或兼容行为增加 minor，破坏 schema、删除工具
-或不兼容配置增加 major。共享 runtime 变化需要发布所有受影响的能力。
+或不兼容配置增加 major。共享 runtime 变化需要审阅所选能力的兼容性；未选择的能力继续使用原有发布快照，
+等显式选择后再发布。
 
 ## 评论触发发布
 
@@ -35,8 +36,12 @@ framework 版本。省略时自动增加 distribution patch。
 
 代码 PR 尚未合并时先登记，合并后再生成独立的版本 PR；已合并时立即生成。源码取当时 main 的完整快照，
 所选插件包含累计改动，不仅是触发评论所在 PR 的改动。检测到 shared、framework 或 `pyproject.toml`
-变化时，保守地带上全部 MCP 插件，未指定的版本默认增加 patch。只指定 distribution 时也选择全部 MCP
-插件。Skill-only 插件独立发布；新增插件的首次登记仍需单独审阅。
+变化时，在版本 PR 中提示，由发布者决定范围；仅显式指定的插件更新版本。其他插件保留原有 ref 和 framework
+快照。想扩大尚未发布的范围时，关闭当前版本 PR，再提交包含额外插件的新指令。
+
+需要一起发布全部 MCP 插件时，显式使用 `/release all-mcp=patch framework=patch`；单插件参数可以覆盖
+批量级别，例如 `all-mcp=patch search=minor`。Skill-only 插件仍需单独指定。只指定 framework/distribution
+时会要求补充插件选择，不会默认选择全部。新增插件的首次登记仍需单独审阅。
 
 审阅 bot 生成的版本 PR 后，在该 PR 下评论：
 

@@ -38,22 +38,25 @@ def test_invalid_commands(body):
     assert bot.parse("please /release search=1.2.3") is None
 
 
-def test_shared_runtime_releases_all_servers_but_not_skill_only():
+def test_only_explicit_plugins_release_unless_all_mcp_is_requested():
     index = {"distribution_version": "1.0.0", "plugins": dict.fromkeys(["search", "mhs", "edu-agent"], "1.0.0")}
-    assert bot.resolve(index, {"search": "minor"}, {"search", "mhs"}, False) == ({"search": "1.1.0"}, "1.0.1")
-    assert bot.resolve(index, {"search": "minor"}, {"search", "mhs"}, True) == (
+    assert bot.resolve(index, {"search": "minor"}, {"search", "mhs"}) == ({"search": "1.1.0"}, "1.0.1")
+    assert bot.resolve(index, {"all-mcp": "patch", "search": "minor"}, {"search", "mhs"}) == (
         {"mhs": "1.0.1", "search": "1.1.0"},
         "1.0.1",
     )
-    assert bot.resolve(index, {"distribution": "1.2.0"}, {"search", "mhs"}, False)[0] == {
-        "mhs": "1.0.1",
-        "search": "1.0.1",
-    }
+    assert bot.resolve(index, {"search": "patch", "distribution": "1.2.0"}, {"search", "mhs"}) == (
+        {"search": "1.0.1"},
+        "1.2.0",
+    )
+    assert bot.resolve(index, {"all-mcp": "1.3.0"}, {"search", "mhs"})[0] == {"mhs": "1.3.0", "search": "1.3.0"}
+    with pytest.raises(ValueError, match="Select plugins explicitly"):
+        bot.resolve(index, {"distribution": "1.2.0"}, {"search", "mhs"})
     with pytest.raises(ValueError, match="Unknown"):
-        bot.resolve(index, {"typo": "patch"}, {"search"}, False)
+        bot.resolve(index, {"typo": "patch"}, {"search"})
     with pytest.raises(ValueError, match="must advance"):
         bot.next_version("1.2.3", "1.2.3")
-    assert bot.resolve(index, {"edu-agent": "patch"}, {"search", "mhs"}, True)[0] == {"edu-agent": "1.0.1"}
+    assert bot.resolve(index, {"edu-agent": "patch"}, {"search", "mhs"})[0] == {"edu-agent": "1.0.1"}
 
 
 class FakeAPI:
@@ -213,9 +216,51 @@ def test_shared_detection_ignores_version_stamp_but_finds_runtime_and_dependenci
     framework.write_text(bot.VERSION.sub('__version__ = "999.0.0"', framework.read_text()))
     stamp = bot.commit(repo, source, "stamp only")
     assert not bot.shared_changed(repo, stamp, index, {"search"})
+    assert bot.shared_notice(repo, stamp, {"search": "999.0.0"}) == ""
     framework.write_text(framework.read_text() + "\n# changed runtime\n")
     runtime = bot.commit(repo, stamp, "runtime")
     assert bot.shared_changed(repo, runtime, index, {"search"})
+    releases, distribution = bot.resolve(index, {"search": "patch"}, bot.mcp_plugins(repo, runtime, index))
+    assert set(releases) == {"search"}
+    notice = bot.shared_notice(repo, runtime, releases)
+    assert "Shared runtime or dependency changes are included" in notice
+    assert "`mhs`" in notice and "`edu-agent`" not in notice
+    assert "all-mcp=patch" in notice
+    assert bot.shared_notice(repo, runtime, {"edu-agent": "999.0.0"}) == ""
+
+    class LocalAPI:
+        repository = "owner/repo"
+        body = ""
+
+        def pages(self, path):
+            return []
+
+        def call(self, path, method="GET", data=None):
+            if not path:
+                return {"default_branch": "main", "clone_url": remote}
+            if path == "pulls/7":
+                return {
+                    "base": {"ref": "main", "repo": {"full_name": self.repository}},
+                    "head": {"ref": "source"},
+                    "merged": True,
+                    "merge_commit_sha": runtime,
+                }
+            assert path == "pulls" and method == "POST"
+            self.body = data["body"]
+            return {"html_url": "https://example.test/version-pr"}
+
+    bot.git(repo, "push", remote, f"{runtime}:refs/heads/main")
+    api = LocalAPI()
+    reply = bot.make_release(api, repo, 7, {"id": 8}, {"search": "patch"}, None)
+    assert notice in api.body and notice in reply
+    bot.git(repo, "fetch", remote, f"refs/heads/{bot.branch_for(7, 8)}")
+    after = json.loads(bot.at(repo, "FETCH_HEAD", "plugin-versions.json"))
+    assert after["distribution_version"] == distribution
+    assert {cap for cap in index["plugins"] if index["plugins"][cap] != after["plugins"][cap]} == {"search"}
+    catalog_after = json.loads(bot.at(repo, "FETCH_HEAD", ".claude-plugin/marketplace.json"))
+    for before, after_entry in zip(catalog["plugins"], catalog_after["plugins"], strict=True):
+        if before["name"] != "qwen-mm-plugins-search":
+            assert before == after_entry
     bot.git(repo, "checkout", "--detach", stamp)
     project = repo / "pyproject.toml"
     project.write_text(project.read_text() + "\n# changed dependencies\n")

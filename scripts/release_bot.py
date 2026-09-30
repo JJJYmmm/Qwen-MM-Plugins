@@ -113,13 +113,17 @@ def next_version(current: str, requested: str) -> str:
     return requested
 
 
-def resolve(index: dict, requested: dict, servers: set[str], shared_changed: bool) -> tuple[dict, str]:
-    unknown = requested.keys() - index["plugins"].keys() - {"distribution"}
+def resolve(index: dict, requested: dict, servers: set[str]) -> tuple[dict, str]:
+    unknown = requested.keys() - index["plugins"].keys() - {"distribution", "all-mcp"}
     if unknown:
         raise ValueError(f"Unknown plugins: {', '.join(sorted(unknown))}")
-    selected = {cap: value for cap, value in requested.items() if cap != "distribution"}
-    if (shared_changed and selected.keys() & servers) or not selected:
-        selected = {**dict.fromkeys(servers, "patch"), **selected}
+    selected = {cap: value for cap, value in requested.items() if cap not in {"distribution", "all-mcp"}}
+    if "all-mcp" in requested:
+        selected = {**dict.fromkeys(servers, requested["all-mcp"]), **selected}
+    if not selected:
+        raise ValueError(
+            "Select plugins explicitly, e.g. search=patch, or use all-mcp=patch to release every MCP plugin."
+        )
     releases = {cap: next_version(index["plugins"][cap], value) for cap, value in sorted(selected.items())}
     distribution = next_version(index["distribution_version"], requested.get("distribution", "patch"))
     # Stable versions and numeric rc versions map unambiguously to the Python wheel version.
@@ -194,6 +198,32 @@ def shared_changed(repo: Path, source: str, index: dict, servers: set[str]) -> b
             if VERSION.sub("<version>", at(repo, baseline, path)) != VERSION.sub("<version>", at(repo, source, path)):
                 return True
     return False
+
+
+def mcp_plugins(repo: Path, source: str, index: dict) -> set[str]:
+    paths = git(repo, "ls-tree", "-r", "--name-only", source, "--", "src/capabilities").splitlines()
+    return {path.split("/")[2] for path in paths if path.endswith("/.mcp.json")} & index["plugins"].keys()
+
+
+def shared_notice(repo: Path, source: str, releases: dict) -> str:
+    index = json.loads(at(repo, source, "plugin-versions.json"))
+    servers = mcp_plugins(repo, source, index)
+    selected = servers & releases.keys()
+    if not selected or not shared_changed(repo, source, index, selected):
+        return ""
+    notice = (
+        "Shared runtime or dependency changes are included relative to at least one selected plugin's published tag. "
+        "The release scope follows your explicit selection. Review compatibility for the selected plugins."
+    )
+    remaining = sorted(servers - releases.keys())
+    if remaining:
+        notice += (
+            " Other MCP plugins keep their published refs and framework snapshots: "
+            + ", ".join(f"`{cap}`" for cap in remaining)
+            + ". To roll this change out more widely, close this unpublished version PR and submit a new request "
+            "listing the additional plugins, or use `all-mcp=patch`."
+        )
+    return notice + "\n\n"
 
 
 def candidate_info(repo: Path, head: str, base: str, url: str) -> dict:
@@ -277,27 +307,30 @@ def make_release(
         else:
             index = json.loads(at(repo, source, "plugin-versions.json"))
             clone_at(repo, source, checkout)
-            servers = {cap for cap in index["plugins"] if (checkout / f"src/capabilities/{cap}/.mcp.json").exists()}
-            releases, distribution = resolve(index, requested, servers, shared_changed(repo, source, index, servers))
+            servers = mcp_plugins(repo, source, index)
+            releases, distribution = resolve(index, requested, servers)
             prepare(checkout, releases, distribution, url)
             head = commit(
                 checkout,
                 source,
                 f"release: prepare versions from #{number}\n\nSource-Commit: {source}\nSource-Comment: {comment['id']}",
             )
-            git(checkout, "push", url, f"{head}:refs/heads/{branch}")
             info = {"source": source, "plugins": releases, "distribution": distribution}
+        notice = shared_notice(repo, info["source"], info["plugins"])
+        if not remote_branch:
+            git(checkout, "push", url, f"{head}:refs/heads/{branch}")
         versions = "\n".join(f"- `{cap}` → `{version}`" for cap, version in sorted(info["plugins"].items()))
         body = (
             f"Prepare released versions for source PR #{number}. Source commit: `{info['source']}`.\n\n"
             f"{versions}\n\nPython distribution / framework: `{info['distribution']}`.\n\n"
+            f"{notice}"
             "This PR changes generated version/ref metadata only. Review this diff, then comment `/publish` to run release checks, publish immutable tags, and merge this PR with a merge commit. "
-            "Do not merge this PR before its tags exist. Shared runtime or dependency changes include every MCP plugin; Skill-only plugins remain independent.\n"
+            "Do not merge this PR before its tags exist. Only explicitly selected plugins are released.\n"
         )
         created = api.call(
             "pulls", "POST", {"title": f"release: versions from #{number}", "head": branch, "base": base, "body": body}
         )
-        return f"Version PR ready: {created['html_url']}\n\n{versions}\n\nDistribution/framework: `{info['distribution']}`. Review it and comment `/publish` there to release."
+        return f"Version PR ready: {created['html_url']}\n\n{versions}\n\n{notice}Distribution/framework: `{info['distribution']}`. Review it and comment `/publish` there to release."
 
 
 def release_candidate(

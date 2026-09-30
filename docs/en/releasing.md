@@ -20,8 +20,9 @@ Although a tag contains the whole distribution, each plugin launches its own tag
 releasing `search` does not update an installed `core`.
 
 Use SemVer per capability: patch for compatible fixes, minor for additive tools or behavior, and
-major for breaking schemas, removed tools, or incompatible configuration. Shared runtime changes
-require releases for every affected capability.
+major for breaking schemas, removed tools, or incompatible configuration. Review shared runtime changes
+for compatibility with the selected capabilities; unselected capabilities keep their published snapshots
+until explicitly released.
 
 ## Comment-driven releases
 
@@ -38,9 +39,15 @@ not a separately packaged framework. Omitting it defaults to the next distributi
 
 An open code PR's request waits for merge. On a merged PR, the bot immediately creates a separate
 version PR from current main. It includes all accumulated code for the selected plugins, not only
-the triggering PR. Shared runtime or `pyproject.toml` changes conservatively add every MCP plugin
-at its next patch unless explicitly overridden. A distribution-only request also selects all MCP
-plugins. Skill-only plugins remain independent. First-time plugin onboarding is outside this flow.
+the triggering PR. Shared runtime or `pyproject.toml` changes appear as a notice in the version PR;
+they do not add other plugins to the release. Only explicitly selected plugins receive new versions.
+Unselected plugins keep their published refs and framework snapshots. To expand an unpublished
+release, close its version PR and submit a new request listing the additional plugins.
+
+Use `/release all-mcp=patch framework=patch` to explicitly release every MCP plugin. Individual
+arguments override the batch level, e.g. `all-mcp=patch search=minor`. Skill-only plugins must be
+selected separately. Specifying only `framework`/`distribution` requires adding a plugin selection;
+it never implicitly selects all plugins. First-time plugin onboarding is outside this flow.
 
 Review the generated version PR, then comment:
 
