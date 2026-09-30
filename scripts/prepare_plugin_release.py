@@ -68,7 +68,7 @@ def update_distribution_version(index: dict, marketplace: dict, version: str) ->
     metadata["version"] = version
 
 
-def update_manifests(cap: str, version: str, tag: str) -> None:
+def update_manifests(cap: str, version: str, tag: str, repo_url: str = REPO_URL) -> None:
     cap_dir = CAPS / cap
     for rel in (
         ".claude-plugin/plugin.json",
@@ -81,7 +81,7 @@ def update_manifests(cap: str, version: str, tag: str) -> None:
         if rel == ".claude-plugin/plugin.json" and "mcpServers" in data:
             server = next(iter(data["mcpServers"].values()))
             from_index = server["args"].index("--from") + 1
-            server["args"][from_index] = f"qwen-mm-plugins[{cap}] @ git+{REPO_URL}@{tag}"
+            server["args"][from_index] = f"qwen-mm-plugins[{cap}] @ git+{repo_url}@{tag}"
         dump(path, data)
 
     mcp_path = cap_dir / ".mcp.json"
@@ -89,7 +89,7 @@ def update_manifests(cap: str, version: str, tag: str) -> None:
         data = load(mcp_path)
         server = next(iter(data["mcpServers"].values()))
         from_index = server["args"].index("--from") + 1
-        server["args"][from_index] = f"qwen-mm-plugins[{cap}] @ git+{REPO_URL}@{tag}"
+        server["args"][from_index] = f"qwen-mm-plugins[{cap}] @ git+{repo_url}@{tag}"
         dump(mcp_path, data)
 
     packages = [p for p in cap_dir.iterdir() if p.is_dir() and p.name.isidentifier() and (p / "__init__.py").is_file()]
@@ -103,6 +103,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capability")
     parser.add_argument("version")
+    parser.add_argument("--repo-url", default=REPO_URL, help="repository used by published plugin and MCP refs")
+    parser.add_argument(
+        "--allow-existing-tag", action="store_true", help="render metadata for verification; never changes tags"
+    )
     parser.add_argument(
         "--distribution-version",
         required=True,
@@ -123,7 +127,7 @@ def main() -> int:
     existing = subprocess.run(
         ["git", "tag", "--list", tag], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout.strip()
-    if existing:
+    if existing and not args.allow_existing_tag:
         parser.error(f"tag already exists locally: {tag}")
 
     market = load(MARKETPLACE)
@@ -134,12 +138,12 @@ def main() -> int:
     update_distribution_version(index, market, args.distribution_version)
     entry["source"] = {
         "source": "git-subdir",
-        "url": REPO_URL,
+        "url": args.repo_url,
         "path": f"src/capabilities/{cap}",
         "ref": tag,
     }
     dump(INDEX, index)
-    update_manifests(cap, version, tag)
+    update_manifests(cap, version, tag, args.repo_url)
     update_installer(cap, version)
     dump(MARKETPLACE, market)
 
