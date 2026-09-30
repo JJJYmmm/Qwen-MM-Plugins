@@ -85,6 +85,7 @@ _API_KEY_ENV_BY_HOST: dict[str, str] = {
     "dashscope-intl.aliyuncs.com": "DASHSCOPE_API_KEY",
     "api.orcarouter.ai": "ORCAROUTER_API_KEY",
     "openrouter.ai": "OPENROUTER_API_KEY",
+    "api.cheaperinference.com": "CHEAPER_INFERENCE_API_KEY",
 }
 
 

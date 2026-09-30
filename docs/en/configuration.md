@@ -30,7 +30,8 @@ Set `QWEN_MM_NATIVE_MODE=0` when the host model is text-only. Every returned ima
 at the same position by a generated caption, while existing text blocks (file metadata, PDF text
 layers, video timestamps, and similar context) are preserved. The caption path uses
 `DASHSCOPE_BASE_URL` and `QWEN_MM_API_VL_MODEL`. Credentials are selected by endpoint: DashScope uses
-`DASHSCOPE_API_KEY`, OrcaRouter uses `ORCAROUTER_API_KEY`, and OpenRouter uses `OPENROUTER_API_KEY`.
+`DASHSCOPE_API_KEY`, OrcaRouter uses `ORCAROUTER_API_KEY`, OpenRouter uses `OPENROUTER_API_KEY`, and
+Cheaper Inference uses `CHEAPER_INFERENCE_API_KEY`.
 Any other OpenAI-compatible endpoint set as `DASHSCOPE_BASE_URL` uses `DASHSCOPE_API_KEY`, which is
 sent only to that URL's origin (scheme, host, port).
 Authentication-free local endpoints need no key configuration. A failed caption call produces an explicit
@@ -63,6 +64,7 @@ come from [`CONFIG_FIELDS`](../../src/shared/env.py); `—` means unset or disab
 | `DASHSCOPE_API_KEY` | — | vision, OCR, grounding, text-only image captions, ASR, generation, memory builds *(secret)* |
 | `ORCAROUTER_API_KEY` | — | OpenAI-compatible calls to api.orcarouter.ai *(secret)* |
 | `OPENROUTER_API_KEY` | — | OpenAI-compatible calls to openrouter.ai *(secret)* |
+| `CHEAPER_INFERENCE_API_KEY` | — | OpenAI-compatible calls to api.cheaperinference.com *(secret)* |
 | `MINIMAX_API_KEY` | — | MiniMax text-to-speech generation *(secret)* |
 | `DASHSCOPE_BASE_URL` | DashScope compat URL | override the DashScope OpenAI-compatible base URL |
 | `DASHSCOPE_UPLOAD_POLICY_URL` | inferred for official DashScope hosts | override the model-bound temporary OSS policy endpoint used for oversized Omni and VL media |
