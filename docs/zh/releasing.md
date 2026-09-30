@@ -18,9 +18,56 @@ Marketplace entry 与 MCP `uvx --from` 固定到同一个插件 tag；`main` 只
 都包含完整 distribution，但各插件启动独立的 tag 环境；发布 `search` 不会更新已安装的 `core`。
 
 每个能力遵循 SemVer：兼容修复增加 patch，新增工具或兼容行为增加 minor，破坏 schema、删除工具
-或不兼容配置增加 major。共享 runtime 变化需要发布所有受影响的能力。
+或不兼容配置增加 major。共享 runtime 变化需要审阅所选能力的兼容性；未选择的能力继续使用原有发布快照，
+等显式选择后再发布。
 
-## 发布清单
+## 评论触发发布
+
+默认分支启用 Release bot 后，代码 PR 可以正常合入而不修改版本号。决定发布时，有仓库写权限的维护者
+在代码 PR 下评论：
+
+```text
+/release search=1.1.2 framework=1.1.10
+```
+
+插件可以指定完整版本或 `patch`、`minor`、`major`；多个插件用空格分隔。`framework` 和
+`mcp-framework` 都是 `distribution` 的别名，指当前 Python distribution 的版本，不是单独拆包的
+framework 版本。省略时自动增加 distribution patch。
+
+代码 PR 尚未合并时先登记，合并后再生成独立的版本 PR；已合并时立即生成。源码取当时 main 的完整快照，
+所选插件包含累计改动，不仅是触发评论所在 PR 的改动。检测到 shared、framework 或 `pyproject.toml`
+变化时，在版本 PR 中提示，由发布者决定范围；仅显式指定的插件更新版本。其他插件保留原有 ref 和 framework
+快照。想扩大尚未发布的范围时，关闭当前版本 PR，再提交包含额外插件的新指令。
+
+需要一起发布全部插件时，显式使用 `/release all-plugins=patch framework=patch`，范围是
+`plugin-versions.json` 列出的全部插件，包括 `edu-agent` 等 Skill-only 插件，不含未发布模板。
+单插件参数可以覆盖批量级别，例如 `all-plugins=patch search=minor`。只指定 framework/distribution
+时会要求补充插件选择，不会默认选择全部。新增插件的首次登记仍需单独审阅。
+
+审阅 bot 生成的版本 PR 后，在该 PR 下评论：
+
+```text
+/publish
+```
+
+bot 对准确的版本提交运行测试并构建 wheel，原子推送本批插件 tag，确认远端 tag 后，以 **merge commit**
+合并同一张版本 PR。因此 main 切换安装引用时 tag 已经存在，打 tag 的提交也会进入 main 历史。请勿在发布前
+手动合并版本 PR。普通代码 PR 仍可 squash/rebase。
+
+一次只处理一张待完成的版本 PR，重复指令复用已有 PR。tag 已存在时必须指向相同提交，绝不移动。若 tag
+已发布但合并失败，补齐审核或检查后重新评论 `/publish`，保持版本 PR 的 head 不变。如果是内容冲突，关闭
+该版本 PR，用新的版本号重新准备；保留已经发布的 tag。其他代码 PR 在此期间仍可正常合入。
+
+正式启用需要 workflow 和脚本位于默认分支、允许 Actions 创建 PR，以及允许 merge commit；分支要求的审核和
+检查仍会生效。目前这是待审阅方案，尚未部署到 fork 或上游默认分支。fork 隔离实验可用控制器的 `--base`
+指定测试分支，生产 workflow 不使用该参数。
+
+此流程沿用各 harness 的安装接口，不向 PyPI 发布。插件整体从 tag 获取 Skill，MCP 也固定到同一个 tag。
+直接安装 main 的原始插件目录可能混用未发布 Skill 和旧 MCP；开发请使用已有 local 模式。
+
+## 原有手动发布清单
+
+以下保留现有手工操作说明。上面的评论流程替代其“先合并、后打 tag”顺序，不调用旧的打 tag 脚本。
 
 1. 在 PR 分支准备所有受影响的能力：
 
