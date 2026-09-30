@@ -23,7 +23,56 @@ Use SemVer per capability: patch for compatible fixes, minor for additive tools 
 major for breaking schemas, removed tools, or incompatible configuration. Shared runtime changes
 require releases for every affected capability.
 
-## Release checklist
+## Comment-driven releases
+
+After the Release bot workflow is enabled on the default branch, code PRs can merge without version
+bumps. When ready to release, a maintainer with repository write permission comments on a code PR:
+
+```text
+/release search=1.1.2 framework=1.1.10
+```
+
+Use exact versions or `patch`, `minor`, `major`; list multiple plugins with spaces. `framework` and
+`mcp-framework` are aliases for `distribution`. This is the existing Python distribution version,
+not a separately packaged framework. Omitting it defaults to the next distribution patch.
+
+An open code PR's request waits for merge. On a merged PR, the bot immediately creates a separate
+version PR from current main. It includes all accumulated code for the selected plugins, not only
+the triggering PR. Shared runtime or `pyproject.toml` changes conservatively add every MCP plugin
+at its next patch unless explicitly overridden. A distribution-only request also selects all MCP
+plugins. Skill-only plugins remain independent. First-time plugin onboarding is outside this flow.
+
+Review the generated version PR, then comment:
+
+```text
+/publish
+```
+
+The bot tests and builds that exact commit, publishes all plugin tags atomically, verifies their
+remote targets, then merges the same PR **with a merge commit**. Thus main only starts referencing
+the new tags after they exist, and the tagged commit becomes part of main history. Do not merge a
+version PR manually before publication. Normal code PRs may still use squash or rebase merging.
+
+Only one version PR is pending at a time. Duplicate requests reuse their PR. Existing tags must
+point to the exact verified commit; they are never moved. If tag publication succeeded but the
+merge failed, resolve required checks/reviews and retry `/publish` without changing the version PR
+head. A content conflict requires closing it and preparing a new release with fresh version numbers;
+retain the already-published tags. Other source PRs can continue merging during review.
+
+Enabling requires this workflow and scripts on the default branch, permission for Actions to create
+PRs, and merge commits enabled. Required reviews/checks still apply. Until this draft is approved,
+the workflow is not installed on the fork or upstream default branch. Fork testing can use the
+controller's `--base` option with isolated branches; production does not set that option.
+
+This automation does not change client installation protocols or publish to PyPI. The whole plugin
+is installed from its tag, including its Skill, while MCP launch specs pin that same tag. Installing
+a raw main plugin directory is a development path and can combine unreleased Skills with old MCP
+refs; use the existing local mode for development.
+
+## Legacy manual release checklist
+
+The checklist below documents the existing manual workflow. The comment workflow above replaces
+its merge-then-tag order and does not call the legacy tagging helper.
 
 1. Prepare every affected capability on the PR branch:
 
