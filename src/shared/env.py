@@ -47,6 +47,21 @@ def get_bool_env(name: str, default: bool = False) -> bool:
     return default
 
 
+def get_int_env(name: str, default: int) -> int:
+    """Read a plain integer, falling back for unset, blank, or invalid values.
+
+    Unlike ``_int_env``, this does not accept byte-size units.
+    """
+    raw = get_env(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logging.getLogger(__name__).warning("invalid %s=%r; using default %d", name, raw, default)
+        return default
+
+
 # ── User config file (~/.qwen-mm-plugins/config): KEY=VALUE lines, read when a var isn't in the
 # environment. Location is fixed (not per-OS like cache_dir): "where is the config" can't live in
 # the config, and pointing at it via env var would reintroduce the inheritance problem it solves. ──
