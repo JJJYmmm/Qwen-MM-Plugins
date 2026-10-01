@@ -97,12 +97,7 @@ def test_int_env_falls_back_instead_of_raising(monkeypatch, caplog, value, expec
     [("qwen_mm_plugins_blender.loader", "BLENDER_PORT"), ("qwen_mm_plugins_freecad.loader", "FREECAD_RPC_PORT")],
 )
 def test_blank_port_in_config_does_not_abort_startup(tmp_path, monkeypatch, loader_mod, port_var):
-    """A port the loader cannot parse must fall back, not kill the server before the handshake.
-
-    `--set PORT=` writes the empty line (see shared.env.set_config, which filters None but not ""),
-    and both loaders read the port inside on_start() -> probe(), which runs once the transport is
-    open and before MCP initialization.
-    """
+    """Blank config-file ports must not abort the MCP startup hook."""
     import importlib
 
     config = tmp_path / "config"
@@ -112,8 +107,8 @@ def test_blank_port_in_config_does_not_abort_startup(tmp_path, monkeypatch, load
     monkeypatch.setattr(env_config, "_config_cache", None)
 
     loader = importlib.import_module(loader_mod)
-    loader.probe()  # used to raise ValueError out of on_start()
-    assert env_config.get_env(port_var) == ""  # the blank value really is what the file holds
+    loader.probe()
+    assert env_config.get_env(port_var) == ""
 
 
 def test_get_env_can_refresh_config_changed_by_another_process(tmp_path, monkeypatch):

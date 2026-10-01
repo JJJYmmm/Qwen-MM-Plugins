@@ -48,12 +48,9 @@ def get_bool_env(name: str, default: bool = False) -> bool:
 
 
 def get_int_env(name: str, default: int) -> int:
-    """Parse an integer config var at call time, returning ``default`` when unset, blank, or invalid.
+    """Read a plain integer, falling back for unset, blank, or invalid values.
 
-    Same out-of-box rule as ``_int_env`` for the QWEN_MM_* knobs, for the plain integers (ports,
-    TTLs) a user hand-writes into the config file: a value the loader cannot parse must not raise
-    out of a path that runs before the MCP handshake. Blank counts as unset because a trailing
-    ``KEY=`` line is what `--set KEY=` writes, and it otherwise shadows the documented default.
+    Unlike ``_int_env``, this does not accept byte-size units.
     """
     raw = get_env(name)
     if raw is None or not raw.strip():
