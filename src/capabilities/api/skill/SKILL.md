@@ -53,6 +53,8 @@ Check the `qwen-mm-plugins-api` tools in your tool list for full schemas and par
 For video, use `videos` with a suitable model such as `qwen/qwen3.8-max-0902`. Local sampled frames
 are sent as ordered images; direct video URLs require video support from the model and provider.
 
+**Cheaper Inference**: configure `CHEAPER_INFERENCE_API_KEY`, then pass `base_url="https://api.cheaperinference.com/v1"` and a Cheaper Inference `model` ID, such as `gpt-5.4-mini`. The server selects that key automatically; an explicit `api_key` overrides it.
+
 **Grounding**: returns normalized boxes (0–1000). Set `return_img=true` to get the annotated image back, or draw them yourself with core's `draw_bbox`.
 
 **ASR** (`transcribe_audio`): accepts audio or video, auto-chunks long files. Formats: `srt` (default), `text`, `json`. Uses DashScope with `DASHSCOPE_API_KEY`; configured `ASR_SERVER_URLS` provide a self-hosted fallback when the key is absent or DashScope fails. Needs `ffmpeg` for audio extraction and chunking.

@@ -141,6 +141,10 @@ def test_model_resolvers_use_explicit_env_then_builtin(monkeypatch):
         ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", None, "EMPTY"),
         ("https://openrouter.ai/api/v1", None, "explicit", "explicit"),
         ("https://openrouter.ai.example/api/v1", None, None, "EMPTY"),
+        ("https://api.cheaperinference.com/v1", None, None, "cheaperinference"),
+        ("https://api.cheaperinference.com/v1", "CHEAPER_INFERENCE_API_KEY", None, "EMPTY"),
+        ("https://api.cheaperinference.com/v1", None, "explicit", "explicit"),
+        ("https://api.cheaperinference.com.example/v1", None, None, "EMPTY"),
         ("http://localhost:8000/v1", None, None, "EMPTY"),
         ("http://localhost:8000/v1", None, "custom", "custom"),
     ],
@@ -150,6 +154,7 @@ def test_endpoint_selects_key_by_host(monkeypatch, base_url, missing_key, explic
         "DASHSCOPE_API_KEY": "dashscope",
         "ORCAROUTER_API_KEY": "orca",
         "OPENROUTER_API_KEY": "openrouter",
+        "CHEAPER_INFERENCE_API_KEY": "cheaperinference",
     }
     if missing_key:
         del values[missing_key]
