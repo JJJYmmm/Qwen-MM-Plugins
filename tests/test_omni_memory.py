@@ -366,7 +366,7 @@ def _storage_root_for(monkeypatch, video, namespace, config_file):
 
     with _build_side_path():
         build = _load_build()
-        monkeypatch.setattr(build.config, "_CONFIG", None)  # and so does the build's own env_config
+        monkeypatch.setattr(build.config, "_config_cache", None)  # and so does the build's own env_config
         monkeypatch.setattr(build, "slice_video", _stop)
         with pytest.raises(_StopAfterLayout):
             build.build_one(

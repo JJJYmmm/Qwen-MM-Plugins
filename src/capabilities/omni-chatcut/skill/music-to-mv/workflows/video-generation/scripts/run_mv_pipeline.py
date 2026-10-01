@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import importlib
 import importlib.util
-import os
 import sys
 import types
 from pathlib import Path
@@ -47,38 +46,13 @@ def _install_portable_env_fallback() -> None:
     except ModuleNotFoundError:
         pass
 
-    def get_env(name: str, default: str | None = None) -> str | None:
-        value = os.environ.get(name)
-        if value is not None:
-            return value
-        config_override = os.environ.get("QWEN_MM_CONFIG")
-        config_dir = os.environ.get("QWEN_MM_CONFIG_DIR")
-        config_path = (
-            Path(config_override).expanduser()
-            if config_override
-            else Path(config_dir or "~/.qwen-mm-plugins").expanduser() / "config"
-        )
-        try:
-            lines = config_path.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            return default
-        for raw in lines:
-            line = raw.strip().removeprefix("export ").lstrip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, candidate = line.partition("=")
-            if key.strip() != name:
-                continue
-            candidate = candidate.strip()
-            if len(candidate) >= 2 and candidate[0] == candidate[-1] and candidate[0] in "'\"":
-                candidate = candidate[1:-1]
-            return candidate
-        return default
+    spec = importlib.util.spec_from_file_location("shared.env", _SCRIPT.with_name("env_config.py"))
+    assert spec is not None and spec.loader is not None
+    env_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(env_module)
 
     shared_module = types.ModuleType("shared")
     shared_module.__path__ = []
-    env_module = types.ModuleType("shared.env")
-    env_module.get_env = get_env
     sys.modules.setdefault("shared", shared_module)
     sys.modules["shared.env"] = env_module
 

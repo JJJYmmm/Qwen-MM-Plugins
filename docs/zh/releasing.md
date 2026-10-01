@@ -18,9 +18,86 @@ Marketplace entry 与 MCP `uvx --from` 固定到同一个插件 tag；`main` 只
 都包含完整 distribution，但各插件启动独立的 tag 环境；发布 `search` 不会更新已安装的 `core`。
 
 每个能力遵循 SemVer：兼容修复增加 patch，新增工具或兼容行为增加 minor，破坏 schema、删除工具
-或不兼容配置增加 major。共享 runtime 变化需要发布所有受影响的能力。
+或不兼容配置增加 major。共享 runtime 变化需要审阅所选能力的兼容性；未选择的能力继续使用原有发布快照，
+等显式选择后再发布。
 
-## 发布清单
+## 评论触发发布
+
+默认分支启用 Release bot 后，代码 PR 可以正常合入而不修改版本号。决定发布时，有仓库写权限的维护者
+在代码 PR 下评论：
+
+```text
+/release search=1.1.2 framework=1.1.10
+```
+
+插件可以指定完整版本或 `patch`、`minor`、`major`；多个插件用空格分隔。`framework` 和
+`mcp-framework` 都是 `distribution` 的别名，指当前 Python distribution 的版本，不是单独拆包的
+framework 版本。省略时自动增加 distribution patch。
+
+代码 PR 尚未合并时先登记，合并后再生成独立的版本 PR；已合并时立即生成。源码取当时 main 的完整快照，
+所选插件包含累计改动，不仅是触发评论所在 PR 的改动。检测到 shared、framework 或 `pyproject.toml`
+变化时，在版本 PR 中提示，由发布者决定范围；仅显式指定的插件更新版本。其他插件保留原有 ref 和 framework
+快照。想扩大尚未发布的范围时，关闭当前版本 PR，再提交包含额外插件的新指令。
+
+需要一起发布全部插件时，显式使用 `/release all-plugins=patch framework=patch`，范围是
+`plugin-versions.json` 列出的全部插件，包括 `edu-agent` 等 Skill-only 插件，不含未发布模板。
+单插件参数可以覆盖批量级别，例如 `all-plugins=patch search=minor`。只指定 framework/distribution
+时会要求补充插件选择，不会默认选择全部。未发布插件必须显式指定名称和版本，`all-plugins` 不会自动选中它们。
+
+审阅 bot 生成的版本 PR 后，在该 PR 下评论：
+
+```text
+/publish
+```
+
+bot 对准确的版本提交运行测试并构建 wheel，原子推送本批插件 tag，确认远端 tag 后，以 **merge commit**
+合并同一张版本 PR。因此 main 切换安装引用时 tag 已经存在，打 tag 的提交也会进入 main 历史。请勿在发布前
+手动合并版本 PR。普通代码 PR 仍可 squash/rebase。
+
+一次只处理一张待完成的版本 PR，重复指令复用已有 PR。tag 已存在时必须指向相同提交，绝不移动。若 tag
+已发布但合并失败，补齐审核或检查后重新评论 `/publish`，保持版本 PR 的 head 不变。如果是内容冲突，关闭
+该版本 PR，用新的版本号重新准备；保留已经发布的 tag。其他代码 PR 在此期间仍可正常合入。
+
+### 新插件的首次发布
+
+按[新增插件](how_to_add_new_capability.md)准备代码、manifest、依赖和测试，保留模板版本作为占位值，
+不修改版本索引、marketplace 或安装器的插件列表。维护者在代码 PR 下请求首发：
+
+```text
+/release new-plugin=1.0.0
+```
+
+代码合并后，bot 创建版本 PR，填写正式版本、tag 引用和目录条目。审阅后在版本 PR 下评论
+`/publish`，由 bot 先打 tag，再合并上架信息。
+
+首发必须指定完整版本，后续更新也可使用 `patch`、`minor`、`major`。`all-plugins` 只选择已发布插件；
+可以显式追加新插件，例如 `/release all-plugins=patch new-plugin=1.0.0`。`example` 模板不发布。
+
+### Tag 发布说明
+
+发布前审阅版本 PR 中的 **Tag notes preview**。每个 tag 包含版本 PR、触发发布的 PR，以及该插件
+自上个 tag 以来的改动。MCP 共享 runtime 和依赖改动单独列出，供兼容性审阅；没有关联 PR 的提交
+保留 commit 链接。
+
+首发说明包含插件的开发历史，MCP 插件另记录所用共享快照。已发布 tag 及其说明在重试时保持不变。
+
+### 仓库设置
+
+将 `.github/workflows/release-bot.yml` 及其脚本放在默认分支，在 **Settings → Actions → General**
+允许 Actions 创建 PR，并为版本 PR 开启 merge commit。流程使用内置 `GITHUB_TOKEN`，无需额外 bot
+账号或 secret。发布与合并仍受仓库规则、必需审核和状态检查约束。
+
+GitHub 可能要求维护者先在 bot 创建的版本 PR 中点击 **Approve workflows to run**，普通 PR 检查才会
+开始。完成这些检查和审核后再评论 `/publish`。见
+[GitHub token 事件规则](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)。
+发布流程还会以只读权限独立验证实际打 tag 的提交；持有写权限的任务只运行默认分支的控制器。
+
+此流程沿用各 harness 的安装接口，不向 PyPI 发布。插件整体从 tag 获取 Skill，MCP 也固定到同一个 tag。
+直接安装 main 的原始插件目录可能混用未发布 Skill 和旧 MCP；开发请使用已有 local 模式。
+
+## 原有手动发布清单
+
+以下保留现有手工操作说明。上面的评论流程替代其“先合并、后打 tag”顺序，不调用旧的打 tag 脚本。
 
 1. 在 PR 分支准备所有受影响的能力：
 

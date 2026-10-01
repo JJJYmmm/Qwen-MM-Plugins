@@ -128,6 +128,7 @@ For NIfTI header metadata, use the dedicated `nifti` plugin's `nifti_inspect` to
 `nifti_render_slices` directly for configurable viewing; inspection is not a prerequisite.
 It defaults to three interior slices on source axis 2 with a shared volume-level P1–P99 range.
 Core's basic NIfTI preview keeps its existing orthogonal-center, per-slice defaults.
+To try `nifti` before its first release, follow the [source development loop](docs/en/local_development.md#fast-source-loop).
 
 ## Requirements and configuration
 
