@@ -76,6 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 | 能力 | 用途 | Cookbook |
 |---|---|---|
 | `core` | 读取本地图片和视频帧，可视化文档、代码、数据、3D 模型，供 agent 查看。提供媒体元数据、裁图、边框标注及页面/视频帧导出。默认原生模式无需 API key。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
+| `nifti` | 查看 NIfTI 文件头信息并渲染切片，支持自定义源体素轴切片、体级强度归一化、显式窗预设及实际配置回显。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/nifti/cookbook/) |
 | `api` | 调用模型服务理解图片、视频和音频：VL 视觉问答/OCR/目标定位，Omni 转写/说话人区分/内容描述/事件分析，以及专用 ASR 和 SAM3 分割。按模型类别配置 DashScope 或兼容的自托管服务；使用 DashScope 时，超过 base64 限额的本地音视频可自动上传到模型绑定的临时 OSS。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/api/cookbook/) |
 | `search` | 面向任意模型。网页搜索和页面抽取支持 Serper、Exa、Tavily 或 Serply；反向图像搜索使用 Serper。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/search/cookbook/) |
 | `mhs` | 面向任意模型。通过 Model Hardware Standard adapter 操作真实硬件——摄像头、传感器、灯、机械臂、实验设备；主机侧强制执行安全限位，并提供紧急停止。adapter 由硬件方自己运行，不需要云端 key。 | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/mhs/cookbook/) |
@@ -117,7 +118,8 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 ```
 
 `core` 会以动态分辨率读取媒体，通常无需手动缩放。
-NIfTI（`.nii` / `.nii.gz`）请使用独立 `nifti` 插件；安装方式及调用变化见
+需要读取 NIfTI 文件头信息时，使用独立 `nifti` 插件的 `nifti_inspect` 工具；需要查看切片时，
+直接使用 `nifti_render_slices`，不必先检查文件头。安装方式及原 core 调用的调整见
 [迁移指南](docs/zh/installation.md#从-core-迁移-nifti)。
 
 ## 依赖与配置

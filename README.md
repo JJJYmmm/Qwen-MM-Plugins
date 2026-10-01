@@ -76,6 +76,7 @@ than routing them through a separate API or ad-hoc shell commands.
 | Capability | Use case | Cookbook |
 |---|---|---|
 | `core` | Reads local images and video frames, and visualizes documents, code, data, and 3D models for the agent to inspect. Includes media metadata, cropping, bounding-box annotation and page/frame export. No API key in the default native mode. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
+| `nifti` | Inspects NIfTI header metadata and renders configurable source-axis slices with volume-level intensity normalization, explicit window presets and effective-configuration reporting. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/nifti/cookbook/) |
 | `api` | Calls model services to understand images, video and audio: VL vision chat/OCR/grounding, Omni transcription/diarization/captioning/event analysis, dedicated ASR and SAM3 segmentation. Uses DashScope or compatible self-hosted services, configured per model family. With DashScope, oversized local audio and video can use model-bound temporary OSS automatically. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/api/cookbook/) |
 | `search` | For any model. Web search and page extraction with Serper, Exa, Tavily or Serply; reverse-image search uses Serper. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/search/cookbook/) |
 | `mhs` | For any model. Operates real hardware — cameras, sensors, lamps, arms, lab equipment — through Model Hardware Standard adapters, with host-side safety-limit enforcement and an emergency stop. Adapters are run by the hardware's owner; no cloud key. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/mhs/cookbook/) |
@@ -120,8 +121,9 @@ MCP tool.
 ```
 
 `core` reads media at dynamic resolution, so manual resizing is normally unnecessary.
-For NIfTI (`.nii` / `.nii.gz`), use the dedicated `nifti` plugin. See the
-[migration guide](docs/en/installation.md#nifti-migration-from-core) for installation and updated calls.
+For NIfTI header metadata, use the dedicated `nifti` plugin's `nifti_inspect` tool. Use
+`nifti_render_slices` directly for configurable viewing; inspection is not a prerequisite.
+See the [migration guide](docs/en/installation.md#nifti-migration-from-core) for installation and updated core calls.
 
 ## Requirements and configuration
 
