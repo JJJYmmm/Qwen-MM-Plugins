@@ -366,7 +366,7 @@ def usage(import_name: str, note: str = "", *, launchable: bool = False) -> str:
         f"{launch_opt}"
         "  --check-system   report system tools (ffmpeg/blender/…) pip can't install, + config status\n"
         "  --setup          interactively write the full config to ~/.qwen-mm-plugins/config\n"
-        "  --set KEY=VALUE  non-interactively write config entries (for automation)\n"
+        "  --set KEY=VALUE  non-interactively write non-empty config entries (for automation)\n"
         "  --unset KEY …    non-interactively remove config entries\n"
     )
     if launchable:
@@ -479,6 +479,12 @@ def run_main(import_name: str) -> None:
         for a in argv:
             k, sep, v = a.partition("=")
             if sep and not k.startswith("-"):
+                if not v.strip():
+                    print(
+                        f"error: --set requires a non-empty value for {k}; use `{entry} --unset {k}` to remove it.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(2)
                 pairs[k] = v
         if not pairs:
             print(f"usage: {entry} --set KEY=VALUE [KEY=VALUE …]")

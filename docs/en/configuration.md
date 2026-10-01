@@ -21,6 +21,11 @@ All arguments are validated before writing. Values must be single-line strings; 
 are supported. The command preserves other settings, keeps permissions at `600`, and prints only
 key names, never values. Environment variables continue to take precedence.
 
+Installed MCP entry points also support `--set KEY=VALUE` and `--unset KEY`, for example
+`qwen-mm-plugins-blender --set BLENDER_PORT=9876`. `--set` rejects empty or whitespace-only values
+with exit status 2 before writing any entries. To remove an override and restore its default, use
+`qwen-mm-plugins-blender --unset BLENDER_PORT`.
+
 ## Model output mode
 
 `QWEN_MM_NATIVE_MODE=1` is the default. MCP tools return native image content blocks so a
