@@ -50,10 +50,12 @@ every manifest server key must use the unique capability name.
 
 ## Release invariants
 
-Capabilities release independently. For each capability, `plugin-versions.json`, harness
+Capabilities release independently. For each published capability, `plugin-versions.json`, harness
 manifests, marketplace and MCP package refs, and server `__version__` must agree. Release only
 explicitly selected capabilities; flag shared runtime/dependency changes for review without expanding
-the release scope. Unselected capabilities retain their published snapshots. Never move a published tag.
+the release scope. Unselected capabilities retain their published snapshots. Unpublished capabilities
+stay out of the release index, marketplace, and installer catalog until their first version PR.
+Never move a published tag.
 
 ## Verification
 

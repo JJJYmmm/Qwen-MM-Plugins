@@ -47,6 +47,9 @@ bash install.sh local
 bash install.sh local --plugin core --harness codex
 ```
 
+For an unpublished plugin, use the source loop above. To test its full installation path,
+check out the generated first version PR in a dedicated clone and run local mode there.
+
 The installer points the selected capabilities at the current checkout and adds `uvx --refresh`.
 It intentionally writes absolute local paths into tracked manifests, so use a dedicated clone and
 do not move it while installed.

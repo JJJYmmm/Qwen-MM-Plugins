@@ -42,7 +42,7 @@ framework 版本。省略时自动增加 distribution patch。
 需要一起发布全部插件时，显式使用 `/release all-plugins=patch framework=patch`，范围是
 `plugin-versions.json` 列出的全部插件，包括 `edu-agent` 等 Skill-only 插件，不含未发布模板。
 单插件参数可以覆盖批量级别，例如 `all-plugins=patch search=minor`。只指定 framework/distribution
-时会要求补充插件选择，不会默认选择全部。新增插件的首次登记仍需单独审阅。
+时会要求补充插件选择，不会默认选择全部。未发布插件必须显式指定名称和版本，`all-plugins` 不会自动选中它们。
 
 审阅 bot 生成的版本 PR 后，在该 PR 下评论：
 
@@ -58,27 +58,28 @@ bot 对准确的版本提交运行测试并构建 wheel，原子推送本批插�
 已发布但合并失败，补齐审核或检查后重新评论 `/publish`，保持版本 PR 的 head 不变。如果是内容冲突，关闭
 该版本 PR，用新的版本号重新准备；保留已经发布的 tag。其他代码 PR 在此期间仍可正常合入。
 
+### 新插件的首次发布
+
+按[新增插件](how_to_add_new_capability.md)准备代码、manifest、依赖和测试，保留模板版本作为占位值，
+不修改版本索引、marketplace 或安装器的插件列表。维护者在代码 PR 下请求首发：
+
+```text
+/release new-plugin=1.0.0
+```
+
+代码合并后，bot 创建版本 PR，填写正式版本、tag 引用和目录条目。审阅后在版本 PR 下评论
+`/publish`，由 bot 先打 tag，再合并上架信息。
+
+首发必须指定完整版本，后续更新也可使用 `patch`、`minor`、`major`。`all-plugins` 只选择已发布插件；
+可以显式追加新插件，例如 `/release all-plugins=patch new-plugin=1.0.0`。`example` 模板不发布。
+
 ### Tag 发布说明
 
-每个新发布的 annotated tag 都包含版本 PR 链接（`Release-PR`）和触发 `/release` 的代码 PR 链接
-（`Requested-From`）。后者只记录请求来源，不代表本次发布的全部改动。版本 PR 会先展示
-**Tag notes preview**，方便发布前审阅。
+发布前审阅版本 PR 中的 **Tag notes preview**。每个 tag 包含版本 PR、触发发布的 PR，以及该插件
+自上个 tag 以来的改动。MCP 共享 runtime 和依赖改动单独列出，供兼容性审阅；没有关联 PR 的提交
+保留 commit 链接。
 
-bot 从每个插件在 catalog 中记录的上一个 tag，统计到版本 PR 固定的源码提交。修改该插件目录的 PR
-列在插件改动中；MCP 插件还会单独列出共享 runtime / 依赖改动，范围是 `src/shared`、
-`src/mcp_framework.py` 和 `pyproject.toml`。共享列表供兼容性审阅，不表示其中每项都影响所有 MCP
-插件。Skill-only 插件不展示共享列表。
-
-PR 通过 GitHub 的 commit 与 PR 关联查询，支持 merge、squash 和 rebase，并在各分组内去重。
-同时修改插件和共享代码的 PR 会出现在两个分组中。提交在当前仓库没有已合并 PR 关联时，保留提交标题
-和 commit 链接；不会从提交消息中的 `#数字` 猜测 PR。仅修改生成版本号或 ref 的提交会被忽略。
-说明还包含源码 SHA、distribution 版本、上一个 tag，以及固定提交范围的比较链接；不包含无关插件
-或源码快照之后的改动。
-
-预览中的 `Release-PR: (this version PR)` 会在发布时替换成实际 PR 链接。发布时重新查询 PR 标题及
-关联关系，但源码范围保持固定。查询失败会在推送新 tag 前停止。tag 已存在时，重试保留原始说明，
-也不会补写此功能上线前的旧 tag。此功能增加 Git tag 注释，不创建 GitHub Release 页面，也不修改
-安装引用。
+首发说明包含插件的开发历史，MCP 插件另记录所用共享快照。已发布 tag 及其说明在重试时保持不变。
 
 ### 仓库设置
 

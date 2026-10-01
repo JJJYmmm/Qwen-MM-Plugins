@@ -77,10 +77,9 @@ python3 src/capabilities/example/qwen_mm_plugins_example --check-system
 ```
 
 Replace the example path with your capability's path. For full Skill and MCP installation tests,
-finish the registration below, then use `bash install.sh local` in a dedicated clone. Restore
-tracked manifests with `bash install.sh local --restore` before committing. See
-[Local development](local_development.md). Normal marketplace installs resolve release tags, not
-your uncommitted work or the Hub's preview branch.
+check out the generated first version PR in a dedicated clone and run `bash install.sh local`.
+Restore manifests with `bash install.sh local --restore` before committing. See
+[Local development](local_development.md).
 
 ## What to change
 
@@ -112,15 +111,14 @@ its Python package, and complete steps 1–4. Skill-only plugins skip these Pyth
    ```
    Include the new server extra in the `all` profile. If it ships non-Python resources, add them
    to `[tool.setuptools.package-data]`.
-5. Add the initial version to `plugin-versions.json` and a matching tag-pinned `git-subdir` entry to
-   the canonical `.claude-plugin/marketplace.json`, which CodeBuddy and WorkBuddy also consume. Copy
-   `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `.qoder-plugin/plugin.json` from
-   a capability of the same kind. Replace its name, version, and description everywhere; keep the
-   marketplace description and `install.sh`'s `CAP_DESC` consistent. Server plugins also carry
-   `.mcp.json`: use a unique `qwen-mm-plugins-<yourname>` server key and the matching extra,
-   entry point, and version tag. Keep the server's `__version__` aligned with the manifests.
-6. Register the capability in `install.sh`: add entries to `CAP_ITEMS`, `CAP_VERSIONS`, and
-   `CAP_DESC` in the same position. Add Skill-only capabilities to `CAP_SKILL_ONLY` too.
+5. Copy `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `.qoder-plugin/plugin.json`
+   from a capability of the same kind. Update the name and description; keep a consistent placeholder version. For MCP plugins, also update `.mcp.json`
+   with the plugin's server key, extra, and entry point; use `@main` during development and declare
+   the server's own `__version__`. The Claude manifest's nonempty, single-line description is used
+   in the marketplace and installer.
+6. Leave `plugin-versions.json`, the root marketplace, and the installer's plugin lists unchanged.
+   A maintainer requests `/release <yourname>=1.0.0` on the code PR; the bot generates the first
+   version PR after merge. Review it and comment `/publish`. See [First release](releasing.md#first-release-of-a-new-plugin).
 7. Add handler/schema tests or Skill/manifest tests as appropriate; see [Testing](testing.md).
    Update affected discovery and installer expectations. If you add configuration, register it
    in `src/shared/env.py:CONFIG_FIELDS`, align `install.sh:CONFIG_SPEC`, and regenerate the

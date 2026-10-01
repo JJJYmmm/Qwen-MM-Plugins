@@ -113,8 +113,13 @@ def next_version(current: str, requested: str) -> str:
     return requested
 
 
-def resolve(index: dict, requested: dict) -> tuple[dict, str]:
-    unknown = requested.keys() - index["plugins"].keys() - {"distribution", "all-plugins"}
+def source_plugins(repo: Path, source: str) -> set[str]:
+    paths = git(repo, "ls-tree", "-r", "--name-only", source, "--", "src/capabilities").splitlines()
+    return {p.split("/")[2] for p in paths if p.endswith("/.claude-plugin/plugin.json")} - {"example"}
+
+
+def resolve(index: dict, requested: dict, available: set[str] | None = None) -> tuple[dict, str]:
+    unknown = requested.keys() - index["plugins"].keys() - (available or set()) - {"distribution", "all-plugins"}
     if unknown:
         raise ValueError(f"Unknown plugins: {', '.join(sorted(unknown))}")
     selected = {cap: value for cap, value in requested.items() if cap not in {"distribution", "all-plugins"}}
@@ -124,7 +129,15 @@ def resolve(index: dict, requested: dict) -> tuple[dict, str]:
         raise ValueError(
             "Select plugins explicitly, e.g. search=patch, or use all-plugins=patch to release every listed plugin."
         )
-    releases = {cap: next_version(index["plugins"][cap], value) for cap, value in sorted(selected.items())}
+    releases = {}
+    for cap, value in sorted(selected.items()):
+        if cap in index["plugins"]:
+            releases[cap] = next_version(index["plugins"][cap], value)
+        else:
+            if value in {"patch", "minor", "major"}:
+                raise ValueError(f"First release of {cap} requires an explicit version, e.g. {cap}=1.0.0.")
+            semver_key(value)
+            releases[cap] = value
     distribution = next_version(index["distribution_version"], requested.get("distribution", "patch"))
     # Stable versions and numeric rc versions map unambiguously to the Python wheel version.
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:-rc\.\d+)?", distribution):
@@ -139,6 +152,7 @@ def clone_at(repo: Path, source: str, destination: Path) -> None:
 
 
 def prepare(repo: Path, releases: dict, distribution: str, url: str, *, existing: bool = False) -> None:
+    published = json.loads((repo / "plugin-versions.json").read_text())["plugins"]
     for cap, version in releases.items():
         run(
             repo,
@@ -151,6 +165,7 @@ def prepare(repo: Path, releases: dict, distribution: str, url: str, *, existing
             "--repo-url",
             url,
             *(["--allow-existing-tag"] if existing else []),
+            *(["--initial"] if cap not in published else []),
         )
     run(repo, sys.executable, "scripts/check_manifests.py")
     run(repo, "bash", "-n", "install.sh")
@@ -222,6 +237,8 @@ def release_content(path: str, content: str):
 
 
 def code_changed(repo: Path, sha: str, paths: tuple[str, ...]) -> bool:
+    if not git(repo, "show", "-s", "--format=%P", sha):
+        return True  # An initial release can include the repository's root commit.
     changes = git(repo, "diff", "--raw", "--no-abbrev", "--no-renames", f"{sha}^", sha, "--", *paths)
     for line in changes.splitlines():
         metadata, path = line.split("\t", 1)
@@ -239,13 +256,15 @@ def release_notes(api: GitHub, repo: Path, info: dict, number: int | None = None
     """Describe each plugin's frozen source range, resolving PRs through GitHub, not subjects."""
     source = info["source"]
     index = json.loads(at(repo, source, "plugin-versions.json"))
-    servers = mcp_plugins(repo, source, index)
+    servers = mcp_plugins(repo, source)
     web = f"https://github.com/{api.repository}"
     pulls = {}
     notes = {}
     for cap, version in sorted(info["plugins"].items()):
         tag = info["tag_format"].format(cap=cap, version=version)
-        previous, baseline = plugin_baseline(repo, source, cap)
+        initial = cap not in index["plugins"]
+        previous, baseline = (None, None) if initial else plugin_baseline(repo, source, cap)
+        history_range = source if initial else f"{baseline}..{source}"
         lines = [
             f"Release {tag}",
             "",
@@ -253,18 +272,16 @@ def release_notes(api: GitHub, repo: Path, info: dict, number: int | None = None
             f"Requested-From: {web}/pull/{info['requested_from']}",
             f"Source-Commit: {source}",
             f"Distribution: {info['distribution']}",
-            f"Previous-Tag: {previous} ({baseline})",
+            "Previous-Tag: none (initial release)" if initial else f"Previous-Tag: {previous} ({baseline})",
         ]
         sections = {"Plugin changes": (f"src/capabilities/{cap}",)}
-        if cap in servers:
+        if cap in servers and not initial:
             sections["Shared runtime / dependency changes"] = SHARED_PATHS
         for label, paths in sections.items():
             items = {}
             # First-parent merges describe the integrated diff, including conflict resolutions;
             # squash/rebase commits use the same path. The generated release commit is excluded.
-            history = git(
-                repo, "log", "--first-parent", "--reverse", "--format=%H%x09%s", f"{baseline}..{source}", "--", *paths
-            )
+            history = git(repo, "log", "--first-parent", "--reverse", "--format=%H%x09%s", history_range, "--", *paths)
             for line in history.splitlines():
                 sha, subject = line.split("\t", 1)
                 if not code_changed(repo, sha, paths):
@@ -282,7 +299,16 @@ def release_notes(api: GitHub, repo: Path, info: dict, number: int | None = None
                     items[sha] = f"- {sha[:7]} {' '.join(subject.split())} ({web}/commit/{sha})"
             lines += ["", f"{label}:", *(items.values() or ["- No changes."])]
         # SHA bounds also work when the previous tag exists only in the upstream of a fork.
-        lines += ["", f"Compare: {web}/compare/{baseline}...{source}"]
+        if initial:
+            if cap in servers:
+                lines += [
+                    "",
+                    "Shared runtime / dependency changes:",
+                    "- Initial snapshot at Source-Commit; no previous release to compare.",
+                ]
+            lines += ["", f"Source-Tree: {web}/tree/{source}/src/capabilities/{cap}"]
+        else:
+            lines += ["", f"Compare: {web}/compare/{baseline}...{source}"]
         notes[tag] = "\n".join(lines)
     return notes
 
@@ -293,14 +319,14 @@ def notes_preview(notes: dict[str, str]) -> str:
     return f"\n### Tag notes preview\n\n{fence}text\n{text}\n{fence}\n"
 
 
-def mcp_plugins(repo: Path, source: str, index: dict) -> set[str]:
+def mcp_plugins(repo: Path, source: str) -> set[str]:
     paths = git(repo, "ls-tree", "-r", "--name-only", source, "--", "src/capabilities").splitlines()
-    return {path.split("/")[2] for path in paths if path.endswith("/.mcp.json")} & index["plugins"].keys()
+    return {path.split("/")[2] for path in paths if path.endswith("/.mcp.json")}
 
 
 def shared_notice(repo: Path, source: str, releases: dict) -> str:
     index = json.loads(at(repo, source, "plugin-versions.json"))
-    servers = mcp_plugins(repo, source, index)
+    servers = mcp_plugins(repo, source) & index["plugins"].keys()
     selected = servers & releases.keys()
     if not selected or not shared_changed(repo, source, selected):
         return ""
@@ -327,12 +353,14 @@ def candidate_info(repo: Path, head: str, base: str, url: str) -> dict:
     git(repo, "merge-base", "--is-ancestor", source, base)
     before = json.loads(at(repo, source, "plugin-versions.json"))
     after = json.loads(at(repo, head, "plugin-versions.json"))
-    if before["plugins"].keys() != after["plugins"].keys():
-        raise ValueError("This release workflow handles existing plugins; plugin onboarding requires its own review.")
-    releases = {cap: value for cap, value in after["plugins"].items() if value != before["plugins"][cap]}
+    if before["plugins"].keys() - after["plugins"].keys():
+        raise ValueError("Release PR cannot remove published plugins.")
+    releases = {cap: value for cap, value in after["plugins"].items() if value != before["plugins"].get(cap)}
     if not releases:
         raise ValueError("Release PR has no plugin version changes.")
-    releases, distribution = resolve(before, {**releases, "distribution": after["distribution_version"]})
+    releases, distribution = resolve(
+        before, {**releases, "distribution": after["distribution_version"]}, source_plugins(repo, source)
+    )
     # Re-render only metadata from an already-merged source. Reject added code, workflows, or
     # launcher changes before running any release-candidate tests with a privileged trigger.
     with tempfile.TemporaryDirectory(prefix="qmp-verify-release-") as temporary:
@@ -398,7 +426,7 @@ def make_release(api: GitHub, repo: Path, number: int, comment: dict, requested:
         else:
             index = json.loads(at(repo, source, "plugin-versions.json"))
             clone_at(repo, source, checkout)
-            releases, distribution = resolve(index, requested)
+            releases, distribution = resolve(index, requested, source_plugins(repo, source))
             prepare(checkout, releases, distribution, url)
             head = commit(
                 checkout,
@@ -421,7 +449,7 @@ def make_release(api: GitHub, repo: Path, number: int, comment: dict, requested:
             f"Prepare released versions for source PR #{number}. Source commit: `{info['source']}`.\n\n"
             f"{versions}\n\nPython distribution / framework: `{info['distribution']}`.\n\n"
             f"{notice}"
-            "This PR changes generated version/ref metadata only. Review this diff, then comment `/publish` to run release checks, publish immutable tags, and merge this PR with a merge commit. "
+            "This PR changes generated version/ref metadata and first-release catalog entries only. Review this diff, then comment `/publish` to run release checks, publish immutable tags, and merge this PR with a merge commit. "
             "Do not merge this PR before its tags exist. Only explicitly selected plugins are released.\n"
             f"{preview}"
         )

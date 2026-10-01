@@ -133,7 +133,8 @@ def release_repo(tmp_path):
     archive = tmp_path / "source.tar"
     subprocess.run(["git", "archive", "HEAD", "-o", str(archive)], cwd=ROOT, check=True)
     subprocess.run(["tar", "-xf", str(archive), "-C", str(repo)], check=True)
-    shutil.copyfile(ROOT / "scripts/prepare_plugin_release.py", repo / "scripts/prepare_plugin_release.py")
+    for script in ["prepare_plugin_release.py", "check_manifests.py"]:
+        shutil.copyfile(ROOT / "scripts" / script, repo / "scripts" / script)
     bot.git(repo, "init", "--initial-branch=main")
     bot.git(repo, "config", "user.name", "Release Test")
     bot.git(repo, "config", "user.email", "release@example.test")

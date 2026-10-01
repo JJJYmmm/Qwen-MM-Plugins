@@ -17,7 +17,7 @@ python -m pip install -e '.[core]'
 
 See [local development](docs/en/local_development.md) for source and harness
 debugging, and [Add a new plugin](docs/en/how_to_add_new_capability.md) for
-implementation, installer registration, and the Hub contribution steps.
+implementation, first release, and the Hub contribution steps.
 
 ## Making changes
 
@@ -62,4 +62,10 @@ Report security issues according to [SECURITY.md](SECURITY.md), not through a
 public issue. Contributions are licensed under the repository's Apache-2.0
 license.
 
-Maintainers: follow [Plugin releases](docs/en/releasing.md) after a release PR merges.
+Code PRs do not need version bumps. For a new plugin, include its implementation,
+manifests, dependencies, tests, and documentation. Leave `plugin-versions.json`,
+the root marketplace, and the installer's plugin lists to the generated version PR.
+
+Maintainers: comment `/release new-plugin=1.0.0` on the code PR for a first release.
+Review the generated version PR, then comment `/publish` there. See
+[Plugin releases](docs/en/releasing.md) for updates and release options.

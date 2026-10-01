@@ -48,7 +48,8 @@ Use `/release all-plugins=patch framework=patch` to explicitly release every plu
 `plugin-versions.json`, including Skill-only plugins such as `edu-agent`; unpublished templates are
 excluded. Individual arguments override the batch level, e.g. `all-plugins=patch search=minor`.
 Specifying only `framework`/`distribution` requires adding a plugin selection;
-it never implicitly selects all plugins. First-time plugin onboarding is outside this flow.
+it never implicitly selects all plugins. Unpublished plugins require an explicit name and version;
+`all-plugins` does not select them.
 
 Review the generated version PR, then comment:
 
@@ -67,30 +68,32 @@ merge failed, resolve required checks/reviews and retry `/publish` without chang
 head. A content conflict requires closing it and preparing a new release with fresh version numbers;
 retain the already-published tags. Other source PRs can continue merging during review.
 
+### First release of a new plugin
+
+Prepare the code, manifests, dependencies, and tests following [Add a new plugin](how_to_add_new_capability.md).
+Keep template versions as placeholders; leave the published index, marketplace, and installer catalog unchanged.
+A maintainer requests the first release on the code PR:
+
+```text
+/release new-plugin=1.0.0
+```
+
+After the code merges, the bot creates a version PR with the release versions, tag refs, and catalog
+entries. Review it, then comment `/publish` to create the tag and merge the registration.
+
+First releases require an exact version; subsequent releases also accept `patch`, `minor`, or `major`.
+`all-plugins` selects published plugins only. Add an explicit selection to include a new plugin,
+for example `/release all-plugins=patch new-plugin=1.0.0`. The `example` template is not published.
+
 ### Tag notes
 
-Each newly published annotated tag links to the version PR (`Release-PR`) and the code PR that
-received `/release` (`Requested-From`). The latter records the request's origin; it is not the
-complete change list. The version PR includes a **Tag notes preview** before publication.
+Review **Tag notes preview** in the version PR before publishing. Each tag links to the version PR,
+the PR that requested the release, and the included changes since that plugin's previous tag.
+MCP shared runtime and dependency changes are listed separately for compatibility review;
+commits without an associated PR keep their commit links.
 
-The bot collects changes from each plugin's previous catalog tag to the fixed source commit used
-by the version PR. It lists PRs that changed that plugin's directory and, for MCP plugins, lists
-shared runtime / dependency changes separately (`src/shared`, `src/mcp_framework.py`, and
-`pyproject.toml`). These shared entries are candidates for compatibility review, not a claim that
-every change affects every MCP plugin. Skill-only plugins omit the shared section.
-
-PRs are resolved through GitHub's commit-to-PR association, including merge, squash, and rebase
-history, and deduplicated within each section. A PR touching both scopes appears in both sections.
-Commits without a merged PR association in this repository retain their subject and commit link;
-PR numbers are never inferred from commit messages. Generated version/ref-only changes are omitted.
-The notes also record the source SHA, distribution version, previous tag, and a comparison link
-with fixed commit bounds. Unrelated plugins and commits after the source snapshot are excluded.
-
-In the preview, `Release-PR: (this version PR)` becomes the actual PR URL at publication. PR titles
-and associations are looked up again at publication; the source range stays fixed. Lookup failures
-stop publication before any new tag is pushed. Retrying after tags exist preserves their original
-annotations, including tags published before this feature. This adds Git tag annotations; it does
-not create GitHub Release pages or change installation refs.
+First-release notes cover the plugin's development history and, for MCP plugins, its shared snapshot.
+Published tags and their notes remain unchanged on retries.
 
 ### Repository setup
 
