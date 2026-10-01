@@ -253,6 +253,21 @@ def test_parse_pages_without_a_selection_returns_the_default_window():
     assert parse_pages("  ", 50) == list(range(DEFAULT_MAX_PAGES))
 
 
+@pytest.mark.parametrize("suffix", [".nii", ".nii.gz", ".NII", ".NII.GZ"])
+def test_core_rejects_nifti_as_an_unsupported_format(tmp_path, suffix):
+    from qwen_mm_plugins_core.renderers import SUPPORTED_EXTENSIONS, get_renderer
+
+    path = tmp_path / f"volume{suffix}"
+    path.write_bytes(b"not read by core")
+
+    content = handle({"file_path": str(path)})
+
+    assert len(content) == 1 and content[0]["type"] == "text"
+    assert "unsupported file type" in content[0]["text"]
+    assert suffix.lower() not in SUPPORTED_EXTENSIONS
+    assert get_renderer(suffix) is None
+
+
 def _has_dep(key: str) -> bool:
     checks = {
         "pypdfium2": lambda: __import__("pypdfium2"),
@@ -263,7 +278,6 @@ def _has_dep(key: str) -> bool:
         "openpyxl": lambda: __import__("openpyxl"),
         "nbformat": lambda: __import__("nbformat"),
         "geopandas": lambda: __import__("geopandas"),
-        "nibabel": lambda: __import__("nibabel"),
         "trimesh": lambda: __import__("trimesh"),
         "cascadio": lambda: __import__("cascadio"),  # trimesh STEP/STP loader
         "playwright": lambda: __import__("playwright"),
@@ -368,7 +382,6 @@ TESTS = [
     ("sample-model.glb", "image", 3, "GLB (blender)", ["blender"]),
     ("GothicRoseWindow.step", "image", 3, "STEP (trimesh)", ["trimesh", "cascadio"]),
     ("sample.geojson", "image", 1, "GeoJSON (geopandas)", ["geopandas"]),
-    ("avg152T1_LR_nifti.nii.gz", "image", 3, "NIfTI (nibabel)", ["nibabel"]),
     ("sample.ipynb", "text", 3, "Jupyter notebook", ["nbformat"]),
     ("charts.ipynb", "image", 3, "Jupyter notebook (charts)", ["nbformat"]),
     ("sample.tex", "image", 1, "LaTeX (pdflatex)", ["pdflatex", "pypdfium2"]),

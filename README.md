@@ -75,7 +75,7 @@ than routing them through a separate API or ad-hoc shell commands.
 
 | Capability | Use case | Cookbook |
 |---|---|---|
-| `core` | Reads local images and video frames, and visualizes documents, code, data, 3D models and NIfTI volumes for the agent to inspect. Includes media metadata, cropping, bounding-box annotation and page/frame export. No API key in the default native mode. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
+| `core` | Reads local images and video frames, and visualizes documents, code, data, and 3D models for the agent to inspect. Includes media metadata, cropping, bounding-box annotation and page/frame export. No API key in the default native mode. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/core/cookbook/) |
 | `api` | Calls model services to understand images, video and audio: VL vision chat/OCR/grounding, Omni transcription/diarization/captioning/event analysis, dedicated ASR and SAM3 segmentation. Uses DashScope or compatible self-hosted services, configured per model family. With DashScope, oversized local audio and video can use model-bound temporary OSS automatically. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/api/cookbook/) |
 | `search` | For any model. Web search and page extraction with Serper, Exa, Tavily or Serply; reverse-image search uses Serper. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/search/cookbook/) |
 | `mhs` | For any model. Operates real hardware — cameras, sensors, lamps, arms, lab equipment — through Model Hardware Standard adapters, with host-side safety-limit enforcement and an emergency stop. Adapters are run by the hardware's owner; no cloud key. | [Cookbook](https://qwenlm.github.io/qwen-mm-plugins-hub/plugins/mhs/cookbook/) |
@@ -117,11 +117,11 @@ MCP tool.
 @place.jpg           Identify where this photo was taken and verify it on the web.
 @lecture-2h.mp4      List the main points with timestamps.
 @tutorial.mp4        Create an illustrated PDF note at /absolute/path/tutorial-notes.pdf.
-@brain.nii.gz        Inspect metadata and show orthogonal center slices.
 ```
 
 `core` reads media at dynamic resolution, so manual resizing is normally unnecessary.
-NIfTI files stay local and are opened read-only; this visualization is not for clinical diagnosis.
+For NIfTI (`.nii` / `.nii.gz`), use the dedicated `nifti` plugin. See the
+[migration guide](docs/en/installation.md#nifti-migration-from-core) for installation and updated calls.
 
 ## Requirements and configuration
 
