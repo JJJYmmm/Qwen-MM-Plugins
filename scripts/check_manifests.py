@@ -285,7 +285,9 @@ def main() -> int:
     for cap_dir in caps:
         check_capability(cap_dir, versions.get(cap_dir.name), tag_format, scripts, package_dir)
         if cap_dir.name not in listed:
-            notes.append(f"note: {rel(cap_dir)} is not listed in {rel(MARKETPLACE)} (intentional for the template)")
+            notes.append(
+                f"note: {rel(cap_dir)} is not listed in {rel(MARKETPLACE)} (unpublished; excluded from stable installs)"
+            )
 
     if set(versions) != listed:
         fail(

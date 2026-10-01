@@ -197,6 +197,24 @@ def test_asr_format_srt_and_text():
     assert asr._format_text(chunks) == "hello\nworld\nagain"
 
 
+@pytest.mark.parametrize("ffmpeg_timeout,extract_timeout", [(42, 600), (900, 900)])
+def test_asr_media_calls_honour_ffmpeg_timeout(monkeypatch, ffmpeg_timeout, extract_timeout):
+    runs = []
+
+    def fake_run(cmd, *, timeout, **kwargs):
+        runs.append((cmd[0], timeout))
+        return types.SimpleNamespace(returncode=0, stdout='{"format": {"duration": "12.5"}}', stderr=b"")
+
+    monkeypatch.setattr(asr, "subprocess", types.SimpleNamespace(run=fake_run))
+    monkeypatch.setattr(asr, "find_tool", lambda name: name)
+    monkeypatch.setattr(asr, "FFMPEG_TIMEOUT", ffmpeg_timeout)
+
+    assert asr._get_duration("a.wav") == 12.5
+    asr._extract_audio("a.wav", "b.wav")
+
+    assert runs == [("ffprobe", ffmpeg_timeout), ("ffmpeg", extract_timeout)]
+
+
 # ══════════════════════════════════════════════════════════════════════
 # Tier 2 — handler guards (early returns, no network)
 # ══════════════════════════════════════════════════════════════════════
