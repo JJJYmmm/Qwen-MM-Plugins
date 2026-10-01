@@ -58,6 +58,28 @@ bot 对准确的版本提交运行测试并构建 wheel，原子推送本批插�
 已发布但合并失败，补齐审核或检查后重新评论 `/publish`，保持版本 PR 的 head 不变。如果是内容冲突，关闭
 该版本 PR，用新的版本号重新准备；保留已经发布的 tag。其他代码 PR 在此期间仍可正常合入。
 
+### Tag 发布说明
+
+每个新发布的 annotated tag 都包含版本 PR 链接（`Release-PR`）和触发 `/release` 的代码 PR 链接
+（`Requested-From`）。后者只记录请求来源，不代表本次发布的全部改动。版本 PR 会先展示
+**Tag notes preview**，方便发布前审阅。
+
+bot 从每个插件在 catalog 中记录的上一个 tag，统计到版本 PR 固定的源码提交。修改该插件目录的 PR
+列在插件改动中；MCP 插件还会单独列出共享 runtime / 依赖改动，范围是 `src/shared`、
+`src/mcp_framework.py` 和 `pyproject.toml`。共享列表供兼容性审阅，不表示其中每项都影响所有 MCP
+插件。Skill-only 插件不展示共享列表。
+
+PR 通过 GitHub 的 commit 与 PR 关联查询，支持 merge、squash 和 rebase，并在各分组内去重。
+同时修改插件和共享代码的 PR 会出现在两个分组中。提交在当前仓库没有已合并 PR 关联时，保留提交标题
+和 commit 链接；不会从提交消息中的 `#数字` 猜测 PR。仅修改生成版本号或 ref 的提交会被忽略。
+说明还包含源码 SHA、distribution 版本、上一个 tag，以及固定提交范围的比较链接；不包含无关插件
+或源码快照之后的改动。
+
+预览中的 `Release-PR: (this version PR)` 会在发布时替换成实际 PR 链接。发布时重新查询 PR 标题及
+关联关系，但源码范围保持固定。查询失败会在推送新 tag 前停止。tag 已存在时，重试保留原始说明，
+也不会补写此功能上线前的旧 tag。此功能增加 Git tag 注释，不创建 GitHub Release 页面，也不修改
+安装引用。
+
 ### 仓库设置
 
 将 `.github/workflows/release-bot.yml` 及其脚本放在默认分支，在 **Settings → Actions → General**

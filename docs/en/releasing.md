@@ -67,6 +67,31 @@ merge failed, resolve required checks/reviews and retry `/publish` without chang
 head. A content conflict requires closing it and preparing a new release with fresh version numbers;
 retain the already-published tags. Other source PRs can continue merging during review.
 
+### Tag notes
+
+Each newly published annotated tag links to the version PR (`Release-PR`) and the code PR that
+received `/release` (`Requested-From`). The latter records the request's origin; it is not the
+complete change list. The version PR includes a **Tag notes preview** before publication.
+
+The bot collects changes from each plugin's previous catalog tag to the fixed source commit used
+by the version PR. It lists PRs that changed that plugin's directory and, for MCP plugins, lists
+shared runtime / dependency changes separately (`src/shared`, `src/mcp_framework.py`, and
+`pyproject.toml`). These shared entries are candidates for compatibility review, not a claim that
+every change affects every MCP plugin. Skill-only plugins omit the shared section.
+
+PRs are resolved through GitHub's commit-to-PR association, including merge, squash, and rebase
+history, and deduplicated within each section. A PR touching both scopes appears in both sections.
+Commits without a merged PR association in this repository retain their subject and commit link;
+PR numbers are never inferred from commit messages. Generated version/ref-only changes are omitted.
+The notes also record the source SHA, distribution version, previous tag, and a comparison link
+with fixed commit bounds. Unrelated plugins and commits after the source snapshot are excluded.
+
+In the preview, `Release-PR: (this version PR)` becomes the actual PR URL at publication. PR titles
+and associations are looked up again at publication; the source range stays fixed. Lookup failures
+stop publication before any new tag is pushed. Retrying after tags exist preserves their original
+annotations, including tags published before this feature. This adds Git tag annotations; it does
+not create GitHub Release pages or change installation refs.
+
 ### Repository setup
 
 Keep `.github/workflows/release-bot.yml` and its scripts on the default branch. Allow Actions to
