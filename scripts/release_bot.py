@@ -18,9 +18,9 @@ from pathlib import Path
 from urllib.parse import quote
 
 if __package__:
-    from .tag_plugin_release import semver_key
+    from .tag_plugin_release import SHARED_PATHS, semver_key
 else:
-    from tag_plugin_release import semver_key
+    from tag_plugin_release import SHARED_PATHS, semver_key
 
 ROOT = Path(__file__).resolve().parent.parent
 RELEASE_BRANCH_PREFIX = "release/pr-"
@@ -178,26 +178,119 @@ def commit(repo: Path, source: str, message: str) -> str:
     return git(repo, "rev-parse", "HEAD")
 
 
-def shared_changed(repo: Path, source: str, index: dict, servers: set[str]) -> bool:
-    entries = {
-        p["name"].removeprefix("qwen-mm-plugins-"): p
-        for p in json.loads(at(repo, source, ".claude-plugin/marketplace.json"))["plugins"]
-    }
+def plugin_baseline(repo: Path, source: str, cap: str) -> tuple[str, str]:
+    entries = json.loads(at(repo, source, ".claude-plugin/marketplace.json"))["plugins"]
+    entry = next(p for p in entries if p["name"] == f"qwen-mm-plugins-{cap}")["source"]
+    # A fork may still install its previous release from the upstream catalog URL.
+    tag = entry["ref"]
+    git(repo, "check-ref-format", f"refs/tags/{tag}")
+    git(repo, "fetch", "--quiet", "--no-tags", entry["url"], f"refs/tags/{tag}")
+    baseline = git(repo, "rev-parse", "FETCH_HEAD^{commit}")
+    git(repo, "merge-base", "--is-ancestor", baseline, source)
+    return tag, baseline
+
+
+def shared_changed(repo: Path, source: str, servers: set[str]) -> bool:
     for cap in sorted(servers):
-        tag = index["tag_format"].format(cap=cap, version=index["plugins"][cap])
-        # Read the catalog's actual repository URL, including upstream stable refs in a fork.
-        url = entries[cap]["source"]["url"]
-        git(repo, "fetch", "--quiet", "--no-tags", url, f"refs/tags/{tag}")
-        baseline = git(repo, "rev-parse", "FETCH_HEAD^{commit}")
-        paths = git(
-            repo, "diff", "--name-only", baseline, source, "--", "src/shared", "src/mcp_framework.py", "pyproject.toml"
-        ).splitlines()
+        _, baseline = plugin_baseline(repo, source, cap)
+        paths = git(repo, "diff", "--name-only", baseline, source, "--", *SHARED_PATHS).splitlines()
         for path in paths:
             if path != "src/mcp_framework.py":
                 return True
             if VERSION.sub("<version>", at(repo, baseline, path)) != VERSION.sub("<version>", at(repo, source, path)):
                 return True
     return False
+
+
+def release_content(path: str, content: str):
+    """Ignore generated stamps, while retaining launch arguments and other manifest edits."""
+    if path == "src/mcp_framework.py" or path.endswith("/__init__.py"):
+        return VERSION.sub("<version>", content)
+    data = json.loads(content)
+    data.pop("version", None)
+    servers = data.get("mcpServers", {})
+    for server in servers.values() if isinstance(servers, dict) else []:
+        args = server.get("args", [])
+        if "--from" in args and args.index("--from") + 1 < len(args):
+            i = args.index("--from") + 1
+            args[i] = re.sub(
+                r"(qwen-mm-plugins\[[a-z0-9-]+\] @ )git\+[^\s]+@qwen-mm-plugins-[a-z0-9-]+-v[^\s]+",
+                r"\1<release-ref>",
+                args[i],
+            )
+    return data
+
+
+def code_changed(repo: Path, sha: str, paths: tuple[str, ...]) -> bool:
+    changes = git(repo, "diff", "--raw", "--no-abbrev", "--no-renames", f"{sha}^", sha, "--", *paths)
+    for line in changes.splitlines():
+        metadata, path = line.split("\t", 1)
+        old_mode, new_mode, before, after, _ = metadata[1:].split()
+        # Additions, deletions, modes, and ordinary source/binary files are real changes.
+        stamps = path == "src/mcp_framework.py" or path.endswith(("/__init__.py", "/plugin.json", "/.mcp.json"))
+        if old_mode != new_mode or not stamps:
+            return True
+        if release_content(path, git(repo, "show", before)) != release_content(path, git(repo, "show", after)):
+            return True
+    return False
+
+
+def release_notes(api: GitHub, repo: Path, info: dict, number: int | None = None) -> dict[str, str]:
+    """Describe each plugin's frozen source range, resolving PRs through GitHub, not subjects."""
+    source = info["source"]
+    index = json.loads(at(repo, source, "plugin-versions.json"))
+    servers = mcp_plugins(repo, source, index)
+    web = f"https://github.com/{api.repository}"
+    pulls = {}
+    notes = {}
+    for cap, version in sorted(info["plugins"].items()):
+        tag = info["tag_format"].format(cap=cap, version=version)
+        previous, baseline = plugin_baseline(repo, source, cap)
+        lines = [
+            f"Release {tag}",
+            "",
+            f"Release-PR: {web}/pull/{number}" if number else "Release-PR: (this version PR)",
+            f"Requested-From: {web}/pull/{info['requested_from']}",
+            f"Source-Commit: {source}",
+            f"Distribution: {info['distribution']}",
+            f"Previous-Tag: {previous} ({baseline})",
+        ]
+        sections = {"Plugin changes": (f"src/capabilities/{cap}",)}
+        if cap in servers:
+            sections["Shared runtime / dependency changes"] = SHARED_PATHS
+        for label, paths in sections.items():
+            items = {}
+            # First-parent merges describe the integrated diff, including conflict resolutions;
+            # squash/rebase commits use the same path. The generated release commit is excluded.
+            history = git(
+                repo, "log", "--first-parent", "--reverse", "--format=%H%x09%s", f"{baseline}..{source}", "--", *paths
+            )
+            for line in history.splitlines():
+                sha, subject = line.split("\t", 1)
+                if not code_changed(repo, sha, paths):
+                    continue
+                if sha not in pulls:
+                    pulls[sha] = [
+                        pr
+                        for pr in api.pages(f"commits/{sha}/pulls")
+                        if pr.get("merged_at") and pr["base"]["repo"]["full_name"].lower() == api.repository.lower()
+                    ]
+                for pr in pulls[sha]:
+                    link = f"{web}/pull/{pr['number']}"
+                    items[link] = f"- #{pr['number']} {' '.join(pr['title'].split())} ({link})"
+                if not pulls[sha]:
+                    items[sha] = f"- {sha[:7]} {' '.join(subject.split())} ({web}/commit/{sha})"
+            lines += ["", f"{label}:", *(items.values() or ["- No changes."])]
+        # SHA bounds also work when the previous tag exists only in the upstream of a fork.
+        lines += ["", f"Compare: {web}/compare/{baseline}...{source}"]
+        notes[tag] = "\n".join(lines)
+    return notes
+
+
+def notes_preview(notes: dict[str, str]) -> str:
+    text = "\n\n".join(notes.values())
+    fence = "`" * max(3, 1 + max((len(m[0]) for m in re.finditer(r"`+", text)), default=0))
+    return f"\n### Tag notes preview\n\n{fence}text\n{text}\n{fence}\n"
 
 
 def mcp_plugins(repo: Path, source: str, index: dict) -> set[str]:
@@ -209,7 +302,7 @@ def shared_notice(repo: Path, source: str, releases: dict) -> str:
     index = json.loads(at(repo, source, "plugin-versions.json"))
     servers = mcp_plugins(repo, source, index)
     selected = servers & releases.keys()
-    if not selected or not shared_changed(repo, source, index, selected):
+    if not selected or not shared_changed(repo, source, selected):
         return ""
     notice = (
         "Shared runtime or dependency changes are included relative to at least one selected plugin's published tag. "
@@ -312,7 +405,14 @@ def make_release(api: GitHub, repo: Path, number: int, comment: dict, requested:
                 source,
                 f"release: prepare versions from #{number}\n\nSource-Commit: {source}\nSource-Comment: {comment['id']}",
             )
-            info = {"source": source, "plugins": releases, "distribution": distribution}
+            info = {
+                "source": source,
+                "plugins": releases,
+                "distribution": distribution,
+                "tag_format": index["tag_format"],
+            }
+        info["requested_from"] = number
+        preview = notes_preview(release_notes(api, repo, info))
         notice = shared_notice(repo, info["source"], info["plugins"])
         if not remote_branch:
             git(checkout, "push", url, f"{head}:refs/heads/{branch}")
@@ -323,6 +423,7 @@ def make_release(api: GitHub, repo: Path, number: int, comment: dict, requested:
             f"{notice}"
             "This PR changes generated version/ref metadata only. Review this diff, then comment `/publish` to run release checks, publish immutable tags, and merge this PR with a merge commit. "
             "Do not merge this PR before its tags exist. Only explicitly selected plugins are released.\n"
+            f"{preview}"
         )
         created = api.call(
             "pulls", "POST", {"title": f"release: versions from #{number}", "head": branch, "base": base, "body": body}
@@ -348,6 +449,10 @@ def release_candidate(api: GitHub, repo: Path, number: int, expected: str | None
         raise ValueError("Version PR changed after verification; submit /publish again.")
     git(repo, "fetch", "--quiet", "--no-tags", url, head)
     info = candidate_info(repo, head, current, url)
+    branch = re.fullmatch(r"release/pr-(\d+)-request-\d+", pr["head"]["ref"])
+    if not branch:
+        raise ValueError("Version PR branch does not identify its source request.")
+    info["requested_from"] = int(branch[1])
     info["merged"] = pr["merged"]
     return info, url
 
@@ -403,7 +508,7 @@ def remote_tag_target(repo: Path, url: str, tag: str) -> str | None:
     return refs.get(f"{ref}^{{}}", refs.get(ref))
 
 
-def publish_tags(repo: Path, url: str, info: dict) -> None:
+def publish_tags(repo: Path, url: str, info: dict, notes: dict[str, str]) -> None:
     tags = [info["tag_format"].format(cap=cap, version=version) for cap, version in info["plugins"].items()]
     pending = []
     for tag in tags:
@@ -414,7 +519,7 @@ def publish_tags(repo: Path, url: str, info: dict) -> None:
                 raise ValueError(f"Published tag {tag} points elsewhere; choose a new version. Tags are never moved.")
             continue
         # An isolated clone avoids overwriting even a conflicting local tag on retry.
-        message = f"Release {tag}\n\nSource-Commit: {info['source']}\nDistribution: {info['distribution']}"
+        message = notes[tag]
         git(
             repo,
             "-c",
@@ -446,7 +551,14 @@ def publish(api: GitHub, repo: Path, number: int, comment_id: int, expected: str
     with tempfile.TemporaryDirectory(prefix="qmp-publish-") as temporary:
         checkout = Path(temporary) / "repo"
         clone_at(repo, expected, checkout)
-        publish_tags(checkout, url, info)
+        tags = [info["tag_format"].format(cap=cap, version=version) for cap, version in info["plugins"].items()]
+        # Once published, retries preserve the original annotations and need no PR lookups.
+        notes = (
+            release_notes(api, checkout, info, number)
+            if any(remote_tag_target(checkout, url, tag) is None for tag in tags)
+            else {}
+        )
+        publish_tags(checkout, url, info, notes)
     if not info["merged"]:
         # GitHub checks the expected head, required checks/reviews and merge conflicts.
         # Merge commits preserve the exact tagged commit in main's history.
