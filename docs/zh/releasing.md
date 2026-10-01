@@ -60,51 +60,26 @@ bot 对准确的版本提交运行测试并构建 wheel，原子推送本批插�
 
 ### 新插件的首次发布
 
-先合入插件代码、Skill、测试、各 harness 的 manifest，以及所需的 Python 打包配置和依赖。
-此时不加入 `plugin-versions.json`、根目录 marketplace 或安装器的插件列表。模板版本号只是占位值，
-未发布 MCP 的启动引用可以保留 `@main`。代码 PR 的具体清单见[新增插件](how_to_add_new_capability.md)。
-
-在代码 PR 下明确指定首次版本：
+按[新增插件](how_to_add_new_capability.md)准备代码、manifest、依赖和测试，保留模板版本作为占位值，
+不修改版本索引、marketplace 或安装器的插件列表。维护者在代码 PR 下请求首发：
 
 ```text
 /release new-plugin=1.0.0
 ```
 
-bot 创建独立版本 PR，统一设置版本号和 tag 引用，添加 marketplace 与版本索引条目，并在安装器中
-追加插件名称、版本、描述，以及适用的 Skill-only 分类。描述取自 Claude plugin manifest，要求是非空
-单行文本；Python 打包配置和可执行代码必须已在源码 PR 中合入。初始版本不受模板占位版本限制。
-与后续更新一样，省略 `framework` 时自动增加 distribution patch。
+代码合并后，bot 创建版本 PR，填写正式版本、tag 引用和目录条目。审阅后在版本 PR 下评论
+`/publish`，由 bot 先打 tag，再合并上架信息。
 
-审阅版本 PR 和 tag 说明后评论 `/publish`。先创建 tag，再让 main 把该插件列为可安装项目。
-代码 PR 尚未合并时，请求会等待合并。`patch`、`minor`、`major` 需要已有发布版本，因此首发必须指定
-完整版本。可以用 `all-plugins=patch new-plugin=1.0.0` 显式同时更新老插件并发布新插件；未选择的
-未发布插件和 `example` 模板不会上架。
-
-首发 tag 说明列出该插件的开发历史，MCP 插件另记录所用共享代码快照，不虚构上一个 tag 或汇总整个
-仓库历来的共享改动。已在版本索引中的插件如果缺失旧 tag，仍然报错，不会误判为首次发布。
-重试时仍保留已有 tag 及其原始说明。
+首发必须指定完整版本，后续更新也可使用 `patch`、`minor`、`major`。`all-plugins` 只选择已发布插件；
+可以显式追加新插件，例如 `/release all-plugins=patch new-plugin=1.0.0`。`example` 模板不发布。
 
 ### Tag 发布说明
 
-每个新发布的 annotated tag 都包含版本 PR 链接（`Release-PR`）和触发 `/release` 的代码 PR 链接
-（`Requested-From`）。后者只记录请求来源，不代表本次发布的全部改动。版本 PR 会先展示
-**Tag notes preview**，方便发布前审阅。
+发布前审阅版本 PR 中的 **Tag notes preview**。每个 tag 包含版本 PR、触发发布的 PR，以及该插件
+自上个 tag 以来的改动。MCP 共享 runtime 和依赖改动单独列出，供兼容性审阅；没有关联 PR 的提交
+保留 commit 链接。
 
-bot 从每个插件在 catalog 中记录的上一个 tag，统计到版本 PR 固定的源码提交。修改该插件目录的 PR
-列在插件改动中；MCP 插件还会单独列出共享 runtime / 依赖改动，范围是 `src/shared`、
-`src/mcp_framework.py` 和 `pyproject.toml`。共享列表供兼容性审阅，不表示其中每项都影响所有 MCP
-插件。Skill-only 插件不展示共享列表。
-
-PR 通过 GitHub 的 commit 与 PR 关联查询，支持 merge、squash 和 rebase，并在各分组内去重。
-同时修改插件和共享代码的 PR 会出现在两个分组中。提交在当前仓库没有已合并 PR 关联时，保留提交标题
-和 commit 链接；不会从提交消息中的 `#数字` 猜测 PR。仅修改生成版本号或 ref 的提交会被忽略。
-说明还包含源码 SHA、distribution 版本、上一个 tag，以及固定提交范围的比较链接；不包含无关插件
-或源码快照之后的改动。
-
-预览中的 `Release-PR: (this version PR)` 会在发布时替换成实际 PR 链接。发布时重新查询 PR 标题及
-关联关系，但源码范围保持固定。查询失败会在推送新 tag 前停止。tag 已存在时，重试保留原始说明，
-也不会补写此功能上线前的旧 tag。此功能增加 Git tag 注释，不创建 GitHub Release 页面，也不修改
-安装引用。
+首发说明包含插件的开发历史，MCP 插件另记录所用共享快照。已发布 tag 及其说明在重试时保持不变。
 
 ### 仓库设置
 

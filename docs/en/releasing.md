@@ -70,59 +70,30 @@ retain the already-published tags. Other source PRs can continue merging during 
 
 ### First release of a new plugin
 
-Merge the plugin's code, Skill, tests, harness manifests, and any Python packaging/dependencies
-first. Keep it out of `plugin-versions.json`, the root marketplace, and the installer's capability
-catalog until publication. Existing template versions are placeholders; an unpublished MCP launch
-spec can use `@main`. See [Add a new plugin](how_to_add_new_capability.md) for the code PR checklist.
-
-On that code PR, request an exact first version:
+Prepare the code, manifests, dependencies, and tests following [Add a new plugin](how_to_add_new_capability.md).
+Keep template versions as placeholders; leave the published index, marketplace, and installer catalog unchanged.
+A maintainer requests the first release on the code PR:
 
 ```text
 /release new-plugin=1.0.0
 ```
 
-The bot generates a separate version PR that sets all release versions/refs, adds the marketplace
-entry and release-index entry, and appends the installer name, version, description, and Skill-only
-classification when applicable. The Claude plugin manifest supplies the description (a nonempty
-single line); Python packaging and executable code must already be present in the merged source.
-The first version is independent of the template's placeholder version. As with updates, omitting
-`framework` advances the distribution patch version.
+After the code merges, the bot creates a version PR with the release versions, tag refs, and catalog
+entries. Review it, then comment `/publish` to create the tag and merge the registration.
 
-Review the version PR and its tag notes, then use `/publish`. The tag is created before main lists
-the plugin for installation. An unmerged code PR's request waits for merge, just like an update.
-`patch`, `minor`, and `major` require a published version, so the first release must use an exact
-version. `all-plugins=patch new-plugin=1.0.0` can explicitly combine updates with a first release;
-unselected unpublished plugins and the `example` template remain unlisted.
-
-First-release notes list the plugin's development history and record the shared snapshot for MCP
-plugins, without an invented previous tag or an all-time shared changelog. Missing tags for plugins
-already in the release index still fail; they are never reclassified as first releases. Existing
-annotations and tags remain immutable on retries.
+First releases require an exact version; subsequent releases also accept `patch`, `minor`, or `major`.
+`all-plugins` selects published plugins only. Add an explicit selection to include a new plugin,
+for example `/release all-plugins=patch new-plugin=1.0.0`. The `example` template is not published.
 
 ### Tag notes
 
-Each newly published annotated tag links to the version PR (`Release-PR`) and the code PR that
-received `/release` (`Requested-From`). The latter records the request's origin; it is not the
-complete change list. The version PR includes a **Tag notes preview** before publication.
+Review **Tag notes preview** in the version PR before publishing. Each tag links to the version PR,
+the PR that requested the release, and the included changes since that plugin's previous tag.
+MCP shared runtime and dependency changes are listed separately for compatibility review;
+commits without an associated PR keep their commit links.
 
-The bot collects changes from each plugin's previous catalog tag to the fixed source commit used
-by the version PR. It lists PRs that changed that plugin's directory and, for MCP plugins, lists
-shared runtime / dependency changes separately (`src/shared`, `src/mcp_framework.py`, and
-`pyproject.toml`). These shared entries are candidates for compatibility review, not a claim that
-every change affects every MCP plugin. Skill-only plugins omit the shared section.
-
-PRs are resolved through GitHub's commit-to-PR association, including merge, squash, and rebase
-history, and deduplicated within each section. A PR touching both scopes appears in both sections.
-Commits without a merged PR association in this repository retain their subject and commit link;
-PR numbers are never inferred from commit messages. Generated version/ref-only changes are omitted.
-The notes also record the source SHA, distribution version, previous tag, and a comparison link
-with fixed commit bounds. Unrelated plugins and commits after the source snapshot are excluded.
-
-In the preview, `Release-PR: (this version PR)` becomes the actual PR URL at publication. PR titles
-and associations are looked up again at publication; the source range stays fixed. Lookup failures
-stop publication before any new tag is pushed. Retrying after tags exist preserves their original
-annotations, including tags published before this feature. This adds Git tag annotations; it does
-not create GitHub Release pages or change installation refs.
+First-release notes cover the plugin's development history and, for MCP plugins, its shared snapshot.
+Published tags and their notes remain unchanged on retries.
 
 ### Repository setup
 

@@ -68,7 +68,9 @@ python3 src/capabilities/example/qwen_mm_plugins_example --version
 python3 src/capabilities/example/qwen_mm_plugins_example --check-system
 ```
 
-把示例路径换成自己的能力路径。测试完整的 Skill 与 MCP 安装时，先完成下面的注册，再在独立 clone 中运行 `bash install.sh local`；提交前用 `bash install.sh local --restore` 恢复 tracked manifest。详见[本地开发](local_development.md)。普通 marketplace 安装解析的是 release tag，不是未提交的改动，也不是 Hub 的预览分支。
+把示例路径换成自己的能力路径。测试完整的 Skill 与 MCP 安装时，在专用 clone 中检出生成的首个
+版本 PR，再运行 `bash install.sh local`；提交前用 `bash install.sh local --restore` 恢复 manifest。
+详见[本地开发](local_development.md)。
 
 ## 要改的地方
 
@@ -95,14 +97,12 @@ python3 src/capabilities/example/qwen_mm_plugins_example --check-system
    ```
    把新 server 的 extra 加到 `all` profile；需要打包非 Python 文件时，补充 `[tool.setuptools.package-data]`。
 5. 从同类能力复制 `.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`、`.qoder-plugin/plugin.json`，
-   替换名称与描述，各 manifest 保持一致的模板版本作为开发占位值。有 server 时还需 `.mcp.json`：
-   使用唯一的 `qwen-mm-plugins-<yourname>` server key、对应 extra 和入口；开发期间源码引用可用 `@main`。
-   server 自行声明 `__version__`，不要引用 framework 版本。Claude manifest 中非空的单行描述会用于公开目录。
-6. 代码 PR 不修改 `plugin-versions.json`、根目录 `.claude-plugin/marketplace.json` 或 `install.sh`
-   的插件列表，它们只登记已发布插件。代码合并后，评论 `/release <yourname>=1.0.0`，由 bot 生成首个
-   版本 PR 并注册 marketplace 和安装列表；审阅后评论 `/publish`。在尚未合并的代码 PR 下发出请求会
-   等待合并。详见[首次发布](releasing.md#新插件的首次发布)。首发前使用[源码开发循环](local_development.md#快速源码循环)；
-   完整安装链路可在专用 clone 中检出生成的版本 PR 后测试。
+   修改名称和描述，保持一致的占位版本。MCP 插件还需更新
+   `.mcp.json` 中的 server key、extra 和入口；开发时使用 `@main`，server 自行声明 `__version__`。
+   Claude manifest 中非空的单行描述用于 marketplace 和安装器。
+6. 不修改 `plugin-versions.json`、根目录 marketplace 或安装器的插件列表。维护者在代码 PR 下评论
+   `/release <yourname>=1.0.0`，bot 在代码合并后生成首个版本 PR；审阅后评论 `/publish`。
+   详见[首次发布](releasing.md#新插件的首次发布)。
 7. 按组件补充 handler/schema 或 Skill/manifest 测试，更新受影响的 discovery 和安装器预期，详见[测试](testing.md)。新增配置时，写入 `src/shared/env.py:CONFIG_FIELDS`，同步 `install.sh:CONFIG_SPEC`，并用 `scripts/gen_env_docs.py` 重新生成[配置参考](../en/configuration.md)。
 
 `__main__.py` 从 `src/capabilities/example/` **原样复制**——它从目录名推断 import 名，没有任何 per-server 字面量。
