@@ -10,6 +10,7 @@ The build runs as flat modules and can't import `shared`, so this replicates env
 
 from __future__ import annotations
 
+import logging
 import os
 
 
@@ -57,6 +58,18 @@ def get_env(name: str, default: str | None = None) -> str | None:
     """Env config read at CALL time. Precedence: environment > user config file > default."""
     val = os.environ.get(name)
     return val if val is not None else _config().get(name, default)
+
+
+def get_int_env(name: str, default: int) -> int:
+    """Read a plain integer, falling back for unset, blank, or invalid values."""
+    raw = get_env(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logging.getLogger(__name__).warning("invalid %s=%r; using default %d", name, raw, default)
+        return default
 
 
 if __name__ == "__main__":

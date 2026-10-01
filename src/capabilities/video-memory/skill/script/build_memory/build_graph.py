@@ -23,7 +23,7 @@ except ImportError:
     oss2 = None
 
 from embeddings import EmbeddingIndex
-from env_config import get_env
+from env_config import get_env, get_int_env
 from llm_client import DEFAULT_MODEL, call_vlm_curl, extract_json
 from prompts import (
     HIERARCHICAL_AGGREGATION_PROMPT,
@@ -52,7 +52,7 @@ OSS_SK = get_env("OSS_SK", "")
 OSS_ENDPOINT = get_env("OSS_ENDPOINT", "")
 DST_BUCKET_NAME = get_env("OSS_BUCKET") or get_env("OSS_BUCKET_NAME", "")
 DST_VIDEO_PREFIX = get_env("OSS_VIDEO_CLIP_PREFIX", "tmp/video_clips")
-URL_EXPIRY = int(get_env("OSS_URL_EXPIRY", "7200"))
+URL_EXPIRY = get_int_env("OSS_URL_EXPIRY", 7200)
 _USE_OSS = bool(OSS_AK and OSS_SK and oss2)
 
 FRAME_WORKERS = 10
