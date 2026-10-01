@@ -7,6 +7,7 @@ build_registry discovery hardening, and the SYSTEM_DEPS report/startup-warning l
 
 import json
 import sys
+from types import ModuleType
 from typing import Optional
 
 import pytest
@@ -169,3 +170,76 @@ def test_to_content_block_malformed_image_falls_back_to_text():
     # an unknown block type also falls back to text rather than crashing the call
     blk2 = fw._to_content_block({"type": "weird", "foo": 1})
     assert isinstance(blk2, types.TextContent)
+
+
+@pytest.fixture
+def cli_config(tmp_path, monkeypatch):
+    from shared import env
+
+    config = tmp_path / "config"
+    monkeypatch.setenv("QWEN_MM_CONFIG", str(config))
+    monkeypatch.setattr(env, "_config_cache", None)
+    monkeypatch.setitem(sys.modules, "test_cli_package", ModuleType("test_cli_package"))
+    return config
+
+
+@pytest.mark.parametrize("value", ["", " \t "])
+@pytest.mark.parametrize("existing", [False, True])
+def test_set_rejects_blank_values_without_writing(cli_config, monkeypatch, capsys, value, existing):
+    initial = "# preserved comment\nBLENDER_PORT=9876\n"
+    if existing:
+        cli_config.write_text(initial, encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "test-cli-package",
+            "--set",
+            "DASHSCOPE_API_KEY=test-secret",
+            f"BLENDER_PORT={value}",
+            "FREECAD_RPC_PORT=9875",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        fw.run_main("test_cli_package")
+
+    assert exc.value.code == 2
+    output = capsys.readouterr()
+    assert "non-empty value for BLENDER_PORT" in output.err
+    assert "test-cli-package --unset BLENDER_PORT" in output.err
+    assert "test-secret" not in output.err
+    assert output.out == ""
+    if existing:
+        assert cli_config.read_text(encoding="utf-8") == initial
+    else:
+        assert not cli_config.exists()
+
+
+def test_set_nonempty_values_and_unset_preserve_other_entries(cli_config, monkeypatch, capsys):
+    cli_config.write_text("FREECAD_RPC_PORT=9875\n", encoding="utf-8")
+    values = {
+        "QWEN_MM_CACHE": "/path with spaces/cache",
+        "DASHSCOPE_BASE_URL": "https://example.test/v1?tenant=a=b",
+        "DASHSCOPE_API_KEY": "test-secret",
+    }
+    monkeypatch.setattr(sys, "argv", ["test-cli-package", "--set", *(f"{k}={v}" for k, v in values.items())])
+
+    fw.run_main("test_cli_package")
+
+    contents = cli_config.read_text(encoding="utf-8")
+    assert "FREECAD_RPC_PORT=9875\n" in contents
+    for key, value in values.items():
+        assert f"{key}={value}\n" in contents
+    output = capsys.readouterr()
+    assert "wrote" in output.out
+    assert "test-secret" not in output.out + output.err
+
+    monkeypatch.setattr(sys, "argv", ["test-cli-package", "--unset", "DASHSCOPE_API_KEY"])
+    fw.run_main("test_cli_package")
+
+    contents = cli_config.read_text(encoding="utf-8")
+    assert "DASHSCOPE_API_KEY=" not in contents
+    assert "FREECAD_RPC_PORT=9875\n" in contents
+    assert f"QWEN_MM_CACHE={values['QWEN_MM_CACHE']}\n" in contents
+    assert f"DASHSCOPE_BASE_URL={values['DASHSCOPE_BASE_URL']}\n" in contents
