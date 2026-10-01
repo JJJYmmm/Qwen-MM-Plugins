@@ -12,6 +12,9 @@ import logging
 import os
 from collections.abc import Iterable
 
+# BEGIN STANDALONE ENV READER
+# Synced to skill env_config.py files by scripts/sync_env_readers.py.
+
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off"})
 
@@ -45,6 +48,21 @@ def get_bool_env(name: str, default: bool = False) -> bool:
         return False
     logging.getLogger(__name__).warning("invalid %s=%r; using default %d", name, raw, int(default))
     return default
+
+
+def get_int_env(name: str, default: int) -> int:
+    """Read a plain integer, falling back for unset, blank, or invalid values.
+
+    Unlike ``_int_env``, this does not accept byte-size units.
+    """
+    raw = get_env(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logging.getLogger(__name__).warning("invalid %s=%r; using default %d", name, raw, default)
+        return default
 
 
 # ── User config file (~/.qwen-mm-plugins/config): KEY=VALUE lines, read when a var isn't in the
@@ -93,6 +111,9 @@ def _config() -> dict[str, str]:
         except (OSError, UnicodeDecodeError):
             _config_cache = {}
     return _config_cache
+
+
+# END STANDALONE ENV READER
 
 
 _CONFIG_HEADER = "# qwen-mm-plugins config — KEY=VALUE per line, read when the var isn't in the environment.\n\n"

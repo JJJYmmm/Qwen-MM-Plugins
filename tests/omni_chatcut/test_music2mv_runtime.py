@@ -1,6 +1,8 @@
 """Verify that local scripts can reuse and check the MCP Python environment."""
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import venv
@@ -78,3 +80,47 @@ def test_validator_subprocess_keeps_current_interpreter(tmp_path, monkeypatch):
     instance.validate()
     assert calls[0][0] == sys.executable
     assert calls[0][1].endswith("validate_execution_storyboard.py")
+
+
+def test_portable_config_reader_supports_model_config_refresh(tmp_path):
+    runner = tmp_path / "plugin/skill/music-to-mv/workflows/video-generation/scripts/run_mv_pipeline.py"
+    runner.parent.mkdir(parents=True)
+    shutil.copy2(RUNNER, runner)
+    shutil.copy2(RUNNER.with_name("env_config.py"), runner.with_name("env_config.py"))
+    config = tmp_path / "config"
+    last = tmp_path / "last.json"
+    updated = tmp_path / "updated.json"
+    key = "QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG"
+    config.write_text(f"{key}=first.json\nexport {key}='{last}'\n", encoding="utf-8")
+    model_config = Path(pipeline.__file__).with_name("model_config.py")
+    env = {k: v for k, v in os.environ.items() if k != key}
+    env["QWEN_MM_CONFIG"] = str(config)
+    code = r"""
+import json
+import os
+import runpy
+import sys
+import types
+from pathlib import Path
+
+stub = types.ModuleType("qwen_mm_plugins_omni_chatcut.music_to_mv.pipeline")
+stub.main = lambda: None
+sys.modules[stub.__name__] = stub
+runpy.run_path(sys.argv[1], run_name="portable_env_test")
+resolve = runpy.run_path(sys.argv[2])["resolve_model_config_path"]
+first = resolve()
+Path(os.environ["QWEN_MM_CONFIG"]).write_text(
+    "QWEN_MM_OMNI_CHATCUT_MODEL_CONFIG=" + sys.argv[3] + "\n", encoding="utf-8"
+)
+print(json.dumps([str(first), str(resolve())]))
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", code, str(runner), str(model_config), str(updated)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    )
+    assert json.loads(result.stdout) == [str(last.resolve()), str(updated.resolve())]
