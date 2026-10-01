@@ -42,7 +42,7 @@ framework 版本。省略时自动增加 distribution patch。
 需要一起发布全部插件时，显式使用 `/release all-plugins=patch framework=patch`，范围是
 `plugin-versions.json` 列出的全部插件，包括 `edu-agent` 等 Skill-only 插件，不含未发布模板。
 单插件参数可以覆盖批量级别，例如 `all-plugins=patch search=minor`。只指定 framework/distribution
-时会要求补充插件选择，不会默认选择全部。新增插件的首次登记仍需单独审阅。
+时会要求补充插件选择，不会默认选择全部。未发布插件必须显式指定名称和版本，`all-plugins` 不会自动选中它们。
 
 审阅 bot 生成的版本 PR 后，在该 PR 下评论：
 
@@ -57,6 +57,32 @@ bot 对准确的版本提交运行测试并构建 wheel，原子推送本批插�
 一次只处理一张待完成的版本 PR，重复指令复用已有 PR。tag 已存在时必须指向相同提交，绝不移动。若 tag
 已发布但合并失败，补齐审核或检查后重新评论 `/publish`，保持版本 PR 的 head 不变。如果是内容冲突，关闭
 该版本 PR，用新的版本号重新准备；保留已经发布的 tag。其他代码 PR 在此期间仍可正常合入。
+
+### 新插件的首次发布
+
+先合入插件代码、Skill、测试、各 harness 的 manifest，以及所需的 Python 打包配置和依赖。
+此时不加入 `plugin-versions.json`、根目录 marketplace 或安装器的插件列表。模板版本号只是占位值，
+未发布 MCP 的启动引用可以保留 `@main`。代码 PR 的具体清单见[新增插件](how_to_add_new_capability.md)。
+
+在代码 PR 下明确指定首次版本：
+
+```text
+/release new-plugin=1.0.0
+```
+
+bot 创建独立版本 PR，统一设置版本号和 tag 引用，添加 marketplace 与版本索引条目，并在安装器中
+追加插件名称、版本、描述，以及适用的 Skill-only 分类。描述取自 Claude plugin manifest，要求是非空
+单行文本；Python 打包配置和可执行代码必须已在源码 PR 中合入。初始版本不受模板占位版本限制。
+与后续更新一样，省略 `framework` 时自动增加 distribution patch。
+
+审阅版本 PR 和 tag 说明后评论 `/publish`。先创建 tag，再让 main 把该插件列为可安装项目。
+代码 PR 尚未合并时，请求会等待合并。`patch`、`minor`、`major` 需要已有发布版本，因此首发必须指定
+完整版本。可以用 `all-plugins=patch new-plugin=1.0.0` 显式同时更新老插件并发布新插件；未选择的
+未发布插件和 `example` 模板不会上架。
+
+首发 tag 说明列出该插件的开发历史，MCP 插件另记录所用共享代码快照，不虚构上一个 tag 或汇总整个
+仓库历来的共享改动。已在版本索引中的插件如果缺失旧 tag，仍然报错，不会误判为首次发布。
+重试时仍保留已有 tag 及其原始说明。
 
 ### Tag 发布说明
 

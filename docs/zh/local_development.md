@@ -43,6 +43,9 @@ bash install.sh local
 bash install.sh local --plugin core --harness codex
 ```
 
+安装器只列出已登记发布的能力。新插件尚未首发时使用上面的源码循环；需要在发布前测试完整安装
+链路时，可在专用 clone 中检出 bot 生成的首个版本 PR，再运行 local 模式。
+
 安装器会把所选能力指向当前 checkout，并加入 `uvx --refresh`。该操作会在受 Git 管理的 manifest
 中写入绝对本地路径，因此请使用专用 clone，并在安装期间保持路径不变。
 

@@ -48,7 +48,8 @@ Use `/release all-plugins=patch framework=patch` to explicitly release every plu
 `plugin-versions.json`, including Skill-only plugins such as `edu-agent`; unpublished templates are
 excluded. Individual arguments override the batch level, e.g. `all-plugins=patch search=minor`.
 Specifying only `framework`/`distribution` requires adding a plugin selection;
-it never implicitly selects all plugins. First-time plugin onboarding is outside this flow.
+it never implicitly selects all plugins. Unpublished plugins require an explicit name and version;
+`all-plugins` does not select them.
 
 Review the generated version PR, then comment:
 
@@ -66,6 +67,37 @@ point to the exact verified commit; they are never moved. If tag publication suc
 merge failed, resolve required checks/reviews and retry `/publish` without changing the version PR
 head. A content conflict requires closing it and preparing a new release with fresh version numbers;
 retain the already-published tags. Other source PRs can continue merging during review.
+
+### First release of a new plugin
+
+Merge the plugin's code, Skill, tests, harness manifests, and any Python packaging/dependencies
+first. Keep it out of `plugin-versions.json`, the root marketplace, and the installer's capability
+catalog until publication. Existing template versions are placeholders; an unpublished MCP launch
+spec can use `@main`. See [Add a new plugin](how_to_add_new_capability.md) for the code PR checklist.
+
+On that code PR, request an exact first version:
+
+```text
+/release new-plugin=1.0.0
+```
+
+The bot generates a separate version PR that sets all release versions/refs, adds the marketplace
+entry and release-index entry, and appends the installer name, version, description, and Skill-only
+classification when applicable. The Claude plugin manifest supplies the description (a nonempty
+single line); Python packaging and executable code must already be present in the merged source.
+The first version is independent of the template's placeholder version. As with updates, omitting
+`framework` advances the distribution patch version.
+
+Review the version PR and its tag notes, then use `/publish`. The tag is created before main lists
+the plugin for installation. An unmerged code PR's request waits for merge, just like an update.
+`patch`, `minor`, and `major` require a published version, so the first release must use an exact
+version. `all-plugins=patch new-plugin=1.0.0` can explicitly combine updates with a first release;
+unselected unpublished plugins and the `example` template remain unlisted.
+
+First-release notes list the plugin's development history and record the shared snapshot for MCP
+plugins, without an invented previous tag or an all-time shared changelog. Missing tags for plugins
+already in the release index still fail; they are never reclassified as first releases. Existing
+annotations and tags remain immutable on retries.
 
 ### Tag notes
 

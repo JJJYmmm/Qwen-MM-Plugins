@@ -119,20 +119,16 @@ def test_mcp_launch_spec_agrees(cap):
     )
 
 
-def test_marketplace_lists_every_capability():
+def test_marketplace_lists_only_published_capabilities():
     import mcp_framework
 
     market = json.loads((_ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     listed = {p["name"] for p in market["plugins"]}
-    # `example` is a copy-me template that ships in the repo but is intentionally NOT published to
-    # the marketplace (end users shouldn't see a demo plugin). Every other capability must be listed.
-    TEMPLATE_ONLY = {"qwen-mm-plugins-example"}
-    from_manifests = {_load(cap, ".claude-plugin/plugin.json")["name"] for cap in _capabilities()}
-    assert listed == from_manifests - TEMPLATE_ONLY, (
-        "marketplace.json plugins must match the capability manifests (minus template-only caps).\n"
-        f"  marketplace: {sorted(listed)}\n  manifests:   {sorted(from_manifests)}\n"
-        f"  template-only (excluded): {sorted(TEMPLATE_ONLY)}"
-    )
+    published = json.loads((_ROOT / "plugin-versions.json").read_text())["plugins"]
+    assert "example" not in published
+    assert set(published) <= set(_capabilities()), "published plugins must have committed manifests"
+    from_manifests = {_load(cap, ".claude-plugin/plugin.json")["name"] for cap in published}
+    assert listed == from_manifests, "marketplace must match the published index; unreleased plugins stay unlisted"
     assert market["metadata"]["version"] == mcp_framework.__version__, (
         "marketplace.json metadata.version must track mcp_framework.__version__."
     )

@@ -94,9 +94,15 @@ python3 src/capabilities/example/qwen_mm_plugins_example --check-system
    where = [..., "src/capabilities/<yourname>"]
    ```
    把新 server 的 extra 加到 `all` profile；需要打包非 Python 文件时，补充 `[tool.setuptools.package-data]`。
-5. 在 `plugin-versions.json` 中加入初始版本，并在规范的 `.claude-plugin/marketplace.json`
-   （CodeBuddy 与 WorkBuddy 也读取该文件）中加入固定到对应 tag 的 `git-subdir` entry。从同类能力复制 `.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`、`.qoder-plugin/plugin.json`，替换所有名称、版本和说明，并保持 marketplace description 与 `install.sh` 的 `CAP_DESC` 一致。有 server 时还需 `.mcp.json`：使用唯一的 `qwen-mm-plugins-<yourname>` server key，以及对应的 extra、入口和版本 tag；server 的 `__version__` 也须与 manifest 一致。
-6. 在 `install.sh` 的 `CAP_ITEMS`、`CAP_VERSIONS`、`CAP_DESC` 同一位置添加插件信息。纯 Skill 插件还需加入 `CAP_SKILL_ONLY`。
+5. 从同类能力复制 `.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`、`.qoder-plugin/plugin.json`，
+   替换名称与描述，各 manifest 保持一致的模板版本作为开发占位值。有 server 时还需 `.mcp.json`：
+   使用唯一的 `qwen-mm-plugins-<yourname>` server key、对应 extra 和入口；开发期间源码引用可用 `@main`。
+   server 自行声明 `__version__`，不要引用 framework 版本。Claude manifest 中非空的单行描述会用于公开目录。
+6. 代码 PR 不修改 `plugin-versions.json`、根目录 `.claude-plugin/marketplace.json` 或 `install.sh`
+   的插件列表，它们只登记已发布插件。代码合并后，评论 `/release <yourname>=1.0.0`，由 bot 生成首个
+   版本 PR 并注册 marketplace 和安装列表；审阅后评论 `/publish`。在尚未合并的代码 PR 下发出请求会
+   等待合并。详见[首次发布](releasing.md#新插件的首次发布)。首发前使用[源码开发循环](local_development.md#快速源码循环)；
+   完整安装链路可在专用 clone 中检出生成的版本 PR 后测试。
 7. 按组件补充 handler/schema 或 Skill/manifest 测试，更新受影响的 discovery 和安装器预期，详见[测试](testing.md)。新增配置时，写入 `src/shared/env.py:CONFIG_FIELDS`，同步 `install.sh:CONFIG_SPEC`，并用 `scripts/gen_env_docs.py` 重新生成[配置参考](../en/configuration.md)。
 
 `__main__.py` 从 `src/capabilities/example/` **原样复制**——它从目录名推断 import 名，没有任何 per-server 字面量。

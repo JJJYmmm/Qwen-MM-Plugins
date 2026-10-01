@@ -112,15 +112,19 @@ its Python package, and complete steps 1–4. Skill-only plugins skip these Pyth
    ```
    Include the new server extra in the `all` profile. If it ships non-Python resources, add them
    to `[tool.setuptools.package-data]`.
-5. Add the initial version to `plugin-versions.json` and a matching tag-pinned `git-subdir` entry to
-   the canonical `.claude-plugin/marketplace.json`, which CodeBuddy and WorkBuddy also consume. Copy
-   `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `.qoder-plugin/plugin.json` from
-   a capability of the same kind. Replace its name, version, and description everywhere; keep the
-   marketplace description and `install.sh`'s `CAP_DESC` consistent. Server plugins also carry
-   `.mcp.json`: use a unique `qwen-mm-plugins-<yourname>` server key and the matching extra,
-   entry point, and version tag. Keep the server's `__version__` aligned with the manifests.
-6. Register the capability in `install.sh`: add entries to `CAP_ITEMS`, `CAP_VERSIONS`, and
-   `CAP_DESC` in the same position. Add Skill-only capabilities to `CAP_SKILL_ONLY` too.
+5. Copy `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `.qoder-plugin/plugin.json`
+   from a capability of the same kind. Replace its name and description; keep a consistent template
+   version as a development placeholder. Server plugins also carry `.mcp.json`: use the unique
+   `qwen-mm-plugins-<yourname>` server key, matching extra and console entry, with an `@main` source
+   during development. Set the server's `__version__` locally; do not import the framework version.
+   The Claude manifest's nonempty, single-line description will populate the public catalogs.
+6. Leave `plugin-versions.json`, the root `.claude-plugin/marketplace.json`, and the capability
+   lists in `install.sh` unchanged in this code PR. They describe published plugins. After the code
+   merges, `/release <yourname>=1.0.0` generates the first version PR, including catalog and installer
+   registration; review it and comment `/publish`. Requests on an open code PR wait for merge.
+   See [First release](releasing.md#first-release-of-a-new-plugin). Until then, use the
+   [source development loop](local_development.md#fast-source-loop); full installer testing can use
+   the generated version PR in a dedicated clone.
 7. Add handler/schema tests or Skill/manifest tests as appropriate; see [Testing](testing.md).
    Update affected discovery and installer expectations. If you add configuration, register it
    in `src/shared/env.py:CONFIG_FIELDS`, align `install.sh:CONFIG_SPEC`, and regenerate the
