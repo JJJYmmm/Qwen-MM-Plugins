@@ -16,9 +16,7 @@ Use the `qwen-mm-plugins-nifti` MCP server's two tools according to the request:
   not a prerequisite or a stateful initialization step.
 
 When available, prefer these tools for their respective NIfTI tasks. Respect an
-explicit request to use another tool. Core's `visualize` remains a separate basic
-preview with three orthogonal center slices and per-slice normalization; its
-defaults differ. Removing core's NIfTI support is a separate follow-up change.
+explicit request to use another tool.
 
 ## Read and verify
 

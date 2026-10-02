@@ -1,6 +1,6 @@
 ---
 name: qwen-mm-plugins-core
-description: Read and visualize any file — images, video, documents, code, data, 3D models, NIfTI volumes, and more — with MCP tools. Use when the agent needs to inspect file contents or media metadata, crop an image, draw bounding boxes, or save document pages and video frames.
+description: Read and visualize any file — images, video, documents, code, data, 3D models, and more — with MCP tools. Use when the agent needs to inspect file contents or media metadata, crop an image, draw bounding boxes, or save document pages and video frames.
 ---
 
 # Local File Inspection
@@ -39,7 +39,6 @@ Producing / annotating (writes an image file):
 | Diagrams | `.drawio` | XML → SVG rendering |
 | Subtitles | `.srt`, `.vtt` | Returns text |
 | 3D Models | `.obj`, `.stl`, `.glb`, `.gltf`, `.fbx`, `.ply`, `.step`, `.stp` | Built-in; `blender` for best quality |
-| Medical volumes | `.nii`, `.nii.gz` | Local/read-only (`nibabel`); 3 center slices; 4D `pages` selects volumes (default 1) |
 | GIS/Geo | `.geojson`, `.kml`, `.shp` | Built-in |
 | Notebooks | `.ipynb` | Text cells + embedded images |
 | LaTeX | `.tex` | Compiles to PDF; falls back to source on failure |
@@ -48,9 +47,6 @@ Producing / annotating (writes an image file):
 The table lists supported formats; files with unknown extensions return an unsupported-type error.
 
 Use `pages` for page ranges, `budget` for resolution, `max_pages` to cap output.
-
-NIfTI uses closest-canonical voxel axes without resampling and is intended for inspection, not
-clinical diagnosis.
 
 ## Metadata First
 

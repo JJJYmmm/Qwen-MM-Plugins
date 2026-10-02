@@ -263,7 +263,6 @@ def _has_dep(key: str) -> bool:
         "openpyxl": lambda: __import__("openpyxl"),
         "nbformat": lambda: __import__("nbformat"),
         "geopandas": lambda: __import__("geopandas"),
-        "nibabel": lambda: __import__("nibabel"),
         "trimesh": lambda: __import__("trimesh"),
         "cascadio": lambda: __import__("cascadio"),  # trimesh STEP/STP loader
         "playwright": lambda: __import__("playwright"),
@@ -368,7 +367,6 @@ TESTS = [
     ("sample-model.glb", "image", 3, "GLB (blender)", ["blender"]),
     ("GothicRoseWindow.step", "image", 3, "STEP (trimesh)", ["trimesh", "cascadio"]),
     ("sample.geojson", "image", 1, "GeoJSON (geopandas)", ["geopandas"]),
-    ("avg152T1_LR_nifti.nii.gz", "image", 3, "NIfTI (nibabel)", ["nibabel"]),
     ("sample.ipynb", "text", 3, "Jupyter notebook", ["nbformat"]),
     ("charts.ipynb", "image", 3, "Jupyter notebook (charts)", ["nbformat"]),
     ("sample.tex", "image", 1, "LaTeX (pdflatex)", ["pdflatex", "pypdfium2"]),
