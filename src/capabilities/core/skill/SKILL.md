@@ -67,7 +67,6 @@ When juggling heterogeneous assets (action-cam clips, VFX/stock footage, voiceov
 
 ## Relationship to Other Capabilities
 
-Core handles file reading, rendering, and basic image operations. Install these capabilities for specialized inspection, model inference or search:
-- **Inspect NIfTI metadata or slices** → `qwen-mm-plugins-nifti` (`nifti_inspect`, `nifti_render_slices`).
+Core handles file reading, rendering, and basic image operations. Install these capabilities for dedicated model inference or search:
 - **Understand media with a model** → `qwen-mm-plugins-api`, grouped by model family: VL (`vision_chat`, `ocr`, `grounding`), Omni A/V (timestamped captioning, multi-speaker ASR, temporal grounding, event counting), plus `transcribe_audio` and `segmentation`. Annotate its `grounding` output with `draw_bbox` here.
 - **Confirm a fact / identify an entity** (reverse image + web) → `qwen-mm-plugins-search`. Grab the frame with `save_view` here first.

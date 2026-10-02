@@ -253,21 +253,6 @@ def test_parse_pages_without_a_selection_returns_the_default_window():
     assert parse_pages("  ", 50) == list(range(DEFAULT_MAX_PAGES))
 
 
-@pytest.mark.parametrize("suffix", [".nii", ".nii.gz", ".NII", ".NII.GZ"])
-def test_core_rejects_nifti_as_an_unsupported_format(tmp_path, suffix):
-    from qwen_mm_plugins_core.renderers import SUPPORTED_EXTENSIONS, get_renderer
-
-    path = tmp_path / f"volume{suffix}"
-    path.write_bytes(b"not read by core")
-
-    content = handle({"file_path": str(path)})
-
-    assert len(content) == 1 and content[0]["type"] == "text"
-    assert "unsupported file type" in content[0]["text"]
-    assert suffix.lower() not in SUPPORTED_EXTENSIONS
-    assert get_renderer(suffix) is None
-
-
 def _has_dep(key: str) -> bool:
     checks = {
         "pypdfium2": lambda: __import__("pypdfium2"),

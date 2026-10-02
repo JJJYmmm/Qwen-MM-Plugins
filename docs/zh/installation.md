@@ -155,34 +155,6 @@ wsl --install -d Ubuntu
 
 使用 Codex 时，选择 WSL2 agent 环境，并在同一环境中安装插件。原生 Windows 尚未验证。
 
-## 从 core 迁移 NIfTI
-
-NIfTI 检查和渲染由独立的 `qwen-mm-plugins-nifti` 提供。Core 的 `visualize` 不再支持 `.nii`
-和 `.nii.gz`。请从当前发布目录安装独立插件，再重新加载
-harness。例如，使用 Codex 时：
-
-```bash
-bash install.sh install --plugin nifti --harness codex
-```
-
-首次发布前，可按[本地开发文档](local_development.md#快速源码循环)从源码运行。
-手动安装时，使用 `[nifti]` 包 extra，同时注册插件的 Skill 和 `qwen-mm-plugins-nifti`
-MCP 入口，步骤见[手动安装 Skill + MCP](#手动安装-skill--mcp)。
-
-只需文件头信息时，调用 `nifti_inspect(file_path=...)`，无需渲染。显示切片的旧调用按下表迁移：
-
-| 原 core 调用或参数 | 独立 NIfTI 插件的对应项 |
-|---|---|
-| `visualize(file_path=...)` | `nifti_render_slices(file_path=...)` |
-| 选择 4D 体数据的 `pages="1,3"` | `volumes="1,3"`（仍从 1 开始编号） |
-| `max_pages=N` | `max_volumes=N` |
-| `budget="small"` | `budget="small"` |
-
-默认显示方式有变化：原 core 显示三个正交方向的中心切片，并逐切片归一化；独立插件默认
-沿源体素轴 2 选取三张内部切片，共用该体数据的 P1–P99 强度范围。迁移已有流程时，请按需
-显式设置 `slice_axis`、`slice_indices` 或 `slice_positions`，以及强度显示参数。源体素轴
-不一定对应解剖学方向。工具不会修改源文件，也不提供临床诊断。
-
 ## 依赖
 
 `uvx` 会把各能力的 Python 依赖安装到隔离缓存中。其余输入主要是服务配置和系统程序。

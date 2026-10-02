@@ -118,9 +118,10 @@ curl -fsSL https://raw.githubusercontent.com/QwenLM/Qwen-MM-Plugins/main/install
 ```
 
 `core` 会以动态分辨率读取媒体，通常无需手动缩放。
-需要读取 NIfTI 文件头信息时，使用独立 `nifti` 插件的 `nifti_inspect` 工具；需要查看切片时，
-直接使用 `nifti_render_slices`，不必先检查文件头。安装方式及原 core 调用的调整见
-[迁移指南](docs/zh/installation.md#从-core-迁移-nifti)。
+
+需要读取 NIfTI 文件头信息时，使用独立 `nifti` 插件的 `nifti_inspect` 工具；需要自定义切片显示时，直接使用 `nifti_render_slices`，不必先检查文件头：
+默认沿源体素轴 2 选取三张内部切片，共用该体数据的 P1–P99 强度范围。
+首次发布前，可按[本地开发文档](docs/zh/local_development.md#快速源码循环)从源码试用 `nifti`。
 
 ## 依赖与配置
 

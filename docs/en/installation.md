@@ -164,38 +164,6 @@ wsl --install -d Ubuntu
 For Codex, select a WSL2 agent environment and install the plugin inside that same environment.
 Native Windows has not been validated.
 
-## NIfTI migration from core
-
-NIfTI inspection and rendering now belong to `qwen-mm-plugins-nifti`. Core's `visualize`
-no longer supports `.nii` or `.nii.gz`.
-Install the dedicated plugin from the current release catalog and reload your harness. For
-example, for Codex:
-
-```bash
-bash install.sh install --plugin nifti --harness codex
-```
-
-Before the plugin's first release, use the [source development loop](local_development.md#fast-source-loop).
-For manual installations, register both its Skill and `qwen-mm-plugins-nifti` MCP entry with the
-`[nifti]` package extra, following [Manual Skill + MCP installation](#manual-skill--mcp-installation).
-
-Use `nifti_inspect(file_path=...)` for header metadata without rendering. To view slices, migrate
-existing calls as follows:
-
-| Previous core call or argument | Dedicated NIfTI equivalent |
-|---|---|
-| `visualize(file_path=...)` | `nifti_render_slices(file_path=...)` |
-| `pages="1,3"` for 4D volumes | `volumes="1,3"` (still one-based) |
-| `max_pages=N` | `max_volumes=N` |
-| `budget="small"` | `budget="small"` |
-
-The defaults differ: core formerly showed three orthogonal center slices with per-slice
-normalization; the dedicated renderer defaults to three interior slices on source voxel axis 2
-with a shared volume-level P1–P99 range. Choose `slice_axis`, `slice_indices` or `slice_positions`,
-and intensity options explicitly when adapting an existing workflow. Source voxel axes need not
-match anatomical axes. The tools read files without modifying them; they do not provide clinical
-diagnoses.
-
 ## Dependencies
 
 `uvx` installs each capability's Python dependencies into an isolated cache. The remaining inputs

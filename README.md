@@ -121,9 +121,11 @@ MCP tool.
 ```
 
 `core` reads media at dynamic resolution, so manual resizing is normally unnecessary.
+
 For NIfTI header metadata, use the dedicated `nifti` plugin's `nifti_inspect` tool. Use
 `nifti_render_slices` directly for configurable viewing; inspection is not a prerequisite.
-See the [migration guide](docs/en/installation.md#nifti-migration-from-core) for installation and updated core calls.
+It defaults to three interior slices on source axis 2 with a shared volume-level P1–P99 range.
+To try `nifti` before its first release, follow the [source development loop](docs/en/local_development.md#fast-source-loop).
 
 ## Requirements and configuration
 
