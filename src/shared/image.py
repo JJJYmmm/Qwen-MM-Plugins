@@ -186,19 +186,20 @@ def smart_resize(
         logging.warning("min_pixels (%d) > max_pixels (%d), clamping max_pixels to min_pixels", min_pixels, max_pixels)
         max_pixels = min_pixels
 
-    if height * width < min_pixels:
-        scale = math.sqrt(min_pixels / (height * width))
-        height = int(height * scale)
-        width = int(width * scale)
-
-    if height * width > max_pixels:
-        scale = math.sqrt(max_pixels / (height * width))
-        height = int(height * scale)
-        width = int(width * scale)
-
-    height = max(factor, round(height / factor) * factor)
-    width = max(factor, round(width / factor) * factor)
-    return height, width
+    # qwen-vl-utils' rule: snap to the grid, then ceil up to min_pixels or floor down to max_pixels.
+    # The cap is checked last because the small presets use min_pixels == max_pixels, where the
+    # ceil step can land above the budget; the budget wins.
+    h_bar = max(factor, round(height / factor) * factor)
+    w_bar = max(factor, round(width / factor) * factor)
+    if h_bar * w_bar < min_pixels:
+        beta = math.sqrt(min_pixels / (height * width))
+        h_bar = math.ceil(height * beta / factor) * factor
+        w_bar = math.ceil(width * beta / factor) * factor
+    if h_bar * w_bar > max_pixels:
+        beta = math.sqrt(height * width / max_pixels)
+        h_bar = max(factor, math.floor(height / beta / factor) * factor)
+        w_bar = max(factor, math.floor(width / beta / factor) * factor)
+    return h_bar, w_bar
 
 
 def encode_image(img):
