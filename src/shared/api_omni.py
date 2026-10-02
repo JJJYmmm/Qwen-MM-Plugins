@@ -31,7 +31,7 @@ from urllib.parse import urlsplit
 
 from shared.api_openai import b64_len, expand_video_frames, is_model_url, resolve_openai_endpoint
 from shared.dashscope_upload import OSS_RESOLVE_HEADER, contains_temporary_oss_url
-from shared.env import get_env
+from shared.env import get_bool_env, get_env
 
 log = logging.getLogger(__name__)
 
@@ -207,7 +207,7 @@ def omni_audio_part(source: str, *, audio_format: str | None = None) -> dict:
     fmt = (audio_format or _source_suffix(source).lstrip(".") or "wav").lower()
     if is_omni_url(source):
         data = source
-    elif (get_env("QWEN_MM_AUDIO_RAW_B64") or "").lower() in ("1", "true", "yes", "on"):
+    elif get_bool_env("QWEN_MM_AUDIO_RAW_B64"):
         _, data = _local_b64(source)
     else:
         data = _data_url(source, "audio/wav", omit_mime=True)
